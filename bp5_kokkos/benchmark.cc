@@ -461,18 +461,18 @@ main(int argc, char **argv)
 
   if (degree == 1)
     Step64::do_test<3, 1>(s, compact_output);
-  //else if (degree == 2)
-  //  Step64::do_test<3, 2>(s, compact_output);
-  //else if (degree == 3)
-  //  Step64::do_test<3, 3>(s, compact_output);
+  else if (degree == 2)
+    Step64::do_test<3, 2>(s, compact_output);
+  else if (degree == 3)
+    Step64::do_test<3, 3>(s, compact_output);
   else if (degree == 4)
     Step64::do_test<3, 4>(s, compact_output);
-  //else if (degree == 5)
-  //  Step64::do_test<3, 5>(s, compact_output);
-    //else if (degree == 6)
-  // Step64::do_test<3, 6>(s, compact_output);
-  //else if (degree == 7)
-  //  Step64::do_test<3, 7>(s, compact_output);
+  else if (degree == 5)
+    Step64::do_test<3, 5>(s, compact_output);
+  else if (degree == 6)
+    Step64::do_test<3, 6>(s, compact_output);
+  else if (degree == 7)
+    Step64::do_test<3, 7>(s, compact_output);
   else
     {
       if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
