@@ -1,5 +1,5 @@
 #include <iostream>
-#include <lagrange_basis.hpp>
+#include <math/lagrange_basis.hpp>
 
 int main(){
 

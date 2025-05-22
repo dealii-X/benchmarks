@@ -1,3 +1,6 @@
+#ifndef LAGRANGE_BASIS_HPP
+#define LAGRANGE_BASIS_HPP
+
 #include <cassert>
 #include <vector>
 #include <cmath>
@@ -65,3 +68,5 @@ struct LagrangeBasis{
   std::vector<T> coordinates_;
   std::vector<T> denominators_;
 };
+
+#endif  //LAGRANGE_BASIS_HPP

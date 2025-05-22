@@ -8,17 +8,22 @@ basis : 1D basis functions on each dimension (l0, l1 etc.)
 wsp : intermediate storages 
 */
 
-#include <iostream>
+#include <fstream>
 #include <kernels/parallel_kernels.cuh>
+#include <kernels/serial_kernels.hpp>
+#include <Kokkos_Core.hpp>
 #include <timer.hpp>
+#include <math/logspace.hpp>
+#include <cstdlib>
+#include <string>
 
+//returns vector of results for each kernel. Order is 1.Kokkos 2.Cuda1D 3.Cuda3D 4.Cuda3DS
 template<typename T>
-void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2, 
+std::vector<T> run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2, 
     const unsigned int nm0, const unsigned int nm1, const unsigned int nm2, 
-    const unsigned int numThreads, const unsigned int threadsPerBlockX, 
-    const unsigned int threadsPerBlockY, const unsigned int threadsPerBlockZ,
-    const unsigned int nelmt, const unsigned int ntests)
-{
+    const unsigned int numThreads, const unsigned int threadsPerBlockX, const unsigned int threadsPerBlockY, 
+    const unsigned int threadsPerBlockZ, const unsigned int nelmt, const unsigned int ntests)
+{   
     unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
     const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
 
@@ -58,10 +63,20 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         }
     }
 
+
+    std::vector<T> results(4);
+    // ------------------------- Kokkos Kernel ---------------------------------------------------
+    {   
+        std::vector<T> kokkos_results = Parallel::KokkosKernel<T>(nq0, nq1, nq2, nm0, nm1, nm2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
+        results[0] = kokkos_results[0];
+    }
+
+
+    // --------------------------Cuda Kernels ----------------------------------------------------
     T *d_basis0, *d_basis1, *d_basis2, *d_JxW, *d_in, *d_out;
 
     const unsigned int ssize = 2 * nq0 * nq1 * nq2 + nm0 * nq0 + nm1 * nq1 + nm2 * nq2;          //shared memory dynamic size
-                               
+    
     cudaMalloc(&d_basis0, nq0 * nm0 * sizeof(T));
     cudaMalloc(&d_basis1, nq1 * nm1 * sizeof(T));
     cudaMalloc(&d_basis2, nq2 * nm2 * sizeof(T));
@@ -76,7 +91,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     cudaMemcpy(d_in, in, nelmt * nm0 * nm1 * nm2 * sizeof(T), cudaMemcpyHostToDevice);
 
 
-    // ------------------------- Kernel with 1D block size -------------------------------
+    // ------------------------- 1D block size -------------------------------
     {
         double time = std::numeric_limits<double>::max();
         Timer Timer;
@@ -89,10 +104,10 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "1D_Block -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        results[1] = 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time;
     }
 
-    // ------------------------- Kernel with 3D block size -------------------------------
+    // ------------------------- 3D block size -------------------------------
     {
         thrust::fill(thrust::device, d_out, d_out + nelmt * nm0 * nm1 * nm2, static_cast<T>(0));
 
@@ -110,10 +125,10 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "3D_Block -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        results[2] = 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time;
     }
 
-    // ------------------------- Kernel with 3D block size + SimpleMap -------------------------------
+    // ------------------------- 3D block size + SimpleMap -------------------------------
     {
         thrust::fill(thrust::device, d_out, d_out + nelmt * nm0 * nm1 * nm2, static_cast<T>(0));
         
@@ -131,36 +146,71 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "3D_Block Simple Map -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        results[3] = 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time;
     }
-            
-
-
+    
     cudaFree(d_basis0); cudaFree(d_basis1); cudaFree(d_basis2); cudaFree(d_JxW); cudaFree(d_in); cudaFree(d_out);
     delete[] basis0; delete[] basis1; delete[] basis2; delete[] JxW; delete[] in; delete[] out;
+
+    return results;
 }
 
 
 int main(int argc, char **argv){
+    unsigned int polyOrderBegin      = (argc > 1) ? atoi(argv[1]) : 1;
+    unsigned int polyOrderEnd        = (argc > 2) ? atoi(argv[2]) : 8;
+    unsigned int dof_ExpBegin        = (argc > 3) ? atoi(argv[3]) : 3;
+    unsigned int dof_ExpEnd          = (argc > 4) ? atoi(argv[4]) : 7;
+    unsigned int dof_NumSample       = (argc > 5) ? atoi(argv[5]) : 30;
+    unsigned int nElmtPerBlock       = (argc > 6) ? atoi(argv[6]) : 1;     // Number of Elements Per Thread Block
+    unsigned int ntests              = (argc > 7) ? atoi(argv[7]) : 30u;
+    std::string  outPath             = (argc > 8) ? std::string{argv[8]} : std::string{"./outputs"};
 
-    unsigned int nq0                = (argc > 1) ? atoi(argv[1]) : 4u;
-    unsigned int nq1                = (argc > 2) ? atoi(argv[2]) : 4u;
-    unsigned int nq2                = (argc > 3) ? atoi(argv[3]) : 4u;
-    unsigned int numThreads         = (argc > 4) ? atoi(argv[4]) : 256 * 256 * 256;
-    unsigned int threadsPerBlockX   = (argc > 5) ? atoi(argv[5]) : nq0;
-    unsigned int threadsPerBlockY   = (argc > 6) ? atoi(argv[6]) : nq1;
-    unsigned int threadsPerBlockZ   = (argc > 7) ? atoi(argv[7]) : nq2;
-    unsigned int nelmt              = (argc > 8) ? atoi(argv[8]) : 2 << 18;
-    unsigned int ntests             = (argc > 9) ? atoi(argv[9]) : 100u;
+    const unsigned int numKernel = 4; //kokkos, cuda1D, cuda3D, cuda3DSss
+    const unsigned int nmBegin = polyOrderBegin + 1;
+    const unsigned int nmEnd = polyOrderEnd + 1;
 
 
-    const unsigned int nm0 = nq0 - 1;
-    const unsigned int nm1 = nq1 - 1;
-    const unsigned int nm2 = nq2 - 1;
+    Kokkos::initialize(argc, argv);
 
-    std::cout.precision(8);
-    run_test<float>(nq0, nq1, nq2, nm0, nm1, nm2, numThreads,
-                    threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
+    auto dofs = logspace<float>(dof_ExpBegin, dof_ExpEnd, dof_NumSample);
 
+    //-------------------- allocate 3D vector for outputs-----------------
+    std::vector<std::vector<std::vector<float>>> results(dofs.size(), std::vector<std::vector<float>>(nmEnd - nmBegin + 1, std::vector<float>(numKernel, 0.0f)));
+
+    unsigned int nelmt;          
+    for(unsigned int d = 0; d < dofs.size(); ++d)
+    {
+        for(unsigned int nm = nmBegin; nm <= nmEnd; ++nm)
+        {
+            nelmt = dofs[d] / (float)(nm * nm * nm);
+            results[d][nm-nmBegin] = run_test<float>(nm + 1, nm + 1, nm + 1, nm, nm, nm, nelmt / nElmtPerBlock * (nm + 1) * (nm + 1) * (nm + 1), 
+                                      nm + 1, nm + 1, nm + 1, nelmt, ntests);
+        }
+    }
+
+    //--------------------write 3D outputs to the file-----------------------
+    std::ofstream kokkosFile; kokkosFile.open(outPath + std::string{"/kokkos.txt"}, std::ios::trunc);  if(!kokkosFile){std::cerr << "Failed to open kokkos.txt.\n"; return 1;}
+    std::ofstream cudaOneDFile; cudaOneDFile.open(outPath + std::string{"/cuda1D.txt"}, std::ios::trunc);  if(!cudaOneDFile){std::cerr << "Failed to open cuda1D.txt.\n"; return 1;}
+    std::ofstream cudaThreeDFile; cudaThreeDFile.open(outPath + std::string{"/cuda3D.txt"}, std::ios::trunc);  if(!cudaThreeDFile){std::cerr << "Failed to open cuda3D.txt.\n"; return 1;}
+    std::ofstream cudaThreeDSFile; cudaThreeDSFile.open(outPath + std::string{"/cuda3DS.txt"}, std::ios::trunc);  if(!cudaThreeDSFile){std::cerr << "Failed to open cuda3DS.txt.\n"; return 1;}
+
+    for(unsigned int d = 0; d < dofs.size(); ++d){
+        kokkosFile << dofs[d] << " ";
+        cudaOneDFile << dofs[d] << " ";
+        cudaThreeDFile << dofs[d] << " ";
+        cudaThreeDSFile << dofs[d] << " ";
+
+        for(unsigned int nm = nmBegin; nm <= nmEnd; ++nm){
+             kokkosFile << results[d][nm-nmBegin][0] <<" ";
+             cudaOneDFile << results[d][nm-nmBegin][1] <<" ";
+             cudaThreeDFile << results[d][nm-nmBegin][2] <<" ";
+             cudaThreeDSFile << results[d][nm-nmBegin][3] <<" ";
+        }
+        kokkosFile << "\n"; cudaOneDFile << "\n"; cudaThreeDFile << "\n"; cudaThreeDSFile << "\n";
+    }
+    kokkosFile.close(); cudaOneDFile.close(); cudaThreeDFile.close(); cudaThreeDSFile.close();
+
+    Kokkos::finalize();
     return 0;
 }
