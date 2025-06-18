@@ -2,7 +2,7 @@
 # INPUT
 ########################################
 
-mytitle = "BK2 on 1x<GPU_NAME>"
+mytitle = "BK1 on 1x<GPU_NAME>"
 
 polyOrderBegin = 1
 polyOrderEnd   = 8
@@ -51,6 +51,61 @@ if (enableSVG){
 }
 
 unset output
+
+#######################################
+# PLOT: cudaWarp (PNG)
+########################################
+
+set terminal pngcairo size 1200,800 enhanced font 'Verdana,12'
+set output 'cudaWarp.png'
+
+plot for [i = polyOrderBegin : polyOrderEnd] \
+     'cudaWarp.txt' using 1:(column(i+2 - polyOrderBegin)) \
+     with points pointtype (i - polyOrderBegin + 1) \
+     title sprintf("p = %d", i)
+
+unset output
+
+########################################
+# PLOT: cudaWarp (SVG)
+########################################
+if (enableSVG){
+     set terminal svg size 1200,800 enhanced font 'Verdana,12' 
+     set output 'cudaWarp.svg' 
+     plot for [i = polyOrderBegin : polyOrderEnd] \
+     'cudaWarp.txt' using 1:(column(i+2 - polyOrderBegin)) \
+     with points pointtype (i - polyOrderBegin + 1) \
+     title sprintf("p = %d", i)
+}
+
+unset output
+
+#######################################
+# PLOT: cudaWarpQ1 (PNG)
+########################################
+
+set terminal pngcairo size 1200,800 enhanced font 'Verdana,12'
+set output 'cudaWarpQ1.png'
+
+
+plot 'cudaWarpQ1.txt' using 1:(column(2)) with points pointtype 1 \
+title sprintf("p = %d", 1)
+
+
+unset output
+
+########################################
+# PLOT: cudaWarpQ1 (SVG)
+########################################
+if (enableSVG){
+     set terminal svg size 1200,800 enhanced font 'Verdana,12' 
+     set output 'cudaWarpQ1.svg' 
+     plot 'cudaWarpQ1.txt' using 1:(2) with points pointtype (1) \
+     title sprintf("p = %d", 1)
+}
+
+unset output
+
 
 ########################################
 # PLOT: cuda1D (PNG)
