@@ -185,26 +185,29 @@ void run_test(
         kernel.setArg(13, cl::Local(sharedMemSize));
     }
 
-    const size_t globalSize = numThreads;
+    const size_t globalSize = numBlocks * threadsPerBlock;
     const size_t localSize = std::min(nq0 * nq1 * nq2, threadsPerBlock);
 
     double time_cl = std::numeric_limits<double>::max();
+
+    // FIXME: global size must be divisible by the local size
+
 
     cl::NDRange global, local;
     if (kernelName == "BwdTransHexKernel_QP_1D") {
 //    dim3 gridDim(numBlocks)
 //    dim3 blockDim(std::min(nq0 * nq1 * nq2, threadsPerBlock))
-        global = cl::NDRange(numThreads);
         local = cl::NDRange(std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        global = cl::NDRange(globalSize);
     } else if (kernelName == "BwdTransHexKernel_QP_1D_3D_BLOCKS") {
 //        dim3 gridDim(numBlocks);
 //        dim3 blockDim(std::min(nq0,threadsPerBlockX), std::min(nq1,threadsPerBlockY), std::min(nq2, threadsPerBlockZ));
-        global = cl::NDRange(numThreads);
+        global = cl::NDRange(globalSize);
         local = cl::NDRange(std::min(nq0,threadsPerBlockX), std::min(nq1,threadsPerBlockY), std::min(nq2, threadsPerBlockZ));
     } else if (kernelName == "BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap") {
 //        dim3 gridDim(numBlocks);
 //        dim3 blockDim(nq0, nq1, nq2);
-        global = cl::NDRange(numThreads);
+        global = cl::NDRange(globalSize);
         local = cl::NDRange(nq0, nq1, nq2);      
     }
 
