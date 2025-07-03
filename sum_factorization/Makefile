@@ -5,7 +5,7 @@ CXXFLAGS=-O3 -march=native
 
 CXXFLAGS+=-I./include/kernels -I./include -DCL_SILENCE_DEPRECATION
 
-OPENCL_HPP_ROOT = /Users/di75yas/OpenCL-CLHPP
+OPENCL_HPP_ROOT = $(HOME)/OpenCL-CLHPP
 
 all: opencl_benchmark
 
