@@ -48,7 +48,7 @@ auto norm2(const Container& data) -> typename Container::value_type {
     );
 }
 
-template<typename T, bool static_size = false>
+template<typename T = float, bool static_size = false>
 void run_test(
     cl::Context &context, cl::CommandQueue &queue, const std::string &kernelName,
     const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
