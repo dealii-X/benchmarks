@@ -17,3 +17,9 @@ opencl_benchmark: src/BK1/opencl_benchmark.cc
 .PHONY: clean
 clean:
 	$(RM) opencl_benchmark
+
+
+.PHONY: run_opencl
+run_opencl: opencl_benchmark
+	./scripts/sweep_dofs_logspace.sh | awk '!/^#/' > apple_m2.txt
+	python3 ./scripts/plot_bk1.py
