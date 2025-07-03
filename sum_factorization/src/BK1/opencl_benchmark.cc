@@ -15,6 +15,7 @@ wsp : intermediate storages
 #include <CL/opencl.hpp>  // or cl2.hpp if you prefer
 
 #include <iostream>
+#include <cstdio>
 #include <fstream>
 #include <execution>
 #include <vector>
@@ -47,6 +48,9 @@ auto norm2(const Container& data) -> typename Container::value_type {
         [](T val) { return val * val; }
     );
 }
+
+int show_norm = -1; // -1 means uninitialized
+
 
 template<typename T = float, bool static_size = false>
 void run_test(
@@ -232,11 +236,16 @@ void run_test(
 
     // kernel.getInfo<CL_KERNEL_FUNCTION_NAME>()
 
-    std::cout << kernelName << '\n';
-    std::cout << "OpenCL "
-              << "nelmt = " << nelmt 
-              << " GDoF/s = " << dof_rate(time_cl) 
-              << '\n';
+
+    std::printf("%s\t%s\t%u\t%f\n", 
+        static_size ? "static" : "dynamic", 
+        kernelName.c_str(), nelmt, dof_rate(time_cl));
+
+    //std::cout << kernelName << '\n';
+    //std::cout << "OpenCL "
+    //          << "nelmt = " << nelmt 
+    //          << " GDoF/s = " << dof_rate(time_cl) 
+    //          << '\n';
 
     // 1. Allocate host buffer to receive data
     std::vector<T> host_out(size_out);
@@ -253,7 +262,9 @@ void run_test(
     //const T normSqr = norm2(host_out);
     //std::println("OpenCL kernel norm = {}", std::sqrt(normSqr));
 
-    std::cout << "OpenCL kernel norm = " << std::sqrt(normSqr) << '\n';
+    if (show_norm) {
+        std::cout << "# OpenCL kernel norm = " << std::sqrt(normSqr) << '\n';
+    }
 
 }
 
@@ -270,10 +281,14 @@ int main(int argc, char **argv){
     unsigned int threadsPerBlockZ   = (argc > 8) ? atoi(argv[8]) : nq2;
     unsigned int ntests             = (argc > 9) ? atoi(argv[9]) : 50u;
 
-
     const unsigned int nm0 = nq0 - 1;
     const unsigned int nm1 = nq1 - 1;
     const unsigned int nm2 = nq2 - 1;
+
+    if (show_norm == -1) {
+        const char *env = getenv("SHOW_NORM");
+        show_norm = (env && strcmp(env, "1") == 0) ? 1 : 0;
+    }
 
     // FIXME: initialize OpenCL context
 
@@ -288,7 +303,7 @@ int main(int argc, char **argv){
 
         // 2. Select the first platform
         cl::Platform platform = platforms[0];
-        std::cout << "Using platform: " << platform.getInfo<CL_PLATFORM_NAME>() << "\n";
+        std::cout << "# Using platform: " << platform.getInfo<CL_PLATFORM_NAME>() << "\n";
 
         // 3. Get GPU devices from platform (fallback to CPU if needed)
         std::vector<cl::Device> devices;
@@ -304,7 +319,7 @@ int main(int argc, char **argv){
 
         // 4. Select the first device
         cl::Device device = devices[0];
-        std::cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << "\n";
+        std::cout << "# Using device: " << device.getInfo<CL_DEVICE_NAME>() << "\n";
 
         // 5. Create context with the selected device
         cl::Context context(device);
@@ -312,7 +327,7 @@ int main(int argc, char **argv){
         // 6. Create command queue (enable profiling if needed)
         cl::CommandQueue queue(context, device);
 
-        std::cout << "--- Dynamic size ---\n";
+        // Dynamic sizes
         run_test<float,false>(context, queue, "BwdTransHexKernel_QP_1D",           
             nq0, nq1, nq2, nm0, nm1, nm2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
         run_test<float,false>(context, queue, "BwdTransHexKernel_QP_1D_3D_BLOCKS",
@@ -321,7 +336,7 @@ int main(int argc, char **argv){
             nq0, nq1, nq2, nm0, nm1, nm2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
 
 
-        std::cout << "--- Static size ---\n";
+        // Static sizes
         run_test<float,true>(context, queue, "BwdTransHexKernel_QP_1D",           
             nq0, nq1, nq2, nm0, nm1, nm2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
         run_test<float,true>(context, queue, "BwdTransHexKernel_QP_1D_3D_BLOCKS",
