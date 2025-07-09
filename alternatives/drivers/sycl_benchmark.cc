@@ -12,6 +12,7 @@ wsp : intermediate storages
 
 #include <iostream>
 #include <fstream>
+#include <cstdio>
 #include <numeric>
 #include <vector>
 #include <cmath>
@@ -20,8 +21,16 @@ wsp : intermediate storages
 
 #include "timer.hpp"
 
-const static sycl::specialization_id<std::array<unsigned int,3>> nm_id;
-const static sycl::specialization_id<std::array<unsigned int,3>> nq_id;
+
+// Use SYCL specialization constants to embed the polynomial order at runtime
+const static sycl::specialization_id<std::array<unsigned int,3>> nm_id; // interpolation degree
+const static sycl::specialization_id<std::array<unsigned int,3>> nq_id; // quadrature degree
+
+//enum {
+//    , BTHK_QP_1D,
+//    , BwdTransHexKernel_QP_1D_3D_BLOCKS
+//    , BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap
+//}
 
 template<typename T>
 struct BwdTransHexKernel_QP_1D {
@@ -34,6 +43,7 @@ struct BwdTransHexKernel_QP_1D {
     const T* d_basis1;
     const T* d_basis2;
 
+    const T* d_JxW;
     const T* d_in;
           T* d_out;
 
@@ -48,14 +58,14 @@ struct BwdTransHexKernel_QP_1D {
         const T *__restrict__ d_basis0_,
         const T *__restrict__ d_basis1_,
         const T *__restrict__ d_basis2_,
+        const T *__restrict__ d_JxW_,
         const T *__restrict__ d_in_,
         T *__restrict__ d_out_,
-//        T *__restrict__ shared_) :
         sycl::local_accessor<T> shared_mem_) :
         nm0(nm0_), nm1(nm1_), nm2(nm2_),
         nq0(nq0_), nq1(nq1_), nq2(nq2_), nelmt(nelmt_),
         d_basis0(d_basis0_), d_basis1(d_basis1_), d_basis2(d_basis2_),
-        d_in(d_in_), d_out(d_out_), shared_mem(shared_mem_) {}
+        d_JxW(d_JxW_), d_in(d_in_), d_out(d_out_), shared_mem(shared_mem_) {}
 
 //    shared{sycl::range<1>{nm0 * nq0 + nm1 * nq1 + nm2 * nq2 + 
 //                          nm0 * nm1 * nm2 + 
@@ -166,22 +176,32 @@ struct BwdTransHexKernel_QP_1D {
     }
 };
 
+// Global settings
+int show_norm = -1; // -1 means uninitialized
+
+
 template<typename T>
 void run_test(
     sycl::queue &queue,
     const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
     const unsigned int nm0, const unsigned int nm1, const unsigned int nm2,
-    const unsigned int numThreads, const unsigned int threadsPerBlock,
-    const unsigned int nelmt, const unsigned int ntests)
+    const unsigned int numThreads, 
+    const unsigned int threadsPerBlockX,
+    const unsigned int threadsPerBlockY,
+    const unsigned int threadsPerBlockZ,
+    const unsigned int nelmt,
+    const unsigned int ntests)
 {
 
+    unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
     const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
 
     std::vector<T> basis0(nm0 * nq0), basis1(nm1 * nq1), basis2(nm2 * nq2);
 
     //Initialize the input and output arrays
-    std::vector<T> in(nelmt * nm0 * nm1 * nm2, (T)3);
-    std::vector<T> out(nelmt * nq0 * nq1 * nq2, (T)0);
+    std::vector<T> JxW(nelmt * nq0 * nq1 * nq2, (T)1.0);
+    std::vector<T> in(nelmt * nm0 * nm1 * nm2, (T)3.0);
+    std::vector<T> out(nelmt * nq0 * nq1 * nq2, (T)0.0);
 
     //Initialization of basis functions
     for(unsigned int p = 0u; p < nq0; p++) {
@@ -200,18 +220,17 @@ void run_test(
         }
     }
 
+    const size_t size_JxW = nelmt * nq0 * nq1 * nq2;
     const size_t size_in = nelmt * nm0 * nm1 * nm2;
     const size_t size_out = nelmt * nq0 * nq1 * nq2;
     const size_t size_basis0 = nq0*nm0;
     const size_t size_basis1 = nq1*nm1;
     const size_t size_basis2 = nq2*nm2;
 
-    const unsigned int ssize = nm0 * nq0 + nm1 * nq1 + nm2 * nq2
-                             + nm0 * nm1 * nm2
-                             + nm1 * nm2 * nq0
-                             + nm2 * nq0 * nq1
-                             + nq0 * nq1 * nq2; // shared dynamic memory size
+    const unsigned int ssize = 2 * nq0 * nq1 * nq2 + nm0 * nq0 + nm1 * nq1 + nm2 * nq2; //shared memory dynamic size
 
+
+    T *d_JxW    = sycl::malloc_shared<T>(size_JxW, queue);
     T *d_in     = sycl::malloc_shared<T>(size_in, queue);
     T *d_out    = sycl::malloc_shared<T>(size_out, queue);
     T *d_basis0 = sycl::malloc_device<T>(size_basis0, queue);
@@ -219,26 +238,20 @@ void run_test(
     T *d_basis2 = sycl::malloc_device<T>(size_basis2, queue);
 
     queue.copy(in.data(),d_in,size_in);
+    queue.copy(JxW.data(),d_JxW,size_JxW);
     queue.copy(basis0.data(),d_basis0,size_basis0);
     queue.copy(basis1.data(),d_basis1,size_basis1);
     queue.copy(basis2.data(),d_basis2,size_basis2);
     queue.wait_and_throw();
 
 
-    std::cout << "in " << in.data() << ' ' << d_in << '\n';
-    std::cout << "out " << out.data() << ' ' << d_out << '\n';
-
-    std::cout << "basis0 " << basis0.data() << ' ' << d_basis0 << '\n';
-    std::cout << "basis1 " << basis1.data() << ' ' << d_basis1 << '\n';
-    std::cout << "basis2 " << basis2.data() << ' ' << d_basis2 << '\n';
-
     const size_t localSize = std::min(nq0 * nq1 * nq2, threadsPerBlock);
     const size_t globalSize = numBlocks * localSize;
 
     const sycl::nd_range<1> kernelRange{{globalSize},{localSize}};
 
-    std::cout << "global size = " << globalSize << '\n';
-    std::cout << "local size  = " << localSize << '\n';
+    std::cout << "# global size = " << globalSize << '\n';
+    std::cout << "# local size  = " << localSize << '\n';
 
     const std::array<unsigned int,3> nms{nm0,nm1,nm2};
     const std::array<unsigned int,3> nqs{nq0,nq1,nq2};
@@ -262,7 +275,7 @@ void run_test(
 
             BwdTransHexKernel_QP_1D<T> kernel(
                 nm0,nm1,nm2,nq0,nq1,nq2,nelmt,
-                d_basis0,d_basis1,d_basis2,d_in,d_out,shared_mem);
+                d_basis0,d_basis1,d_basis2,d_JxW,d_in,d_out,shared_mem);
 
             cgh.parallel_for(kernelRange, kernel);
 
@@ -280,32 +293,33 @@ void run_test(
     // C++23
     // std::println("OpenCL -> nelmt = {} GDoF/s = {}", nelmt, dof_rate(time_cl));
 
-    std::cout << "SYCL -> "
-              << "nelmt = " << nelmt
-              << " GDoF/s = " << dof_rate(time_cl)
-              << '\n';
+    // mode, kernel_name, nelmt, GDoF/s
+    std::printf("%s\t%s\t%u\t%f\n", 
+        "static", "BwdTransHexKernel_QP_1D", nelmt, dof_rate(time_cl));
 
-    std::vector<T> host_out(size_out);
+    if (show_norm) {
+        std::vector<T> host_out(size_out);
 
-    // 2. Copy data from device buffer d_out to host buffer out
-    queue.copy(d_out,out.data(),out.size()).wait_and_throw();
-    queue.copy(d_out,host_out.data(),host_out.size()).wait_and_throw();
+        // 2. Copy data from device buffer d_out to host buffer out
+        queue.copy(d_out,out.data(),out.size()).wait_and_throw();
+        queue.copy(d_out,host_out.data(),host_out.size()).wait_and_throw();
 
-    double normSqr{0.0};
-    for (auto h : host_out) {
-        normSqr += ((double) h) * ((double) h);
+        double normSqr{0.0};
+        for (auto h : host_out) {
+            normSqr += ((double) h) * ((double) h);
+        }
+        
+        normSqr = 0;
+        for(int i = 0; i < size_out; i++) {
+            normSqr += d_out[i] * d_out[i];
+        }
+        //const T normSqr = norm2(host_out);
+
+        //std::println("OpenCL kernel norm = {}", std::sqrt(normSqr));
+
+        std::cout << "# SYCL kernel norm = " << std::sqrt(normSqr) << '\n';
     }
-    
-    normSqr = 0;
-    for(int i = 0; i < size_out; i++) {
-        normSqr += d_out[i] * d_out[i];
-    }
-    //const T normSqr = norm2(host_out);
 
-    //std::println("OpenCL kernel norm = {}", std::sqrt(normSqr));
-
-    std::cout << "SYCL kernel norm = " << std::sqrt(normSqr) << '\n';
-    std::cout << "fake norm " << std::sqrt(25 * out.size()) << '\n';
 }
 
 
@@ -314,29 +328,35 @@ int main(int argc, char **argv){
     unsigned int nq0                = (argc > 1) ? atoi(argv[1]) : 4u;
     unsigned int nq1                = (argc > 2) ? atoi(argv[2]) : 4u;
     unsigned int nq2                = (argc > 3) ? atoi(argv[3]) : 4u;
-    unsigned int numThreads         = (argc > 4) ? atoi(argv[4]) : 262144;
-    unsigned int threadsPerBlock    = (argc > 5) ? atoi(argv[5]) : 512;
-    unsigned int nelmt              = (argc > 6) ? atoi(argv[6]) : 2 << 18;
-    unsigned int ntests             = (argc > 6) ? atoi(argv[7]) : 100u;
+    unsigned int nelmt              = (argc > 4) ? atoi(argv[4]) : 2 << 18;
+    unsigned int numThreads         = (argc > 5) ? atoi(argv[5]) : nelmt * nq0 * nq1 * nq2 / 2;
+    unsigned int threadsPerBlockX   = (argc > 6) ? atoi(argv[6]) : nq0;
+    unsigned int threadsPerBlockY   = (argc > 7) ? atoi(argv[7]) : nq1;
+    unsigned int threadsPerBlockZ   = (argc > 8) ? atoi(argv[8]) : nq2;
+    unsigned int ntests             = (argc > 9) ? atoi(argv[9]) : 20u;
 
     const unsigned int nm0 = nq0 - 1;
     const unsigned int nm1 = nq1 - 1;
     const unsigned int nm2 = nq2 - 1;
+
+    if (show_norm == -1) {
+        const char *env = getenv("SHOW_NORM");
+        show_norm = (env && strcmp(env, "1") == 0) ? 1 : 0;
+    }
 
     try {
         // This tries to create a queue on a GPU device if available,
         // otherwise it throws an exception.
         sycl::queue queue(sycl::default_selector_v);
 
-        std::cout << "Running on device: "
+        std::cout << "# Running on device: "
                   << queue.get_device().get_info<sycl::info::device::name>()
                   << "\n";
 
         // Now you can set kernel arguments and enqueue kernel as shown before
         run_test<float>(queue,
-                        nq0, nq1, nq2, nm0, nm1, nm2, numThreads, threadsPerBlock, nelmt, ntests);
+            nq0, nq1, nq2, nm0, nm1, nm2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
 
-        // Use 'queue' for your kernel submissions
     } catch (const sycl::exception& e) {
         std::cerr << "SYCL exception  caught: " << e.what() << "\n";
         return 1;

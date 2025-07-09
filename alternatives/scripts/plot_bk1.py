@@ -2,8 +2,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-filename="apple_m2.txt"
-title = "Apple M2 Pro"
+#filename="intel_pvc_gpu_O3.txt"
+#title = "Intel Data Center GPU"
+
+#filename="apple_m2.txt"
+#title="Apple M2 Pro"
+
+
+filename="nvidia_gh200.txt"
+title="Nvidia GH200"
 
 # Define your column names manually
 colnames = ["mode", "kernel", "nelmt", "GDoF_per_s"]
