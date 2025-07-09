@@ -37,6 +37,46 @@ std::string buildOpenCLDefines(const std::unordered_map<std::string, T>& defines
 }
 
 
+std::string loadKernelSource(bool static_size, int& status, bool verbose = false) {
+
+    std::string filename = static_size ? "opencl_kernels_static.cl" : "opencl_kernels.cl";
+    std::ifstream kernelFile;
+    std::string baseDir;
+
+    // 1. Try CL_KERNEL_DIR
+    if (const char* envDir = std::getenv("CL_KERNEL_DIR")) {
+        baseDir = envDir;
+        std::string fullPath = baseDir + "/" + filename;
+        kernelFile.open(fullPath);
+        if (kernelFile.is_open() && verbose) {
+            std::cout << "Loaded kernel from CL_KERNEL_DIR: " << fullPath << "\n";
+        }
+    }
+
+    // 2. Fallback path
+    if (!kernelFile.is_open()) {
+        baseDir = "./src";
+        std::string fullPath = baseDir + "/" + filename;
+        kernelFile.open(fullPath);
+        if (kernelFile.is_open() && verbose) {
+            std::cout << "Loaded kernel from fallback path: " << fullPath << "\n";
+        }
+    }
+
+    // 3. Bail on failure
+    if (!kernelFile.is_open()) {
+        std::cerr << "Failed to open kernel file: " << filename << "\n";
+        status = -1;
+        return {};
+    }
+
+    // 4. Read kernel source into a string
+    std::string source((std::istreambuf_iterator<char>(kernelFile)),
+                       std::istreambuf_iterator<char>());
+    status = 0;
+    return source;
+}
+
 template <typename Container>
 auto norm2(const Container& data) -> typename Container::value_type {
     using T = typename Container::value_type;
@@ -116,6 +156,7 @@ void run_test(
 
     // Kernel compilation
 
+#if 0
     // 7. Read kernel source code from file
     std::ifstream kernelFile(
         static_size ? 
@@ -126,9 +167,14 @@ void run_test(
         std::cerr << "Failed to open kernel file.\n";
         return;
     }
+#endif
 
-    std::string source(std::istreambuf_iterator<char>(kernelFile),
-                       (std::istreambuf_iterator<char>()));
+    int ierr;
+    auto source = loadKernelSource(static_size,ierr);
+    if (ierr) return;
+
+    //std::string source(std::istreambuf_iterator<char>(kernelFile),
+    //                   (std::istreambuf_iterator<char>()));
 
     std::unordered_map<std::string, size_t> defines = {
        {"NM0", (size_t) nm0},

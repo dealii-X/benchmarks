@@ -2,22 +2,30 @@
 
 CXX=g++-14
 CXXFLAGS=-Wall -O3 -march=native
-CXXFLAGS+=-I./include/kernels -I./include -DCL_SILENCE_DEPRECATION
+CXXFLAGS+=-I./src/ -I../sum_factorization/include
+
 OPENCL_HPP_ROOT = $(HOME)/OpenCL-CLHPP
+OPENCL_INC = -I$(OPENCL_HPP_ROOT)/include
+OPENCL_LDFLAGS = -framework OpenCL
 
 SYCL_CXX=icpx -fsycl
 SYCL_CXXFLAGS=-O3 -xHOST
 
+uname_s := $(shell uname -s)
+
+ifeq ($(uname_s),Darwin)
+CXXFLAGS += -DCL_SILENCE_DEPRECATION
+endif
+
 all: opencl_benchmark
 
-opencl_benchmark: CXXFLAGS += -I$(OPENCL_HPP_ROOT)/include
-opencl_benchmark: src/BK1/opencl_benchmark.cc
-	$(CXX) $(CXXFLAGS) -framework OpenCL -o $@ $<
+opencl_benchmark: drivers/opencl_benchmark.cc
+	$(CXX) $(CXXFLAGS) $(OPENCL_INC) $(OPENCL_LDFLAGS) -o $@ $<
 
-sycl_benchmark: src/BK1/sycl_benchmark.cc
+sycl_benchmark: drivers/sycl_benchmark.cc
 	$(SYCL_CXX) $(SYCL_CXXFLAGS) -o $@ $<
 
-openmp_benchmark: src/BK1/openmp_benchmark.cpp
+openmp_benchmark: drivers/openmp_benchmark.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
 .PHONY: clean
