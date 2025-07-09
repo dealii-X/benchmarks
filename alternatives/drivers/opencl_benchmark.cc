@@ -95,16 +95,16 @@ int show_norm = -1; // -1 means uninitialized
 template<typename T = float, bool static_size = false>
 void run_test(
     cl::Context &context, cl::CommandQueue &queue, const std::string &kernelName,
-    const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
-    const unsigned int nm0, const unsigned int nm1, const unsigned int nm2, 
-    const unsigned int numThreads, 
-    const unsigned int threadsPerBlockX,
-    const unsigned int threadsPerBlockY,
-    const unsigned int threadsPerBlockZ, 
-    const unsigned int nelmt, const unsigned int ntests)
+    const int nq0, const int nq1, const int nq2,
+    const int nm0, const int nm1, const int nm2, 
+    const int numThreads, 
+    const int threadsPerBlockX,
+    const int threadsPerBlockY,
+    const int threadsPerBlockZ, 
+    const int nelmt, const int ntests)
 {
-    unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
-    const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+    int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
+    const int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
 
     std::vector<T> basis0(nm0 * nq0), basis1(nm1 * nq1), basis2(nm2 * nq2);
 
@@ -130,45 +130,17 @@ void run_test(
         }
     }
 
-    const size_t size_JxW = nelmt * nq0 * nq1 * nq2;
-    const size_t size_in = nelmt * nm0 * nm1 * nm2;
-    const size_t size_out = nelmt * nq0 * nq1 * nq2;
-    const size_t size_basis0 = nq0*nm0;
-    const size_t size_basis1 = nq1*nm1;
-    const size_t size_basis2 = nq2*nm2;
-
-    const unsigned int ssize = 2 * nq0 * nq1 * nq2 + nm0 * nq0 + nm1 * nq1 + nm2 * nq2; //shared memory dynamic size
-
+    const size_t ssize = 2 * nq0 * nq1 * nq2 + nm0 * nq0 + nm1 * nq1 + nm2 * nq2; //shared memory dynamic size
     const size_t sharedMemSize = ssize * sizeof(T);
 
-    cl::Buffer d_basis0(context,CL_MEM_READ_ONLY, sizeof(T) * size_basis0);
-    cl::Buffer d_basis1(context,CL_MEM_READ_ONLY, sizeof(T) * size_basis1);
-    cl::Buffer d_basis2(context,CL_MEM_READ_ONLY, sizeof(T) * size_basis2);
-    cl::Buffer d_JxW(context,CL_MEM_READ_ONLY, sizeof(T) * size_JxW);
-    cl::Buffer d_in(context,CL_MEM_READ_ONLY, sizeof(T) * size_in);
-    cl::Buffer d_out(context,CL_MEM_READ_WRITE, sizeof(T) * size_out);
-
-    queue.enqueueWriteBuffer(d_basis0, CL_TRUE, 0, sizeof(T) * size_basis0, basis0.data());
-    queue.enqueueWriteBuffer(d_basis1, CL_TRUE, 0, sizeof(T) * size_basis1, basis1.data());
-    queue.enqueueWriteBuffer(d_basis2, CL_TRUE, 0, sizeof(T) * size_basis2, basis2.data());
-    queue.enqueueWriteBuffer(d_JxW, CL_TRUE, 0, sizeof(T) * size_JxW, JxW.data());
-    queue.enqueueWriteBuffer(d_in, CL_TRUE, 0, sizeof(T) * size_in, in.data());
+    cl::Buffer d_basis0(context,basis0.begin(),basis0.end(),true);
+    cl::Buffer d_basis1(context,basis1.begin(),basis1.end(),true);
+    cl::Buffer d_basis2(context,basis2.begin(),basis2.end(),true);
+    cl::Buffer d_JxW(context,JxW.begin(),JxW.end(),true);
+    cl::Buffer d_in(context,in.begin(),in.end(),true);
+    cl::Buffer d_out(context,out.begin(),out.end(),false);
 
     // Kernel compilation
-
-#if 0
-    // 7. Read kernel source code from file
-    std::ifstream kernelFile(
-        static_size ? 
-            "./include/kernels/BK1/opencl_kernels_static.cl" : 
-            "./include/kernels/BK1/opencl_kernels.cl");
-
-    if (!kernelFile.is_open()) {
-        std::cerr << "Failed to open kernel file.\n";
-        return;
-    }
-#endif
-
     int ierr;
     auto source = loadKernelSource(static_size,ierr);
     if (ierr) return;
@@ -176,16 +148,20 @@ void run_test(
     //std::string source(std::istreambuf_iterator<char>(kernelFile),
     //                   (std::istreambuf_iterator<char>()));
 
-    std::unordered_map<std::string, size_t> defines = {
-       {"NM0", (size_t) nm0},
-       {"NM1", (size_t) nm1},
-       {"NM2", (size_t) nm2},
-       {"NQ0", (size_t) nq0},
-       {"NQ1", (size_t) nq1},
-       {"NQ2", (size_t) nq2}
-    };
 
-    std::string buildOptions = static_size ? buildOpenCLDefines(defines) : "";
+
+    std::string buildOptions{};
+    if (static_size) {
+        std::unordered_map<std::string, size_t> defines = {
+           {"NM0", (size_t) nm0},
+           {"NM1", (size_t) nm1},
+           {"NM2", (size_t) nm2},
+           {"NQ0", (size_t) nq0},
+           {"NQ1", (size_t) nq1},
+           {"NQ2", (size_t) nq2}
+        };
+        buildOptions = buildOpenCLDefines(defines);
+    }
 
     // By default, the kernel assume float is used
     if constexpr (std::is_same_v<T, double>) {
@@ -236,7 +212,7 @@ void run_test(
     }
 
     const size_t globalSize = numBlocks * threadsPerBlock;
-    const size_t localSize = std::min(nq0 * nq1 * nq2, threadsPerBlock);
+    //const size_t localSize = std::min(nq0 * nq1 * nq2, threadsPerBlock);
 
     double time_cl = std::numeric_limits<double>::max();
 
@@ -262,7 +238,7 @@ void run_test(
     }
 
     Timer clTimer;
-    for (unsigned int t = 0u; t < ntests; ++t)
+    for (int t = 0; t < ntests; ++t)
     {
         clTimer.start();
         
@@ -293,15 +269,12 @@ void run_test(
     //          << " GDoF/s = " << dof_rate(time_cl) 
     //          << '\n';
 
-    // 1. Allocate host buffer to receive data
-    std::vector<T> host_out(size_out);
-
     // 2. Copy data from device buffer d_out to host
-    queue.enqueueReadBuffer(d_out, CL_TRUE, 0, sizeof(T) * host_out.size(), host_out.data());
+    queue.enqueueReadBuffer(d_out, CL_TRUE, 0, sizeof(T) * out.size(), out.data());
 
     // Evaluate the norm in double precision
     double normSqr = 0;
-    for (auto h : host_out) {
+    for (auto h : out) {
         normSqr += ((double) h) * ((double) h);
     }
 
@@ -317,19 +290,19 @@ void run_test(
 
 int main(int argc, char **argv){
 
-    unsigned int nq0                = (argc > 1) ? atoi(argv[1]) : 4u;
-    unsigned int nq1                = (argc > 2) ? atoi(argv[2]) : 4u;
-    unsigned int nq2                = (argc > 3) ? atoi(argv[3]) : 4u;
-    unsigned int nelmt              = (argc > 4) ? atoi(argv[4]) : 2 << 18;
-    unsigned int numThreads         = (argc > 5) ? atoi(argv[5]) : nelmt * nq0 * nq1 * nq2 / 2;
-    unsigned int threadsPerBlockX   = (argc > 6) ? atoi(argv[6]) : nq0;
-    unsigned int threadsPerBlockY   = (argc > 7) ? atoi(argv[7]) : nq1;
-    unsigned int threadsPerBlockZ   = (argc > 8) ? atoi(argv[8]) : nq2;
-    unsigned int ntests             = (argc > 9) ? atoi(argv[9]) : 50u;
+    int nq0                = (argc > 1) ? atoi(argv[1]) : 4;
+    int nq1                = (argc > 2) ? atoi(argv[2]) : 4;
+    int nq2                = (argc > 3) ? atoi(argv[3]) : 4;
+    int nelmt              = (argc > 4) ? atoi(argv[4]) : 2 << 18;
+    int numThreads         = (argc > 5) ? atoi(argv[5]) : nelmt * nq0 * nq1 * nq2 / 2;
+    int threadsPerBlockX   = (argc > 6) ? atoi(argv[6]) : nq0;
+    int threadsPerBlockY   = (argc > 7) ? atoi(argv[7]) : nq1;
+    int threadsPerBlockZ   = (argc > 8) ? atoi(argv[8]) : nq2;
+    int ntests             = (argc > 9) ? atoi(argv[9]) : 50;
 
-    const unsigned int nm0 = nq0 - 1;
-    const unsigned int nm1 = nq1 - 1;
-    const unsigned int nm2 = nq2 - 1;
+    const int nm0 = nq0 - 1;
+    const int nm1 = nq1 - 1;
+    const int nm2 = nq2 - 1;
 
     if (show_norm == -1) {
         const char *env = getenv("SHOW_NORM");
