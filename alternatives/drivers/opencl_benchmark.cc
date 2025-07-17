@@ -96,13 +96,16 @@ template<typename T = float, bool static_size = false>
 void run_test(
     cl::Context &context, cl::CommandQueue &queue, const std::string &kernelName,
     const int nq0, const int nq1, const int nq2,
-    const int nm0, const int nm1, const int nm2, 
     const int numThreads, 
     const int threadsPerBlockX,
     const int threadsPerBlockY,
     const int threadsPerBlockZ, 
     const int nelmt, const int ntests)
 {
+    const int nm0 = nq0 - 1;
+    const int nm1 = nq1 - 1;
+    const int nm2 = nq2 - 1;
+
     int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
     const int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
 
@@ -111,7 +114,7 @@ void run_test(
     //Initialize the input and output arrays
     std::vector<T> JxW(nelmt * nq0 * nq1 * nq2, (T)1.0);
     std::vector<T> in(nelmt * nm0 * nm1 * nm2, (T)3.0);
-    std::vector<T> out(nelmt * nq0 * nq1 * nq2, (T)0.0);
+    std::vector<T> out(nelmt * nm0 * nm1 * nm2, (T)0.0);
 
     //Initialization of basis functions
     for(int p = 0; p < nq0; p++) {
@@ -149,23 +152,19 @@ void run_test(
     //                   (std::istreambuf_iterator<char>()));
 
 
-
-    std::string buildOptions{};
+    std::string buildOptions{"-I ./src "}; // the space is important here
     if (static_size) {
         std::unordered_map<std::string, size_t> defines = {
-           {"NM0", (size_t) nm0},
-           {"NM1", (size_t) nm1},
-           {"NM2", (size_t) nm2},
            {"NQ0", (size_t) nq0},
            {"NQ1", (size_t) nq1},
            {"NQ2", (size_t) nq2}
         };
-        buildOptions = buildOpenCLDefines(defines);
+        buildOptions += buildOpenCLDefines(defines);
     }
 
     // By default, the kernel assume float is used
     if constexpr (std::is_same_v<T, double>) {
-        buildOptions += " -DT=double";
+        buildOptions += "-DDOUBLE_PRECISION";
     }
 
     // 8. Build program from source
@@ -198,17 +197,14 @@ void run_test(
         kernel.setArg(0, nq0);
         kernel.setArg(1, nq1);
         kernel.setArg(2, nq2);
-        kernel.setArg(3, nm0);
-        kernel.setArg(4, nm1);
-        kernel.setArg(5, nm2);
-        kernel.setArg(6, nelmt);
-        kernel.setArg(7, d_basis0);
-        kernel.setArg(8, d_basis1);
-        kernel.setArg(9, d_basis2);
-        kernel.setArg(10, d_JxW);
-        kernel.setArg(11, d_in);
-        kernel.setArg(12, d_out);
-        kernel.setArg(13, cl::Local(sharedMemSize));
+        kernel.setArg(3, nelmt);
+        kernel.setArg(4, d_basis0);
+        kernel.setArg(5, d_basis1);
+        kernel.setArg(6, d_basis2);
+        kernel.setArg(7, d_JxW);
+        kernel.setArg(8, d_in);
+        kernel.setArg(9, d_out);
+        kernel.setArg(10, cl::Local(sharedMemSize));
     }
 
     const size_t globalSize = numBlocks * threadsPerBlock;
@@ -233,7 +229,7 @@ void run_test(
     } else if (kernelName == "BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap") {
 //        dim3 gridDim(numBlocks);
 //        dim3 blockDim(nq0, nq1, nq2);
-        global = cl::NDRange(globalSize);
+        global = cl::NDRange(numBlocks*nq0,nq1,nq2);
         local = cl::NDRange(nq0, nq1, nq2);      
     }
 
@@ -272,6 +268,8 @@ void run_test(
     // 2. Copy data from device buffer d_out to host
     queue.enqueueReadBuffer(d_out, CL_TRUE, 0, sizeof(T) * out.size(), out.data());
 
+
+
     // Evaluate the norm in double precision
     double normSqr = 0;
     for (auto h : out) {
@@ -299,10 +297,6 @@ int main(int argc, char **argv){
     int threadsPerBlockY   = (argc > 7) ? atoi(argv[7]) : nq1;
     int threadsPerBlockZ   = (argc > 8) ? atoi(argv[8]) : nq2;
     int ntests             = (argc > 9) ? atoi(argv[9]) : 50;
-
-    const int nm0 = nq0 - 1;
-    const int nm1 = nq1 - 1;
-    const int nm2 = nq2 - 1;
 
     if (show_norm == -1) {
         const char *env = getenv("SHOW_NORM");
@@ -348,20 +342,20 @@ int main(int argc, char **argv){
 
         // Dynamic sizes
         run_test<float,false>(context, queue, "BwdTransHexKernel_QP_1D",           
-            nq0, nq1, nq2, nm0, nm1, nm2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
+            nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
         run_test<float,false>(context, queue, "BwdTransHexKernel_QP_1D_3D_BLOCKS",
-            nq0, nq1, nq2, nm0, nm1, nm2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
+            nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
         run_test<float,false>(context, queue, "BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap",
-            nq0, nq1, nq2, nm0, nm1, nm2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
+            nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
 
 
         // Static sizes
         run_test<float,true>(context, queue, "BwdTransHexKernel_QP_1D",           
-            nq0, nq1, nq2, nm0, nm1, nm2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
+            nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
         run_test<float,true>(context, queue, "BwdTransHexKernel_QP_1D_3D_BLOCKS",
-            nq0, nq1, nq2, nm0, nm1, nm2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
+            nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
         run_test<float,true>(context, queue, "BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap",
-            nq0, nq1, nq2, nm0, nm1, nm2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
+            nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
 
 
     } catch (cl::Error& e) {
