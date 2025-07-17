@@ -1,15 +1,19 @@
-#ifndef SERIALKERNELS_HPP
-#define SERIALKERNELS_HPP
+#ifndef BK1SERIALKERNELS_HPP
+#define BK1SERIALKERNELS_HPP
 
 #include <numeric>
 
+namespace BK1{
 namespace Serial{
 template<typename T>
 T DirectEvaluation(const unsigned int nq0, const unsigned nq1, const unsigned int nq2,
-    const unsigned int nm0, const unsigned int nm1, const unsigned int nm2,
     const unsigned int nelmt, const T *__restrict__ basis0, const T *__restrict__ basis1,
-    const T *__restrict__ basis2, const T *__restrict__ JxW, const T *__restrict__ in, T *__restrict__ out)
+    const T *__restrict__ basis2, const T *__restrict__ JxW, T *__restrict__ in)
 {
+    const unsigned int nm0 = nq0 - 1;
+    const unsigned int nm1 = nq1 - 1;
+    const unsigned int nm2 = nq2 - 1;
+
     T* intermediateVals = new T[nelmt * nq0 * nq1 * nq2];
     std::fill(intermediateVals, intermediateVals + nelmt * nq0 * nq1 * nq2, (T)0);
 
@@ -30,7 +34,8 @@ T DirectEvaluation(const unsigned int nq0, const unsigned nq1, const unsigned in
         }
     }
     
-
+    //initialize in to zero
+    std::fill(in, in + nelmt * nm0 * nm1 * nm2, (T)0);
 
     for(unsigned int e = 0; e < nelmt; ++e){                    //element iteration
         for(unsigned int i = 0; i < nm0; ++i){                  //shape function direction 0 iteration
@@ -39,7 +44,7 @@ T DirectEvaluation(const unsigned int nq0, const unsigned nq1, const unsigned in
                     for(unsigned int p = 0; p < nq0; ++p){                      //quadrature point x direction iteration
                         for(unsigned int q = 0; q < nq1; ++q){                  //quadrature point y direction iteration
                             for(unsigned int r = 0; r < nq2; ++r){              //quadrature point z direction iteration
-                                out[e * nm0 * nm1 * nm2 + i * nm1 * nm2 + j * nm2 + k] +=  intermediateVals[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r] * basis0[p * nm0 + i] * basis1[q * nm1 + j] * basis2[r * nm2 + k];
+                                in[e * nm0 * nm1 * nm2 + i * nm1 * nm2 + j * nm2 + k] +=  intermediateVals[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r] * basis0[p * nm0 + i] * basis1[q * nm1 + j] * basis2[r * nm2 + k];
                             }
                         }
                     }
@@ -48,25 +53,24 @@ T DirectEvaluation(const unsigned int nq0, const unsigned nq1, const unsigned in
         }
     }
 
-    //return element-wise square of out array and apply sum reduction
-    return std::transform_reduce(out, out + nelmt * nm0 * nm1 * nm2,
-                          out, T{},
+    //return element-wise square of in array and apply sum reduction
+    return std::transform_reduce(in, in + nelmt * nm0 * nm1 * nm2,
+                          in, T{},
                           [](T lhs, T rhs){return rhs + lhs;},
                           [](T val1, T val2){return val1 * val2;});
 }
 
 
 
-
-
-
 template<typename T>
 T SumFactorization(const unsigned int nq0, const unsigned nq1, const unsigned int nq2,
-    const unsigned int nm0, const unsigned int nm1, const unsigned int nm2,
     const unsigned int nelmt, const T *__restrict__ basis0, const T *__restrict__ basis1,
-    const T *__restrict__ basis2, const T *__restrict__ JxW, const T *__restrict__ in, T *__restrict__ out)
+    const T *__restrict__ basis2, const T *__restrict__ JxW, T *__restrict__ in)
 {
-
+    const unsigned int nm0 = nq0 - 1;
+    const unsigned int nm1 = nq1 - 1;
+    const unsigned int nm2 = nq2 - 1;
+    
     //Intermediate Arrays
     T* wsp0 = new T[nq0 * nq1 * nq2];
     T* wsp1 = new T[nq0 * nq1 * nq2];
@@ -169,25 +173,25 @@ T SumFactorization(const unsigned int nq0, const unsigned nq1, const unsigned in
             }
         }
 
-        //step-9 : Copy from wsp3 to out
+        //step-9 : Copy from wsp3 to in
         for(unsigned int i = 0; i < nm0; i++){
             for(unsigned int j = 0; j < nm1; j++){
                 for(unsigned int k = 0; k < nm2; k++){
-                    out[e * nm0 * nm1 * nm2 + i * nm1 * nm2 + j * nm2 + k] = wsp0[i * nm1 * nm2 + j * nm2 + k];
+                    in[e * nm0 * nm1 * nm2 + i * nm1 * nm2 + j * nm2 + k] = wsp0[i * nm1 * nm2 + j * nm2 + k];
                 }
             }
         }
     }
 
 
-    //return element-wise square of out array and apply sum reduction
-    return std::transform_reduce(out, out + nelmt * nm0 * nm1 * nm2,
-        out, T{},
+    //return element-wise square of in array and apply sum reduction
+    return std::transform_reduce(in, in + nelmt * nm0 * nm1 * nm2,
+        in, T{},
         [](T lhs, T rhs){return rhs + lhs;},
         [](T val1, T val2){return val1 * val2;});
 }
 
 } //namespace Serial
+} //namespace BK1
 
-
-#endif //SERIALKERNELS_HPP
+#endif //BK1SERIALKERNELS_HPP

@@ -3,9 +3,13 @@
 #include <cmath>
 
 template<typename T>
-void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2, const unsigned int nm0, 
-    const unsigned int nm1, const unsigned int nm2, const unsigned int numThreads, const unsigned int threadsPerBlockX,
+void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2, const unsigned int numThreads, const unsigned int threadsPerBlockX,
     const unsigned int threadsPerBlockY, const unsigned int threadsPerBlockZ, const unsigned int nelmt){
+
+        const unsigned int nm0 = nq0 - 1;
+        const unsigned int nm1 = nq1 - 1;
+        const unsigned int nm2 = nq2 - 1;
+
         //Allocation of arrays
         T* basis0 = new T[nm0 * nq0];
         T* basis1 = new T[nm1 * nq1];
@@ -13,6 +17,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         T* JxW = new T[nelmt * nq0 * nq1 * nq2];
         T* in = new T[nelmt * nm0 * nm1 * nm2];
         T* out = new T[nelmt * nm0 * nm1 * nm2];
+
 
         //Initialize the input and output arrays
         std::fill(JxW, JxW + nelmt * nq0 * nq1 * nq2, (T)1.0f);
@@ -46,10 +51,10 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
 
 
-        std::vector<T> results = Parallel::KokkosKernel<T>(nq0 ,nq1, nq2, nm0, nm1, nm2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, 1);
+        std::vector<T> results = Parallel::KokkosKernel<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, 1);
         std::cout << "Kokkos norm = " << results[1] << std::endl;
 
-        delete[] basis0; delete[] basis1; delete[] basis2; delete[] JxW; delete[] in, delete[] out;
+        delete[] basis0; delete[] basis1; delete[] basis2; delete[] JxW; delete[] in; delete[] out;
         
     }
 
@@ -57,21 +62,17 @@ int main(int argc, char **argv){
     unsigned int nq0                = (argc > 1) ? atoi(argv[1]) : 4u;
     unsigned int nq1                = (argc > 2) ? atoi(argv[2]) : 4u;
     unsigned int nq2                = (argc > 3) ? atoi(argv[3]) : 4u;
-    unsigned int numThreads         = (argc > 4) ? atoi(argv[4]) : 256 * 256 * 256;
     unsigned int nelmt              = (argc > 5) ? atoi(argv[5]) : 2 << 18;
+    unsigned int numThreads         = (argc > 4) ? atoi(argv[4]) : nelmt * nq0 * nq1 * nq2 / 2;
 
-    unsigned int threadsPerBlockX   = nq0;
-    unsigned int threadsPerBlockY   = nq1;
-    unsigned int threadsPerBlockZ   = nq2;
-
-    const unsigned int nm0 = nq0 - 1;
-    const unsigned int nm1 = nq1 - 1;
-    const unsigned int nm2 = nq2 - 1;
+    unsigned int threadsPerBlockX   = nq0 / 2;
+    unsigned int threadsPerBlockY   = nq1 / 2;
+    unsigned int threadsPerBlockZ   = nq2 / 2;
 
     Kokkos::initialize(argc, argv);
 
     std::cout.precision(8);
-    run_test<double>(nq0, nq1, nq2, nm0, nm1, nm2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt);
+    run_test<double>(nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt);
     
     Kokkos::finalize();
     return 0;

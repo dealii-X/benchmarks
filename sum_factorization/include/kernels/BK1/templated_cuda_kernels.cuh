@@ -1,17 +1,20 @@
 #ifndef BK1_CUDA_KERNELS_CUH
 #define BK1_CUDA_KERNELS_CUH
 
+#include <thrust/execution_policy.h>
+#include <thrust/transform_reduce.h>
 #include <timer.hpp>
 #include <vector>
 
 namespace BK1{
 namespace Parallel{
 
-template<typename T>
+template<typename T, unsigned int nq0, unsigned int nq1, unsigned int nq2>
 __global__ void BwdTransHexKernel_QP_1D_Warp(
-    const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
-    const unsigned int nelmt, const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
-    const T *__restrict__ d_basis2, const T *__restrict__ JxW, const T *__restrict__ d_in, T *__restrict__ d_out)
+    unsigned int nelmt,
+    const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
+    const T *__restrict__ d_basis2, const T *__restrict__ JxW,
+    const T *__restrict__ d_in, T *__restrict__ d_out)
 {
     const unsigned int nm0 = nq0 - 1;
     const unsigned int nm1 = nq1 - 1;
@@ -27,7 +30,6 @@ __global__ void BwdTransHexKernel_QP_1D_Warp(
     T *s_basis2 = s_basis1 + nm1 * nq1;
     T *s_wsp0 = s_basis2 + nm2 * nq2;
     T *s_wsp1 = s_wsp0 + warpsPerBlock * nq0 * nq1 * nq2;
-
 
     //copy to shared memory
     for(unsigned int tid = threadIdx.x; tid < nq0 * nm0; tid += blockDim.x)
@@ -179,19 +181,19 @@ __global__ void BwdTransHexKernel_QP_1D_Warp(
 }
 
 
-template<typename T>
+template<typename T, unsigned int nq0, unsigned int nq1, unsigned int nq2>
 __global__ void BwdTransHexKernel_QP_1D_Warp_Q1(
-    const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
-    const unsigned int nelmt, const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
-    const T *__restrict__ d_basis2, const T *__restrict__ JxW, const T *__restrict__ d_in, T *__restrict__ d_out)
+    unsigned int nelmt, const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
+    const T *__restrict__ d_basis2, const T *__restrict__ JxW, const T *__restrict__ d_in,
+    T *__restrict__ d_out)
 {
-    const unsigned int nm0 = nq0 - 1;
-    const unsigned int nm1 = nq1 - 1;
-    const unsigned int nm2 = nq2 - 1;
-
     unsigned int warpsPerBlock = blockDim.x / warpSize;
     unsigned int warpId        = threadIdx.x / warpSize;
     int laneId                 = threadIdx.x % warpSize;       // position of thread in warp
+
+    const unsigned int nm0 = nq0 - 1;
+    const unsigned int nm1 = nq1 - 1;
+    const unsigned int nm2 = nq2 - 1;
 
     extern __shared__ T shared[];
     T *s_basis0 = shared;
@@ -352,12 +354,12 @@ __global__ void BwdTransHexKernel_QP_1D_Warp_Q1(
 }
 
 
-template<typename T>
+template<typename T, unsigned int nq0, unsigned int nq1, unsigned int nq2>
 __global__ void BwdTransHexKernel_QP_1D(
-    const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
-    const unsigned int nelmt, const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
-    const T *__restrict__ d_basis2, const T *__restrict__ JxW, const T *__restrict__ d_in, T *__restrict__ d_out)
-{
+    unsigned int nelmt, const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
+    const T *__restrict__ d_basis2, const T *__restrict__ JxW, const T *__restrict__ d_in, 
+    T *__restrict__ d_out)
+{   
     const unsigned int nm0 = nq0 - 1;
     const unsigned int nm1 = nq1 - 1;
     const unsigned int nm2 = nq2 - 1;
@@ -517,17 +519,17 @@ __global__ void BwdTransHexKernel_QP_1D(
     }   
 }
 
-    // In 3D thread-blocks in CUDA, X dimension is fastest, Z is slowest
-    // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#thread-hierarchy
-    // threadIdx.x for i and p
-    // threadIdx.x for j and q
-    // threadIdx.x for k and r
+// In 3D thread-blocks in CUDA, X dimension is fastest, Z is slowest
+// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#thread-hierarchy
+// threadIdx.x for i and p
+// threadIdx.x for j and q
+// threadIdx.x for k and r
 
-    template <typename T>
-    __global__ void BwdTransHexKernel_QP_1D_3D_BLOCKS(
-        const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
-        const unsigned int nelmt, const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
-        const T *__restrict__ d_basis2, const T* __restrict__ d_JxW, const T *__restrict__ d_in, T *__restrict__ d_out)
+template<typename T, unsigned int nq0, unsigned int nq1, unsigned int nq2>
+__global__ void BwdTransHexKernel_QP_1D_3D_BLOCKS(
+    unsigned int nelmt, const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
+    const T *__restrict__ d_basis2, const T* __restrict__ d_JxW, 
+    const T *__restrict__ d_in, T *__restrict__ d_out)
     {
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -697,16 +699,16 @@ __global__ void BwdTransHexKernel_QP_1D(
     }
 
 
-    template <typename T>
-    __global__ void BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap(
-        const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
-        const unsigned int nelmt, const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
-        const T *__restrict__ d_basis2, const T* __restrict__ d_JxW, T *__restrict__ d_in, T *__restrict__ d_out)
-    {
+template<typename T, unsigned int nq0, unsigned int nq1, unsigned int nq2>
+__global__ void BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap(
+    unsigned int nelmt, const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
+    const T *__restrict__ d_basis2, const T* __restrict__ d_JxW, T *__restrict__ d_in,
+    T *__restrict__ d_out)
+    {   
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
         const unsigned int nm2 = nq2 - 1;
-        
+
         extern __shared__ T shared[];
         T *s_basis0 = shared;
         T *s_basis1 = s_basis0 + nm0 * nq0;

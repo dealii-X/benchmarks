@@ -14,12 +14,15 @@ wsp : intermediate storages
 
 template<typename T>
 void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
-    const unsigned int nm0, const unsigned int nm1, const unsigned int nm2, 
     const unsigned int numThreads, const unsigned int threadsPerBlock, 
     const unsigned int nelmt, const unsigned int ntests)
 {
     const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
 
+    const unsigned int nm0 = nq0 - 1;
+    const unsigned int nm1 = nq1 - 1;
+    const unsigned int nm2 = nq2 - 1;
+    
     //Allocation of arrays
     T* basis0 = new T[nm0 * nq0];
     T* basis1 = new T[nm1 * nq1];
@@ -28,10 +31,12 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     T* in = new T[nelmt * nm0 * nm1 * nm2];
     T* out = new T[nelmt * nm0 * nm1 * nm2];
 
+
     //Initialize the input and output arrays
     std::fill(JxW, JxW + nelmt * nq0 * nq1 * nq2, (T)1.0f);
     std::fill(in, in + nelmt * nm0 * nm1 * nm2, (T)3.0f);
     std::fill(out, out + nelmt * nm0 * nm1 * nm2, (T)0.0f);
+
 
     //Initialization of basis functions
     for(unsigned int p = 0u; p < nq0; p++)
@@ -57,7 +62,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     }
 
     // ------------------------- Kokkos Kernel ---------------------------------------------------
-    std::vector<T> results = Parallel::KokkosKernel<T>(nq0 ,nq1, nq2, nm0, nm1, nm2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
+    std::vector<T> results = Parallel::KokkosKernel<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
     std::cout << "Kokkos -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
     
 
@@ -73,14 +78,10 @@ int main(int argc, char **argv){
     unsigned int threadsPerBlock    = (argc > 6) ? atoi(argv[6]) : nq0 * nq1 * nq2;
     unsigned int ntests             = (argc > 7) ? atoi(argv[7]) : 50u;
 
-    const unsigned int nm0 = nq0 - 1;
-    const unsigned int nm1 = nq1 - 1;
-    const unsigned int nm2 = nq2 - 1;
-
     Kokkos::initialize(argc, argv);
 
     std::cout.precision(8);
-    run_test<float>(nq0, nq1, nq2, nm0, nm1, nm2, numThreads, threadsPerBlock, nelmt, ntests);
+    run_test<float>(nq0, nq1, nq2, numThreads, threadsPerBlock, nelmt, ntests);
 
     Kokkos::finalize();
     return 0;

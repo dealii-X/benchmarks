@@ -8,10 +8,14 @@ basis : 1D basis functions on each dimension (l0, l1 etc.)
 wsp : intermediate storages 
 */
 
+#include <iostream>
 #include <fstream>
 #include <kernels/BK1/cuda_kernels.cuh>
 #include <kernels/BK1/kokkos_kernels.hpp>
 #include <kernels/BK1/serial_kernels.hpp>
+#include <thrust/execution_policy.h>
+#include <thrust/transform_reduce.h>
+
 #include <Kokkos_Core.hpp>
 #include <timer.hpp>
 #include <math/logspace.hpp>
@@ -40,12 +44,15 @@ wsp : intermediate storages
 
 template<typename T>
 std::vector<T> run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2, 
-    const unsigned int nm0, const unsigned int nm1, const unsigned int nm2, 
     const unsigned int numThreads, const unsigned int threadsPerBlockX, const unsigned int threadsPerBlockY, 
     const unsigned int threadsPerBlockZ, const unsigned int nelmt, const unsigned int ntests)
 {   
     unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
     const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+
+    const unsigned int nm0 = nq0 - 1;
+    const unsigned int nm1 = nq1 - 1;
+    const unsigned int nm2 = nq2 - 1;
 
     //Allocation of arrays
     T* basis0 = new T[nm0 * nq0];
@@ -55,10 +62,12 @@ std::vector<T> run_test(const unsigned int nq0, const unsigned int nq1, const un
     T* in = new T[nelmt * nm0 * nm1 * nm2];
     T* out = new T[nelmt * nm0 * nm1 * nm2];
 
+
     //Initialize the input and output arrays
     std::fill(JxW, JxW + nelmt * nq0 * nq1 * nq2, (T)1.0f);
     std::fill(in, in + nelmt * nm0 * nm1 * nm2, (T)3.0f);
-    std::fill(out, out + nelmt * nm0 * nm1 * nm2, (T)0.f);
+    std::fill(out, out + nelmt * nm0 * nm1 * nm2, (T)0.0f);
+
 
     //Initialization of basis functions
     for(unsigned int p = 0u; p < nq0; p++)
@@ -87,7 +96,7 @@ std::vector<T> run_test(const unsigned int nq0, const unsigned int nq1, const un
     std::vector<T> results(5);
     // ------------------------- Kokkos Kernel ---------------------------------------------------
     {   
-        std::vector<T> kokkos_results = Parallel::KokkosKernel<T>(nq0, nq1, nq2, nm0, nm1, nm2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
+        std::vector<T> kokkos_results = Parallel::KokkosKernel<T>(nq0, nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
         results[0] = kokkos_results[0];
     }
 
@@ -100,13 +109,13 @@ std::vector<T> run_test(const unsigned int nq0, const unsigned int nq1, const un
     CUDA_CHECK(cudaMalloc(&d_basis2, nq2 * nm2 * sizeof(T)));
     CUDA_CHECK(cudaMalloc(&d_JxW, nelmt * nq0 * nq1 * nq2 * sizeof(T)));
     CUDA_CHECK(cudaMalloc(&d_in, nelmt * nm0 * nm1 * nm2 * sizeof(T)));
-    CUDA_CHECK(cudaMalloc(&d_out, nelmt * nq0 * nq1 * nq2 * sizeof(T)));
+    CUDA_CHECK(cudaMalloc(&d_out, nelmt * nm0 * nm1 * nm2 * sizeof(T)));
 
     CUDA_CHECK(cudaMemcpy(d_basis0, basis0, nm0 * nq0 * sizeof(T), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(d_basis1, basis1, nm1 * nq1 * sizeof(T), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(d_basis2, basis2, nm2 * nq2 * sizeof(T), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(d_JxW, JxW, nelmt * nq0 * nq1 * nq2 * sizeof(T), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_in, in, nelmt * nm0 * nm1 * nm2 * sizeof(T), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_out, in, nelmt * nm0 * nm1 * nm2 * sizeof(T), cudaMemcpyHostToDevice));
 
     // ------------------------- Kernel with Warp Centric Computation -------------------------------
     {
@@ -128,7 +137,7 @@ std::vector<T> run_test(const unsigned int nq0, const unsigned int nq1, const un
         for (unsigned int t = 0u; t < ntests; ++t)
         {
             Timer.start();
-            Parallel::BwdTransHexKernel_QP_1D_Warp<T><<<gridDim, blockDim, ssize * sizeof(T)>>>(nq0, nq1, nq2, nm0, nm1, nm2, nelmt,
+            BK1::Parallel::BwdTransHexKernel_QP_1D_Warp<T><<<gridDim, blockDim, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
                                                             d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
             CUDA_LAST_ERROR_CHECK();
             CUDA_CHECK(cudaDeviceSynchronize());
@@ -160,7 +169,7 @@ std::vector<T> run_test(const unsigned int nq0, const unsigned int nq1, const un
         for (unsigned int t = 0u; t < ntests; ++t)
         {
             Timer.start();
-            Parallel::BwdTransHexKernel_QP_1D_Warp_Q1<T><<<gridDim, blockDim, ssize * sizeof(T)>>>(nq0, nq1, nq2, nm0, nm1, nm2, nelmt,
+            BK1::Parallel::BwdTransHexKernel_QP_1D_Warp_Q1<T><<<gridDim, blockDim, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
                                                             d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
             CUDA_LAST_ERROR_CHECK();
             CUDA_CHECK(cudaDeviceSynchronize());
@@ -175,15 +184,13 @@ std::vector<T> run_test(const unsigned int nq0, const unsigned int nq1, const un
 
 
     // ------------------------- 1D block size -------------------------------
-    {   
-        thrust::fill(thrust::device, d_out, d_out + nelmt * nm0 * nm1 * nm2, static_cast<T>(0));
-        
+    {          
         double time = std::numeric_limits<double>::max();
         Timer Timer;
         for (unsigned int t = 0u; t < ntests; ++t)
         {
             Timer.start();
-            Parallel::BwdTransHexKernel_QP_1D<T><<<numBlocks, std::min(nq0 * nq1 * nq2, threadsPerBlock), ssize * sizeof(T)>>>(nq0, nq1, nq2, nm0, nm1, nm2, nelmt,
+            BK1::Parallel::BwdTransHexKernel_QP_1D<T><<<numBlocks, std::min(nq0 * nq1 * nq2, threadsPerBlock), ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
                                                             d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
             CUDA_LAST_ERROR_CHECK();
             CUDA_CHECK(cudaDeviceSynchronize());
@@ -195,8 +202,6 @@ std::vector<T> run_test(const unsigned int nq0, const unsigned int nq1, const un
 
     // ------------------------- 3D block size -------------------------------
     {
-        thrust::fill(thrust::device, d_out, d_out + nelmt * nm0 * nm1 * nm2, static_cast<T>(0));
-
         double time = std::numeric_limits<double>::max();
         Timer Timer;
         dim3 gridDim(numBlocks);
@@ -205,7 +210,7 @@ std::vector<T> run_test(const unsigned int nq0, const unsigned int nq1, const un
         for (unsigned int t = 0u; t < ntests; ++t)
         {
             Timer.start();
-            Parallel::BwdTransHexKernel_QP_1D_3D_BLOCKS<T><<<gridDim, blockDim, ssize * sizeof(T)>>>(nq0, nq1, nq2, nm0, nm1, nm2, nelmt,
+            BK1::Parallel::BwdTransHexKernel_QP_1D_3D_BLOCKS<T><<<gridDim, blockDim, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
                                                             d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
             CUDA_LAST_ERROR_CHECK();                       
             CUDA_CHECK(cudaDeviceSynchronize());
@@ -216,9 +221,7 @@ std::vector<T> run_test(const unsigned int nq0, const unsigned int nq1, const un
     }
 
     // ------------------------- 3D block size + SimpleMap -------------------------------
-    {
-        thrust::fill(thrust::device, d_out, d_out + nelmt * nm0 * nm1 * nm2, static_cast<T>(0));
-        
+    {     
         double time = std::numeric_limits<double>::max();
         Timer Timer;
         dim3 gridDim(numBlocks);
@@ -227,7 +230,7 @@ std::vector<T> run_test(const unsigned int nq0, const unsigned int nq1, const un
         for (unsigned int t = 0u; t < ntests; ++t)
         {
             Timer.start();
-            Parallel::BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap<T><<<gridDim, blockDim, ssize * sizeof(T)>>>(nq0, nq1, nq2, nm0, nm1, nm2, nelmt,
+            BK1::Parallel::BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap<T><<<gridDim, blockDim, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
                                                             d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
             CUDA_LAST_ERROR_CHECK();                     
             CUDA_CHECK(cudaDeviceSynchronize());
@@ -272,7 +275,7 @@ int main(int argc, char **argv){
         for(unsigned int nm = nmBegin; nm <= nmEnd; ++nm)
         {
             nelmt = dofs[d] / (float)(nm * nm * nm);
-            results[d][nm-nmBegin] = run_test<float>(nm + 1, nm + 1, nm + 1, nm, nm, nm, nelmt * (nm + 1) * (nm + 1) * (nm + 1) / nElmtPerBlock, 
+            results[d][nm-nmBegin] = run_test<float>(nm + 1, nm + 1, nm + 1, nelmt * (nm + 1) * (nm + 1) * (nm + 1) / nElmtPerBlock, 
                                       nm + 1, nm + 1, nm + 1, nelmt, ntests);
         }
     }

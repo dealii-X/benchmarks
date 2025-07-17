@@ -1,7 +1,6 @@
 #ifndef KOKKOS_KERNELS_HPP
 #define KOKKOS_KERNELS_HPP
 
-
 #include <Kokkos_Core.hpp>
 #include <timer.hpp>
 #include <vector>
@@ -9,12 +8,16 @@
 namespace Parallel{
 template <typename T>
 std::vector<T> KokkosKernel(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
-    const unsigned int nm0, const unsigned int nm1, const unsigned int nm2, const T *__restrict__ basis0, 
-    const T *__restrict__ basis1, const T *__restrict__ basis2, const T* __restrict__ JxW, const T* __restrict__ in, const T* __restrict__ out,
+    const T *__restrict__ basis0, const T *__restrict__ basis1, const T *__restrict__ basis2, 
+    const T* __restrict__ JxW, const T* __restrict__ in, T* __restrict__ out,
     const unsigned int numThreads, const unsigned int threadsPerBlock, const unsigned int nelmt, const unsigned int ntests)
     {   
         const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
 
+        const unsigned int nm0 = nq0 - 1;
+        const unsigned int nm1 = nq1 - 1;
+        const unsigned int nm2 = nq2 - 1;
+        
         T result_kokkos = 0.0;
         std::vector<T> results(2);
         {   
@@ -38,33 +41,31 @@ std::vector<T> KokkosKernel(const unsigned int nq0, const unsigned int nq1, cons
 
             Kokkos::View<const T*, Kokkos::HostSpace> out_view(out, nelmt * nm0 * nm1 * nm2);
             Kokkos::View<T*> d_out("d_out", nelmt * nm0 * nm1 * nm2);
-            Kokkos::deep_copy(d_out, out_view);
 
             Kokkos::fence();
 
             Timer kokkosTimer;
             double time_kokkos = std::numeric_limits<T>::max();
 
+            //Kokkos with shared memory
+            const unsigned int ssize = 2 * nq0 * nq1 * nq2 + nm0 * nq0 + nm1 * nq1 + nm2 * nq2;         
+            
+            const unsigned int shmem_size = ssize * sizeof(T);
+            
+            typedef Kokkos::TeamPolicy<>::member_type member_type;
+            Kokkos::TeamPolicy<> policy(numBlocks, std::min(nq0 * nq1 * nq2, threadsPerBlock));
+            policy.set_scratch_size(0, Kokkos::PerTeam(shmem_size));
+            
             for (unsigned int t = 0u; t < ntests; ++t)
             {
                 kokkosTimer.start();
-                //Kokkos with shared memory
-                const unsigned int ssize = 2 * nq0 + nq1 * nq2 + nm0 * nq0 + nm1 * nq1 + nm2 * nq2;         
-
-                const unsigned int shmem_size = Kokkos::View<T *, Kokkos::DefaultExecutionSpace::scratch_memory_space,
-                                                Kokkos::MemoryTraits<Kokkos::Unmanaged>>::shmem_size(ssize);
-                
-                typedef Kokkos::TeamPolicy<>::member_type member_type;
-                Kokkos::TeamPolicy<> policy(numBlocks, std::min(nq0 * nq1 * nq2, threadsPerBlock));
-                policy.set_scratch_size(0, Kokkos::PerTeam(ssize * sizeof(T)));
-
                 Kokkos::parallel_for(policy,
                     KOKKOS_LAMBDA (member_type team_member){
                         //element index
                         unsigned int e = team_member.league_rank();
 
                         //shared memory access
-                        T* scratch = (T*)team_member.team_shmem().get_shmem(shmem_size * sizeof(T));
+                        T* scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
                         T* s_basis0 = scratch;
                         T* s_basis1 = s_basis0 + nm0 * nq0;
                         T* s_basis2 = s_basis1 + nm1 * nq1;
@@ -139,13 +140,11 @@ std::vector<T> KokkosKernel(const unsigned int nq0, const unsigned int nq1, cons
                             }
                             team_member.team_barrier();
                             
-
-                            
                             //Reverse Operations
                             
                             //step-5 : Multiply with weights and determinant of Jacobi
                             for(unsigned int tid = threadIdx; tid < nq0 * nq1 * nq2; tid += blockSize){
-                                s_wsp1[tid] *= d_JxW[tid];
+                                s_wsp1[tid] *= d_JxW[e * nq0 * nq1 * nq2 + tid];
                             }
                             team_member.team_barrier();
                             

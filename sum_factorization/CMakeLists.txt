@@ -5,8 +5,9 @@ find_package(Kokkos REQUIRED)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-#BK1
+#BKs
 add_subdirectory(src/BK1)
+add_subdirectory(src/BK5)
 
 #Tests
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
