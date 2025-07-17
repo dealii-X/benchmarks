@@ -1,14 +1,18 @@
 #include "kernels_common.h"
 
-__kernel void BwdTransHexKernel_QP_1D(
-    const int nelmt,
-    __global const real *restrict d_basis0, 
-    __global const real *restrict d_basis1,
-    __global const real *restrict d_basis2, 
-    __global const real *restrict d_JxW, 
-    __global const real *restrict d_in, 
-    __global       real *restrict d_out,
+#define BK1_STATIC_KERNEL(name) \
+__kernel void name( \
+    const int nelmt, \
+    __global const real *restrict d_basis0, \
+    __global const real *restrict d_basis1, \
+    __global const real *restrict d_basis2, \
+    __global const real *restrict d_JxW, \
+    __global const real *restrict d_in, \
+    __global       real *restrict d_out, \
     __local        real *restrict shared)
+
+
+BK1_STATIC_KERNEL(BwdTransHexKernel_QP_1D)
 {
 
     // The dimensions must be passed passed as macro definitions
@@ -175,21 +179,8 @@ __kernel void BwdTransHexKernel_QP_1D(
 }
 
 
-// In 3D thread-blocks in CUDA, X dimension is fastest, Z is slowest
-// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#thread-hierarchy
-// get_local_id(0) for i and p
-// get_local_id(0) for j and q
-// get_local_id(0) for k and r
 
-__kernel void BwdTransHexKernel_QP_1D_3D_BLOCKS(
-    const int nelmt, 
-    __global const real *restrict d_basis0, 
-    __global const real *restrict d_basis1,
-    __global const real *restrict d_basis2, 
-    __global const real *restrict d_JxW, 
-    __global const real *restrict d_in, 
-    __global       real *restrict d_out,
-    __local        real *restrict shared)
+BK1_STATIC_KERNEL(BwdTransHexKernel_QP_1D_3D_BLOCKS)
 {
 
     // The dimensions must be passed passed as macro definitions
@@ -365,16 +356,9 @@ __kernel void BwdTransHexKernel_QP_1D_3D_BLOCKS(
 }
 
 
-__kernel void BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap(
-    const int nelmt, 
-    __global const real *restrict d_basis0, 
-    __global const real *restrict d_basis1,
-    __global const real *restrict d_basis2, 
-    __global const real *restrict d_JxW, 
-    __global const real *restrict d_in, 
-    __global       real *restrict d_out,
-    __local        real *restrict shared)
+BK1_STATIC_KERNEL(BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap)
 {
+
     // The dimensions must be passed passed as macro definitions
     // using the build options at compilation time.
     const int nq0 = NQ0;
