@@ -54,7 +54,7 @@ gnuplot plot.gp
 - **outPath**: Output path for the results
 
 The following plot illustrates the kokkos kernel results on Nvidia H100 GPU:
-![Benchmark Plot](../assets/kokkos.png)
+![Benchmark Plot](assets/kokkos.png)
 
 ## GPU profiling (CUDA only)
 To gain better insight and obtain detailed performance metrics, reports from **Nsight Systems** and **Nsight Compute** can be automatically generated — provided that the appropriate `nsys` and `ncu` environment variables are set. Run the following to generate reports:
