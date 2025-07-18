@@ -44,13 +44,13 @@ void run_test(const unsigned int numThreads, const unsigned int nelmt, const uns
     // ------------------------- 3D Block Simple Map Kernel ---------------------------------------------------
     {
         std::vector<T> results = Parallel::KokkosKernel_3D_Block_SimpleMap<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads, nelmt, ntests);
-        std::cout << "Kokkos -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
+        std::cout << "3D Block Simple Map -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
     }
 
     // ------------------------- 2D Block(jk) Simple Map Kernel ---------------------------------------------------
     {
         std::vector<T> results = Parallel::KokkosKernel_2D_Block_jk_SimpleMap<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads, nelmt, ntests);
-        std::cout << "Kokkos -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
+        std::cout << "2D Block(jk) Simple Map -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
     }
 
     
