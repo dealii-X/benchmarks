@@ -345,7 +345,7 @@ int main(int argc, char **argv){
             auto source = loadKernelSource(static_size,ierr);
             if (ierr) return 1;
 
-            std::string buildOptions{"-I ./src "}; // the space is important here
+            std::string buildOptions{"-I ./src "}; // the trailing space is important here
 
             if constexpr (std::is_same_v<real_type, double>) {
                 buildOptions += "-DDOUBLE_PRECISION";
@@ -362,7 +362,7 @@ int main(int argc, char **argv){
             }
 
             // Dynamic sizes
-            run_test<real_type,false>(context, queue, program,           
+            run_test<real_type,static_size>(context, queue, program,           
                 nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
 
         }
@@ -376,16 +376,16 @@ int main(int argc, char **argv){
             auto source = loadKernelSource(static_size,ierr);
             if (ierr) return 1;
 
-            std::string buildOptions{"-I ./src "}; // the space is important here
+            std::string buildOptions{"-I ./src "}; // the trailing space is important here
 
             if constexpr (std::is_same_v<real_type, double>) {
                 buildOptions += "-DDOUBLE_PRECISION";
             }
 
-            std::unordered_map<std::string, size_t> defines = {
-               {"NQ0", (size_t) nq0},
-               {"NQ1", (size_t) nq1},
-               {"NQ2", (size_t) nq2}
+            std::unordered_map<std::string, int> defines = {
+               {"NQ0", (int) nq0},
+               {"NQ1", (int) nq1},
+               {"NQ2", (int) nq2}
             };
             
             buildOptions += buildOpenCLDefines(defines);
@@ -400,7 +400,7 @@ int main(int argc, char **argv){
                 return 1;
             }
 
-            run_test<real_type,true>(context, queue, program,           
+            run_test<real_type,static_size>(context, queue, program,           
                 nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
 
         }
