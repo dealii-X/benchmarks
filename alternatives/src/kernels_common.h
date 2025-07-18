@@ -16,3 +16,6 @@
     #define ZERO 0.0
     #define ONE 1.0
 #endif
+
+
+typedef int index_type;
