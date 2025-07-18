@@ -12,6 +12,15 @@ add_executable(templated_cuda_benchmark_bk5 ${CMAKE_CURRENT_SOURCE_DIR}/template
 set_target_properties(templated_cuda_benchmark_bk5 PROPERTIES OUTPUT_NAME templated_cuda_benchmark)
 TARGET_LINK_LIBRARIES(templated_cuda_benchmark_bk5 Kokkos::kokkos)
 
+add_executable(kokkos_benchmark_bk5 ${CMAKE_CURRENT_SOURCE_DIR}/kokkos_benchmark.cc)
+set_target_properties(kokkos_benchmark_bk5 PROPERTIES OUTPUT_NAME kokkos_benchmark)
+TARGET_LINK_LIBRARIES(kokkos_benchmark_bk5 Kokkos::kokkos)
+
+add_executable(templated_kokkos_benchmark_bk5 ${CMAKE_CURRENT_SOURCE_DIR}/templated_kokkos_benchmark.cc)
+set_target_properties(templated_kokkos_benchmark_bk5 PROPERTIES OUTPUT_NAME templated_kokkos_benchmark)
+TARGET_LINK_LIBRARIES(templated_kokkos_benchmark_bk5 Kokkos::kokkos)
+
+
 #Tests
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/BK5/tests)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/BK5/tests)
@@ -21,8 +30,12 @@ set_target_properties(serial_verification_bk5 PROPERTIES OUTPUT_NAME serial_veri
 
 add_executable(cuda_verification_bk5   ${CMAKE_SOURCE_DIR}/tests/BK5/cuda_verification.cc)
 set_target_properties(cuda_verification_bk5 PROPERTIES OUTPUT_NAME cuda_verification)
-
 TARGET_LINK_LIBRARIES(cuda_verification_bk5 Kokkos::kokkos)
+
+add_executable(kokkos_verification_bk5 ${CMAKE_SOURCE_DIR}/tests/BK5/kokkos_verification.cc)
+set_target_properties(kokkos_verification_bk5 PROPERTIES OUTPUT_NAME kokkos_verification)
+TARGET_LINK_LIBRARIES(kokkos_verification_bk5 Kokkos::kokkos)
+
 
 #Reports
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/BK5/reports)

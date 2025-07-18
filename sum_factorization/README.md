@@ -24,5 +24,5 @@ cmake .. -DKokkos_DIR=<KokkosConfig_cmake_dir> -DCMAKE_CXX_COMPILER=icpx
 make -j
 ```
 ## Implementations
-[Bake-off Kernel 1](docs/BK1.md) : scalar E-vector evaluation of mass matrix, q = p + 2 (Gauss-Legendre quadrature). <br>
-[Bake-off Kernel 5](docs/BK5.md) : scalar E-vector-to-E-vector evaluation of stiffness matrix, q=p+1 (Gauss-Lobatto-Legendre).
+[Bake-off Kernel 1](docs/BK1.md) : scalar E-vector-to-E-vector evaluation of mass matrix, q = p + 2 (Gauss-Legendre). <br>
+[Bake-off Kernel 5](docs/BK5.md) : scalar E-vector-to-E-vector evaluation of stiffness matrix, q = p + 1 (Gauss-Lobatto-Legendre).

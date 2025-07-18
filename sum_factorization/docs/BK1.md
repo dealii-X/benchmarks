@@ -29,7 +29,7 @@ This benchmark compares different CUDA kernels implementing the sum factorizatio
 
 ### 3. **./templated_cuda_benchmark**
 
-This benchmark also compares same CUDA kernels but most of the arguments are templated.
+This benchmark also compares same CUDA kernels but number of quadrature points (nq) are templated.
 
 **Input parameters:**
 - **nelmt**: Number of elements

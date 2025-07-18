@@ -13,8 +13,6 @@ wsp : intermediate storages
 #include <kernels/BK1/cuda_kernels.cuh>
 #include <kernels/BK1/kokkos_kernels.hpp>
 #include <kernels/BK1/serial_kernels.hpp>
-#include <thrust/execution_policy.h>
-#include <thrust/transform_reduce.h>
 
 #include <Kokkos_Core.hpp>
 #include <timer.hpp>

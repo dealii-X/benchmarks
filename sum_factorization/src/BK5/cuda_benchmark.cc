@@ -86,7 +86,6 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     CUDA_CHECK(cudaMemcpy(d_in, in, nelmt * nq0 * nq1 * nq2 * sizeof(T), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(d_out, out, nelmt * nq0 * nq1 * nq2 * sizeof(T), cudaMemcpyHostToDevice));
 
-
     int device;   cudaGetDevice(&device);   cudaDeviceProp prop;
     cudaGetDeviceProperties(&prop, device);
     

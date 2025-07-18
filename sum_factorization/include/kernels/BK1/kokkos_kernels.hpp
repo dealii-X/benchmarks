@@ -1,5 +1,5 @@
-#ifndef KOKKOS_KERNELS_HPP
-#define KOKKOS_KERNELS_HPP
+#ifndef BK1_KOKKOS_KERNELS_HPP
+#define BK1_KOKKOS_KERNELS_HPP
 
 #include <Kokkos_Core.hpp>
 #include <timer.hpp>
@@ -8,7 +8,7 @@
 namespace Parallel{
 template <typename T>
 std::vector<T> KokkosKernel(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
-    const T *__restrict__ basis0, const T *__restrict__ basis1, const T *__restrict__ basis2, 
+    const T *__restrict__ basis0, const T *__restrict__ basis1, const T *__restrict__ basis2,
     const T* __restrict__ JxW, const T* __restrict__ in, T* __restrict__ out,
     const unsigned int numThreads, const unsigned int threadsPerBlock, const unsigned int nelmt, const unsigned int ntests)
     {   
@@ -42,7 +42,7 @@ std::vector<T> KokkosKernel(const unsigned int nq0, const unsigned int nq1, cons
             Kokkos::View<const T*, Kokkos::HostSpace> out_view(out, nelmt * nm0 * nm1 * nm2);
             Kokkos::View<T*> d_out("d_out", nelmt * nm0 * nm1 * nm2);
 
-            Kokkos::fence();
+            Kokkos::fence();   //deep copies in Kokkos are async
 
             Timer kokkosTimer;
             double time_kokkos = std::numeric_limits<T>::max();
@@ -229,4 +229,4 @@ std::vector<T> KokkosKernel(const unsigned int nq0, const unsigned int nq1, cons
     }
 } //namespace Parallel
 
-#endif //KOKKOS_KERNELS_HPP
+#endif //BK1_KOKKOS_KERNELS_HPP

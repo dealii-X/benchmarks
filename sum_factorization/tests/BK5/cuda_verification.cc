@@ -104,8 +104,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
     // ------------------------- Cuda kernel with 3D block size + Simple Map --------------------------------------
     {
-        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
-        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        const unsigned int numBlocks = numThreads / (nq0 * nq1 * nq2);
         unsigned int ssize = nq0 * nq0 + nq1 * nq1 + nq2 * nq2 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         BK5::Parallel::TransHexKernel_QP_3D_Block_SimpleMap<T><<<numBlocks, nq0 * nq1 * nq2, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
@@ -187,9 +186,9 @@ int main(int argc, char **argv){
     unsigned int nelmt              = (argc > 4) ? atoi(argv[4]) : 2 << 17;
     unsigned int numThreads         = (argc > 5) ? atoi(argv[5]) : nelmt * nq0 * nq1 * nq2 / 2;
 
-    unsigned int threadsPerBlockX   = nq0 / 2;
-    unsigned int threadsPerBlockY   = nq1 / 2;
-    unsigned int threadsPerBlockZ   = nq2 / 2;
+    unsigned int threadsPerBlockX   = nq0;
+    unsigned int threadsPerBlockY   = nq1;
+    unsigned int threadsPerBlockZ   = nq2;
 
     std::cout.precision(8);
     run_test<double>(nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt);

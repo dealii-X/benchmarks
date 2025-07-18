@@ -1,5 +1,5 @@
-#ifndef BK1_CUDA_KERNELS_CUH
-#define BK1_CUDA_KERNELS_CUH
+#ifndef BK1_TEMPLATED_CUDA_KERNELS_CUH
+#define BK1_TEMPLATED_CUDA_KERNELS_CUH
 
 #include <thrust/execution_policy.h>
 #include <thrust/transform_reduce.h>
@@ -702,7 +702,7 @@ __global__ void BwdTransHexKernel_QP_1D_3D_BLOCKS(
 template<typename T, unsigned int nq0, unsigned int nq1, unsigned int nq2>
 __global__ void BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap(
     unsigned int nelmt, const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
-    const T *__restrict__ d_basis2, const T* __restrict__ d_JxW, T *__restrict__ d_in,
+    const T *__restrict__ d_basis2, const T* __restrict__ d_JxW, const T *__restrict__ d_in,
     T *__restrict__ d_out)
     {   
         const unsigned int nm0 = nq0 - 1;
@@ -855,7 +855,7 @@ __global__ void BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap(
             //step-9 : Copy wsp0 to out
             if(blockThreadIdx < nm0 * nm1 * nm2)
             {
-                d_in[e * nm0 * nm1 * nm2 + blockThreadIdx] = s_wsp0[blockThreadIdx];
+                d_out[e * nm0 * nm1 * nm2 + blockThreadIdx] = s_wsp0[blockThreadIdx];
             } 
             __syncthreads();
     
@@ -865,4 +865,4 @@ __global__ void BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap(
 } //namespace Parallel
 } //namespace BK1
 
-#endif //BK1_CUDA_KERNELS_CUH
+#endif //BK1_TEMPLATED_CUDA_KERNELS_CUH

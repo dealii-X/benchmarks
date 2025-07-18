@@ -1,5 +1,5 @@
-#ifndef BK5SERIALKERNELS_HPP
-#define BK5SERIALKERNELS_HPP
+#ifndef BK5_SERIALKERNELS_HPP
+#define BK5_SERIALKERNELS_HPP
 
 #include <numeric>
 
@@ -87,4 +87,4 @@ T SumFactorization( const unsigned int nq0, const unsigned int nq1, const unsign
 }  //namespace Serial
 }  //namespace BK5
 
-#endif //BK5SERIALKERNELS_HPP
+#endif //BK5_SERIALKERNELS_HPP

@@ -62,8 +62,8 @@ int main(int argc, char **argv){
     unsigned int nq0                = (argc > 1) ? atoi(argv[1]) : 4u;
     unsigned int nq1                = (argc > 2) ? atoi(argv[2]) : 4u;
     unsigned int nq2                = (argc > 3) ? atoi(argv[3]) : 4u;
-    unsigned int nelmt              = (argc > 5) ? atoi(argv[5]) : 2 << 18;
-    unsigned int numThreads         = (argc > 4) ? atoi(argv[4]) : nelmt * nq0 * nq1 * nq2 / 2;
+    unsigned int nelmt              = (argc > 4) ? atoi(argv[4]) : 2 << 18;
+    unsigned int numThreads         = (argc > 5) ? atoi(argv[5]) : nelmt * nq0 * nq1 * nq2 / 2;
 
     unsigned int threadsPerBlockX   = nq0 / 2;
     unsigned int threadsPerBlockY   = nq1 / 2;

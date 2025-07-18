@@ -853,7 +853,7 @@ __global__ void BwdTransHexKernel_QP_1D(
             //step-9 : Copy wsp0 to out
             if(blockThreadIdx < nm0 * nm1 * nm2)
             {
-                d_in[e * nm0 * nm1 * nm2 + blockThreadIdx] = s_wsp0[blockThreadIdx];
+                d_out[e * nm0 * nm1 * nm2 + blockThreadIdx] = s_wsp0[blockThreadIdx];
             } 
             __syncthreads();
     
