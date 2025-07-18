@@ -1,5 +1,6 @@
 #include "kernels_common.h"
 
+
 #define BK1_KERNEL(name) \
 __kernel void name( \
     const index_type nq0, const index_type nq1, const index_type nq2, \

@@ -1,7 +1,7 @@
 
 
-CXX=g++-14
-CXXFLAGS=-Wall -O3 -march=native
+CXX=g++-15
+CXXFLAGS=-std=c++17 -Wall -O3 -mcpu=native -fopenmp -funroll-loops
 CXXFLAGS+=-I./src/ -I../sum_factorization/include
 
 OPENCL_HPP_ROOT = $(HOME)/OpenCL-CLHPP
@@ -17,20 +17,30 @@ ifeq ($(uname_s),Darwin)
 CXXFLAGS += -DCL_SILENCE_DEPRECATION
 endif
 
-all: opencl_benchmark
+all: opencl_benchmark bk5_opencl
 
 opencl_benchmark: drivers/opencl_benchmark.cc
+	$(CXX) $(CXXFLAGS) $(OPENCL_INC) $(OPENCL_LDFLAGS) -o $@ $<
+
+bk5_opencl: drivers/bk5_opencl.cc
 	$(CXX) $(CXXFLAGS) $(OPENCL_INC) $(OPENCL_LDFLAGS) -o $@ $<
 
 sycl_benchmark: drivers/sycl_benchmark.cc
 	$(SYCL_CXX) $(SYCL_CXXFLAGS) -o $@ $<
 
-openmp_benchmark: drivers/openmp_benchmark.cpp
-	$(CXX) $(CXXFLAGS) -o $@ $<
+openmp_benchmark: drivers/openmp_benchmark.cc bk1.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
+FC=gfortran
+#FFLAGS=-Wall -O2 -ftree-vectorize -funroll-loops -ffast-math -fopenmp -mcpu=native
+FFLAGS=-Wall -O3 -funroll-loops -fopenmp -mcpu=native
+
+bk1.o: src/bk1.F90
+	$(FC) -cpp $(FFLAGS) -c $<
 
 .PHONY: clean
 clean:
-	$(RM) opencl_benchmark openmp_benchmark sycl_benchmark
+	$(RM) *.o opencl_benchmark openmp_benchmark sycl_benchmark
 
 
 .PHONY: run_openmp

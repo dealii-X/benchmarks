@@ -1,12 +1,5 @@
-/*
-Input Parameters for Kernels;
-nm : Number of the node on each direction
-nq : Number of the gauss points on each direction
-nelmt : Number of finite elements
-basis : 1D basis functions on each dimension (l0, l1 etc.)
+// opencl_benchmarks.cc
 
-wsp : intermediate storages 
-*/
 
 #define CL_HPP_ENABLE_EXCEPTIONS
 #define CL_HPP_TARGET_OPENCL_VERSION 120  // or 120, 100, depending on what you want
@@ -32,7 +25,7 @@ template <typename T>
 std::string buildOpenCLDefines(const std::unordered_map<std::string, T>& defines) {
     std::string options;
     for (const auto& [key, value] : defines) {
-        options += "-D" + key + "=" + std::to_string(value) + " ";
+        options += "-D " + key + "=" + std::to_string(value) + " ";
     }
     return options;
 }
@@ -84,7 +77,8 @@ int show_norm = -1; // -1 means uninitialized
 
 template<typename T = float, bool static_size = false>
 void run_test(
-    cl::Context &context, cl::CommandQueue &queue, cl::Program &program,
+    cl::Context &context, 
+    cl::CommandQueue &queue, cl::Program &program,
     const int nq0, const int nq1, const int nq2,
     const int numThreads, 
     const int threadsPerBlockX,
@@ -183,6 +177,14 @@ void run_test(
         }
     };   
 
+    auto print_stats_helper = [&](const cl::Kernel& kernel, double time) {
+        std::printf("%s\t%s\t%u\t%f\n",
+            static_size ? "static" : "dynamic",
+            kernel.getInfo<CL_KERNEL_FUNCTION_NAME>().c_str(),
+            nelmt,
+            dof_rate(time));
+    };
+
     const size_t globalSize = numBlocks * threadsPerBlock;
 
 
@@ -210,9 +212,7 @@ void run_test(
             time = std::min(time, clTimer.elapsedSeconds());
         }
 
-        std::printf("%s\t%s\t%u\t%f\n", static_size ? "static" : "dynamic", 
-            kernelName.c_str(), nelmt, dof_rate(time));
-
+        print_stats_helper(kernel, time);
         show_norm_helper();
     }
 
@@ -240,9 +240,7 @@ void run_test(
             time = std::min(time, clTimer.elapsedSeconds());
         }
 
-        std::printf("%s\t%s\t%u\t%f\n", static_size ? "static" : "dynamic", 
-            kernelName.c_str(), nelmt, dof_rate(time));
-
+        print_stats_helper(kernel, time);
         show_norm_helper();
     }
 
@@ -270,9 +268,7 @@ void run_test(
             time = std::min(time, clTimer.elapsedSeconds());
         }
 
-        std::printf("%s\t%s\t%u\t%f\n", static_size ? "static" : "dynamic", 
-            kernelName.c_str(), nelmt, dof_rate(time));
-
+        print_stats_helper(kernel, time);
         show_norm_helper();
     }
 
@@ -284,6 +280,11 @@ int main(int argc, char **argv){
     // Default precision
     using real_type = float;
 
+    if (argc > 1 && strcmp(argv[1], "--help") == 0) {
+        printf("Usage: %s [--help] [nq0 [nq1 [nq2 [nelmt [numThreads [threadsPerBlockX [threadsPerBlockY [threadsPerBlockZ [ntests]]]]]]]]]\n", argv[0]);
+        exit(0);
+    }
+
     int nq0                = (argc > 1) ? atoi(argv[1]) : 4;
     int nq1                = (argc > 2) ? atoi(argv[2]) : 4;
     int nq2                = (argc > 3) ? atoi(argv[3]) : 4;
@@ -294,10 +295,8 @@ int main(int argc, char **argv){
     int threadsPerBlockZ   = (argc > 8) ? atoi(argv[8]) : nq2;
     int ntests             = (argc > 9) ? atoi(argv[9]) : 50;
 
-    if (show_norm == -1) {
-        const char *env = getenv("SHOW_NORM");
-        show_norm = (env && strcmp(env, "1") == 0) ? 1 : 0;
-    }
+    const char *env = getenv("SHOW_NORM");
+    show_norm = (env && strcmp(env, "1") == 0) ? 1 : 0;
 
     // FIXME: initialize OpenCL context
 

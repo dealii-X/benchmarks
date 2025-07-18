@@ -1,6 +1,7 @@
 #include "kernels_common.h"
 
-#define BK5_KERNEL_STATIC(name)
+
+#define BK5_KERNEL_STATIC(name) \
 __kernel void name( \
     const index_type nelmt, \
     __global const real *restrict d_dbasis0, \

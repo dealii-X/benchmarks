@@ -1,6 +1,7 @@
 #include "kernels_common.h"
 
-#define BK5_KERNEL(name)
+
+#define BK5_KERNEL(name) \
 __kernel void name( \
     const index_type nq0, const index_type nq1, const index_type nq2, \
     const index_type nelmt, \
@@ -108,8 +109,7 @@ BK5_KERNEL(TransHexKernel_QP_3D_Block)
 }
 
 
-BK5_KERNEL(TransHexKernel_QP_3D_Block_SimpleMap)
-{
+BK5_KERNEL(TransHexKernel_QP_3D_Block_SimpleMap) {
 
     __local real *restrict s_dbasis0 = shared;
     __local real *restrict s_dbasis1 = s_dbasis0 + nq0 * nq0;
@@ -197,8 +197,7 @@ BK5_KERNEL(TransHexKernel_QP_3D_Block_SimpleMap)
 }
 
 
-BK5_KERNEL(TransHexKernel_QP_2D_Block_ij) 
-{
+BK5_KERNEL(TransHexKernel_QP_2D_Block_ij) {
     
     real r_i[10];
     real r_j[10];
@@ -318,8 +317,7 @@ BK5_KERNEL(TransHexKernel_QP_2D_Block_ij)
 }
 
 
-BK5_KERNEL(TransHexKernel_QP_2D_Block_jk)
-{
+BK5_KERNEL(TransHexKernel_QP_2D_Block_jk) {
     
     real r_i[10];
     real r_j[10];
@@ -439,8 +437,7 @@ BK5_KERNEL(TransHexKernel_QP_2D_Block_jk)
 }
 
 
-BK5_KERNEL(TransHexKernel_QP_2D_Block_jk_SimpleMap)
-{
+BK5_KERNEL(TransHexKernel_QP_2D_Block_jk_SimpleMap) {
     
     real r_i[10];
     real r_j[10];

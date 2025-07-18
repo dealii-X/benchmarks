@@ -1,5 +1,6 @@
 #include "kernels_common.h"
 
+
 #define BK1_KERNEL_STATIC(name) \
 __kernel void name( \
     const index_type nelmt, \
