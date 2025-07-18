@@ -22,6 +22,7 @@ wsp : intermediate storages
 #include <cmath>
 #include <string>
 #include <unordered_map>
+#include <numeric>
 
 #include "timer.hpp"
 
@@ -77,24 +78,13 @@ std::string loadKernelSource(bool static_size, int& status, bool verbose = false
     return source;
 }
 
-template <typename Container>
-auto norm2(const Container& data) -> typename Container::value_type {
-    using T = typename Container::value_type;
-    return std::transform_reduce(
-        std::execution::par_unseq,
-        data.begin(), data.end(),
-        T{0},
-        std::plus<>(),
-        [](T val) { return val * val; }
-    );
-}
 
 int show_norm = -1; // -1 means uninitialized
 
 
 template<typename T = float, bool static_size = false>
 void run_test(
-    cl::Context &context, cl::CommandQueue &queue, const std::string &kernelName,
+    cl::Context &context, cl::CommandQueue &queue, cl::Program &program,
     const int nq0, const int nq1, const int nq2,
     const int numThreads, 
     const int threadsPerBlockX,
@@ -143,150 +133,156 @@ void run_test(
     cl::Buffer d_in(context,in.begin(),in.end(),true);
     cl::Buffer d_out(context,out.begin(),out.end(),false);
 
-    // Kernel compilation
-    int ierr;
-    auto source = loadKernelSource(static_size,ierr);
-    if (ierr) return;
 
-    //std::string source(std::istreambuf_iterator<char>(kernelFile),
-    //                   (std::istreambuf_iterator<char>()));
+    // Helper function to select a particular kernel by name
+    auto kernel_helper = [&](std::string kernelName) -> cl::Kernel {
 
-
-    std::string buildOptions{"-I ./src "}; // the space is important here
-    if (static_size) {
-        std::unordered_map<std::string, size_t> defines = {
-           {"NQ0", (size_t) nq0},
-           {"NQ1", (size_t) nq1},
-           {"NQ2", (size_t) nq2}
-        };
-        buildOptions += buildOpenCLDefines(defines);
-    }
-
-    // By default, the kernel assume float is used
-    if constexpr (std::is_same_v<T, double>) {
-        buildOptions += "-DDOUBLE_PRECISION";
-    }
-
-    // 8. Build program from source
-    cl::Device device = queue.getInfo<CL_QUEUE_DEVICE>();
-    cl::Program program(context, source);
-    try {
-        program.build({device},buildOptions);
-    } catch (const cl::Error&) {
-        // If build fails, print build log
-        std::cerr << "Build failed:\n" 
-                  << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << "\n";
-        return;
-    }
-
-    cl::Kernel kernel(program, kernelName);
+        cl::Kernel kernel(program,kernelName);
 
     // In the static kernel, the small integer sizes have
     // been passed directly to the OpenCL JIT compiler
 
-    if constexpr (static_size) {
-        kernel.setArg(0, nelmt);
-        kernel.setArg(1, d_basis0);
-        kernel.setArg(2, d_basis1);
-        kernel.setArg(3, d_basis2);
-        kernel.setArg(4, d_JxW);
-        kernel.setArg(5, d_in);
-        kernel.setArg(6, d_out);
-        kernel.setArg(7, cl::Local(sharedMemSize));        
-    } else {
-        kernel.setArg(0, nq0);
-        kernel.setArg(1, nq1);
-        kernel.setArg(2, nq2);
-        kernel.setArg(3, nelmt);
-        kernel.setArg(4, d_basis0);
-        kernel.setArg(5, d_basis1);
-        kernel.setArg(6, d_basis2);
-        kernel.setArg(7, d_JxW);
-        kernel.setArg(8, d_in);
-        kernel.setArg(9, d_out);
-        kernel.setArg(10, cl::Local(sharedMemSize));
-    }
+        if constexpr (static_size) {
+            kernel.setArg(0, nelmt);
+            kernel.setArg(1, d_basis0);
+            kernel.setArg(2, d_basis1);
+            kernel.setArg(3, d_basis2);
+            kernel.setArg(4, d_JxW);
+            kernel.setArg(5, d_in);
+            kernel.setArg(6, d_out);
+            kernel.setArg(7, cl::Local(sharedMemSize));        
+        } else {
+            kernel.setArg(0, nq0);
+            kernel.setArg(1, nq1);
+            kernel.setArg(2, nq2);
+            kernel.setArg(3, nelmt);
+            kernel.setArg(4, d_basis0);
+            kernel.setArg(5, d_basis1);
+            kernel.setArg(6, d_basis2);
+            kernel.setArg(7, d_JxW);
+            kernel.setArg(8, d_in);
+            kernel.setArg(9, d_out);
+            kernel.setArg(10, cl::Local(sharedMemSize));
+        }
+
+        return kernel;
+    };
+
+    // Helper function to calculate performance in GDoF/s
+    auto dof_rate = [=](double elapsed) { 
+        return 1.0e-9 * nelmt * nm0 * nm1 * nm2 / elapsed; 
+    };
+
+    auto show_norm_helper = [&]() -> void {
+        if (show_norm) {
+            // 2. Copy data from device buffer d_out to host
+            queue.enqueueReadBuffer(d_out, CL_TRUE, 0, sizeof(T) * out.size(), out.data());
+            // Evaluate the norm in double precision
+            T normSqr = inner_product(out.begin(),out.end(),out.begin(),(T)0);
+            std::cout << "# OpenCL kernel norm = " << std::sqrt(normSqr) << '\n';
+        }
+    };   
 
     const size_t globalSize = numBlocks * threadsPerBlock;
-    //const size_t localSize = std::min(nq0 * nq1 * nq2, threadsPerBlock);
-
-    double time_cl = std::numeric_limits<double>::max();
-
-    // FIXME: global size must be divisible by the local size
 
 
-    cl::NDRange global, local;
-    if (kernelName == "BwdTransHexKernel_QP_1D") {
+    // ------------------------- Kernel with 1D block size -------------------------------
+    {
+        const std::string kernelName = "BwdTransHexKernel_QP_1D";
+
+        auto kernel = kernel_helper(kernelName);
+
 //    dim3 gridDim(numBlocks)
 //    dim3 blockDim(std::min(nq0 * nq1 * nq2, threadsPerBlock))
-        local = cl::NDRange(std::min(nq0 * nq1 * nq2, threadsPerBlock));
-        global = cl::NDRange(globalSize);
-    } else if (kernelName == "BwdTransHexKernel_QP_1D_3D_BLOCKS") {
+        cl::NDRange local = cl::NDRange(std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        cl::NDRange global = cl::NDRange(globalSize);
+
+        double time = std::numeric_limits<double>::max();
+        Timer clTimer;
+        for (int t = 0; t < ntests; ++t)
+        {
+            clTimer.start();
+            
+            queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,local);
+            queue.finish();
+
+            clTimer.stop();
+            time = std::min(time, clTimer.elapsedSeconds());
+        }
+
+        std::printf("%s\t%s\t%u\t%f\n", static_size ? "static" : "dynamic", 
+            kernelName.c_str(), nelmt, dof_rate(time));
+
+        show_norm_helper();
+    }
+
+    // ------------------------- Kernel with 3D block size -------------------------------
+    {
+        const std::string kernelName = "BwdTransHexKernel_QP_1D_3D_BLOCKS";
+
+        auto kernel = kernel_helper(kernelName);
+
 //        dim3 gridDim(numBlocks);
 //        dim3 blockDim(std::min(nq0,threadsPerBlockX), std::min(nq1,threadsPerBlockY), std::min(nq2, threadsPerBlockZ));
-        global = cl::NDRange(globalSize);
-        local = cl::NDRange(std::min(nq0,threadsPerBlockX), std::min(nq1,threadsPerBlockY), std::min(nq2, threadsPerBlockZ));
-    } else if (kernelName == "BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap") {
+        cl::NDRange local = cl::NDRange(std::min(nq0,threadsPerBlockX), std::min(nq1,threadsPerBlockY), std::min(nq2, threadsPerBlockZ));
+        cl::NDRange global = cl::NDRange(globalSize);
+
+        double time = std::numeric_limits<double>::max();
+        Timer clTimer;
+        for (int t = 0; t < ntests; ++t)
+        {
+            clTimer.start();
+            
+            queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,local);
+            queue.finish();
+
+            clTimer.stop();
+            time = std::min(time, clTimer.elapsedSeconds());
+        }
+
+        std::printf("%s\t%s\t%u\t%f\n", static_size ? "static" : "dynamic", 
+            kernelName.c_str(), nelmt, dof_rate(time));
+
+        show_norm_helper();
+    }
+
+    // ------------------------- Kernel with 3D block size + SimpleMap -------------------------------
+    {
+        const std::string kernelName = "BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap";
+
+        auto kernel = kernel_helper(kernelName);
+
 //        dim3 gridDim(numBlocks);
 //        dim3 blockDim(nq0, nq1, nq2);
-        global = cl::NDRange(numBlocks*nq0,nq1,nq2);
-        local = cl::NDRange(nq0, nq1, nq2);      
-    }
+        cl::NDRange local = cl::NDRange(nq0, nq1, nq2);
+        cl::NDRange global = cl::NDRange(numBlocks*nq0,nq1,nq2);
 
-    Timer clTimer;
-    for (int t = 0; t < ntests; ++t)
-    {
-        clTimer.start();
-        
-        queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,local);
-        queue.finish();
+        double time = std::numeric_limits<double>::max();
+        Timer clTimer;
+        for (int t = 0; t < ntests; ++t)
+        {
+            clTimer.start();
+            
+            queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,local);
+            queue.finish();
 
-        clTimer.stop();
-        time_cl = std::min(time_cl, clTimer.elapsedSeconds());
-    }
+            clTimer.stop();
+            time = std::min(time, clTimer.elapsedSeconds());
+        }
 
-    // Performance in GDoF/s
-    auto dof_rate = [=](double elapsed) { return 1.0e-9 * nelmt * nm0 * nm1 * nm2 / elapsed; };
+        std::printf("%s\t%s\t%u\t%f\n", static_size ? "static" : "dynamic", 
+            kernelName.c_str(), nelmt, dof_rate(time));
 
-
-    // C++23
-    // std::println("OpenCL -> nelmt = {} GDoF/s = {}", nelmt, dof_rate(time_cl));
-
-    // kernel.getInfo<CL_KERNEL_FUNCTION_NAME>()
-
-
-    std::printf("%s\t%s\t%u\t%f\n", 
-        static_size ? "static" : "dynamic", 
-        kernelName.c_str(), nelmt, dof_rate(time_cl));
-
-    //std::cout << kernelName << '\n';
-    //std::cout << "OpenCL "
-    //          << "nelmt = " << nelmt 
-    //          << " GDoF/s = " << dof_rate(time_cl) 
-    //          << '\n';
-
-    // 2. Copy data from device buffer d_out to host
-    queue.enqueueReadBuffer(d_out, CL_TRUE, 0, sizeof(T) * out.size(), out.data());
-
-
-
-    // Evaluate the norm in double precision
-    double normSqr = 0;
-    for (auto h : out) {
-        normSqr += ((double) h) * ((double) h);
-    }
-
-    //const T normSqr = norm2(host_out);
-    //std::println("OpenCL kernel norm = {}", std::sqrt(normSqr));
-
-    if (show_norm) {
-        std::cout << "# OpenCL kernel norm = " << std::sqrt(normSqr) << '\n';
+        show_norm_helper();
     }
 
 }
 
 
 int main(int argc, char **argv){
+
+    // Default precision
+    using real_type = float;
 
     int nq0                = (argc > 1) ? atoi(argv[1]) : 4;
     int nq1                = (argc > 2) ? atoi(argv[2]) : 4;
@@ -340,23 +336,74 @@ int main(int argc, char **argv){
         // 6. Create command queue (enable profiling if needed)
         cl::CommandQueue queue(context, device);
 
-        // Dynamic sizes
-        run_test<float,false>(context, queue, "BwdTransHexKernel_QP_1D",           
-            nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
-        run_test<float,false>(context, queue, "BwdTransHexKernel_QP_1D_3D_BLOCKS",
-            nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
-        run_test<float,false>(context, queue, "BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap",
-            nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
+
+        // ----- Kernels with dynamic size -----
+        {
+            constexpr bool static_size = false;
+
+            int ierr;
+            auto source = loadKernelSource(static_size,ierr);
+            if (ierr) return 1;
+
+            std::string buildOptions{"-I ./src "}; // the space is important here
+
+            if constexpr (std::is_same_v<real_type, double>) {
+                buildOptions += "-DDOUBLE_PRECISION";
+            }
+
+            cl::Program program(context,source);
+            try {
+                program.build({device},buildOptions);
+            } catch (const cl::Error&) {
+                // If build fails, print build log
+                std::cerr << "Build failed:\n" 
+                          << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << "\n";
+                return 1;
+            }
+
+            // Dynamic sizes
+            run_test<real_type,false>(context, queue, program,           
+                nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
+
+        }
 
 
-        // Static sizes
-        run_test<float,true>(context, queue, "BwdTransHexKernel_QP_1D",           
-            nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
-        run_test<float,true>(context, queue, "BwdTransHexKernel_QP_1D_3D_BLOCKS",
-            nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
-        run_test<float,true>(context, queue, "BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap",
-            nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
+        // ----- Kernels with static quadrature size -----
+        {
+            constexpr bool static_size = true;
 
+            int ierr;
+            auto source = loadKernelSource(static_size,ierr);
+            if (ierr) return 1;
+
+            std::string buildOptions{"-I ./src "}; // the space is important here
+
+            if constexpr (std::is_same_v<real_type, double>) {
+                buildOptions += "-DDOUBLE_PRECISION";
+            }
+
+            std::unordered_map<std::string, size_t> defines = {
+               {"NQ0", (size_t) nq0},
+               {"NQ1", (size_t) nq1},
+               {"NQ2", (size_t) nq2}
+            };
+            
+            buildOptions += buildOpenCLDefines(defines);
+
+            cl::Program program(context,source);
+            try {
+                program.build({device},buildOptions);
+            } catch (const cl::Error&) {
+                // If build fails, print build log
+                std::cerr << "Build failed:\n" 
+                          << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << "\n";
+                return 1;
+            }
+
+            run_test<real_type,true>(context, queue, program,           
+                nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
+
+        }
 
     } catch (cl::Error& e) {
         std::cerr << "OpenCL error: " << e.what() << " (" << e.err() << ")\n";
