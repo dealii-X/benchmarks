@@ -222,7 +222,7 @@ BK1_KERNEL_STATIC(BwdTransHexKernel_QP_1D_3D_BLOCKS)
     }
 
     
-    idx e = get_group_id(0);
+    index_type e = get_group_id(0);
 
     while(e < nelmt)
     {
