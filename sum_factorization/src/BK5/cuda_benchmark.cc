@@ -26,7 +26,7 @@
 
 template<typename T>
 void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
-    const unsigned int numThreads, const unsigned int threadsPerBlockX, 
+    const unsigned int numThreads3D, const unsigned int threadsPerBlockX, 
     const unsigned int threadsPerBlockY, const unsigned int threadsPerBlockZ,
     const unsigned int nelmt, const unsigned int ntests)
 {
@@ -92,7 +92,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 3D block size + Simple Map -------------------------------
     if(nq0 * nq1 * nq2 < prop.maxThreadsPerBlock)
     {   
-        const unsigned int numBlocks = numThreads / (nq0 * nq1 * nq2);
+        const unsigned int numBlocks = numThreads3D / (nq0 * nq1 * nq2);
         unsigned int ssize = nq0 * nq0 + nq1 * nq1 + nq2 * nq2 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         double time = std::numeric_limits<double>::max();
@@ -114,7 +114,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 3D block size -------------------------------
     {   
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
-        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        const unsigned int numBlocks = numThreads3D / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
         unsigned int ssize = nq0 * nq0 + nq1 * nq1 + nq2 * nq2 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         double time = std::numeric_limits<double>::max();
@@ -136,7 +136,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 2D block size (ij)-------------------------------
     {   
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY;
-        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1, threadsPerBlock));
+        const unsigned int numBlocks = (numThreads3D / nq2) / (std::min(nq0 * nq1, threadsPerBlock));
         unsigned int ssize = nq2 * nq2 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
     
         double time = std::numeric_limits<double>::max();
@@ -157,8 +157,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
     // ------------------------- Kernel with 2D block size (jk)-------------------------------
     {   
-        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY;
-        const unsigned int numBlocks = numThreads / (std::min(nq1 * nq2, threadsPerBlock));
+        unsigned int threadsPerBlock = threadsPerBlockY * threadsPerBlockZ;
+        const unsigned int numBlocks = (numThreads3D / nq0) / (std::min(nq1 * nq2, threadsPerBlock));
         unsigned int ssize = nq0 * nq0 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
     
         double time = std::numeric_limits<double>::max();
@@ -180,7 +180,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 2D block size (jk) Simple Map-------------------------------
     if(nq1 * nq2 < prop.maxThreadsPerBlock)
     {   
-        const unsigned int numBlocks = numThreads / (nq1 * nq2);
+        const unsigned int numBlocks = (numThreads3D / nq0) / (nq1 * nq2);
         unsigned int ssize = nq0 * nq0 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
     
         double time = std::numeric_limits<double>::max();
@@ -208,7 +208,7 @@ int main(int argc, char **argv){
     unsigned int nq1                = (argc > 2) ? atoi(argv[2]) : 4u;
     unsigned int nq2                = (argc > 3) ? atoi(argv[3]) : 4u;
     unsigned int nelmt              = (argc > 4) ? atoi(argv[4]) : 2 << 18;
-    unsigned int numThreads         = (argc > 5) ? atoi(argv[5]) : nelmt * nq0 * nq1 * nq2 / 2;
+    unsigned int numThreads3D       = (argc > 5) ? atoi(argv[5]) : nelmt * nq0 * nq1 * nq2 / 2;
     unsigned int threadsPerBlockX   = (argc > 6) ? atoi(argv[6]) : nq0;
     unsigned int threadsPerBlockY   = (argc > 7) ? atoi(argv[7]) : nq1;
     unsigned int threadsPerBlockZ   = (argc > 8) ? atoi(argv[8]) : nq2;
@@ -216,7 +216,7 @@ int main(int argc, char **argv){
 
 
     std::cout.precision(8);
-    run_test<float>(nq0, nq1, nq2, numThreads,
+    run_test<float>(nq0, nq1, nq2, numThreads3D,
                     threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
     
     return 0;

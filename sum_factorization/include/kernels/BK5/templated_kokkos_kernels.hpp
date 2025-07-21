@@ -10,9 +10,9 @@ template <typename T, const unsigned int nq0, const unsigned int nq1, const unsi
 std::vector<T> KokkosKernel_3D_Block_SimpleMap(
     const T *__restrict__ dbasis0, const T *__restrict__ dbasis1, const T *__restrict__ dbasis2,
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
-    const unsigned int numThreads, const unsigned int nelmt, const unsigned int ntests)
+    const unsigned int numThreads3D, const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int numBlocks = numThreads / (nq0 * nq1 * nq2);
+        const unsigned int numBlocks = numThreads3D / (nq0 * nq1 * nq2);
 
         T result_kokkos = 0.0;
         std::vector<T> results(2);
@@ -171,9 +171,9 @@ template <typename T, const unsigned int nq0, const unsigned int nq1, const unsi
 std::vector<T> KokkosKernel_2D_Block_jk_SimpleMap(
     const T *__restrict__ dbasis0, const T *__restrict__ dbasis1, const T *__restrict__ dbasis2,
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
-    const unsigned int numThreads, const unsigned int nelmt, const unsigned int ntests)
+    const unsigned int numThreads3D, const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int numBlocks = numThreads / (nq1 * nq2);
+        const unsigned int numBlocks = (numThreads3D / nq0) / (nq1 * nq2);
 
         T result_kokkos = 0.0;
         std::vector<T> results(2);

@@ -173,7 +173,7 @@ std::vector<T> KokkosKernel_2D_Block_jk_SimpleMap(const unsigned int nq0, const 
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
     const unsigned int numThreads, const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int numBlocks = numThreads / (nq1 * nq2);
+        const unsigned int numBlocks = (numThreads / nq0) / (nq1 * nq2);
 
         T result_kokkos = 0.0;
         std::vector<T> results(2);

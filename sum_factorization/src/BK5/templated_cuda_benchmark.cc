@@ -111,7 +111,7 @@ void run_test(
     // ------------------------- Kernel with 2D block size (jk) Simple Map-------------------------------
     if(nq1 * nq2 < maxThreadsPerBlock)
     {   
-        const unsigned int numBlocks = numThreads / (nq1 * nq2);
+        const unsigned int numBlocks = (numThreads / nq0) / (nq1 * nq2);
         unsigned int ssize = nq0 * nq0 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
     
         double time = std::numeric_limits<double>::max();

@@ -3,7 +3,7 @@
 #include <timer.hpp>
 
 template<typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
-void run_test(const unsigned int numThreads, const unsigned int nelmt, const unsigned int ntests)
+void run_test(const unsigned int numThreads3D, const unsigned int nelmt, const unsigned int ntests)
 {
     //Allocation of arrays
     T* dbasis0 = new T[nq0 * nq0];
@@ -43,13 +43,13 @@ void run_test(const unsigned int numThreads, const unsigned int nelmt, const uns
 
     // ------------------------- 3D Block Simple Map Kernel ---------------------------------------------------
     {
-        std::vector<T> results = Parallel::KokkosKernel_3D_Block_SimpleMap<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads, nelmt, ntests);
+        std::vector<T> results = Parallel::KokkosKernel_3D_Block_SimpleMap<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads3D, nelmt, ntests);
         std::cout << "3D Block Simple Map -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
     }
 
     // ------------------------- 2D Block(jk) Simple Map Kernel ---------------------------------------------------
     {
-        std::vector<T> results = Parallel::KokkosKernel_2D_Block_jk_SimpleMap<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads, nelmt, ntests);
+        std::vector<T> results = Parallel::KokkosKernel_2D_Block_jk_SimpleMap<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads3D, nelmt, ntests);
         std::cout << "2D Block(jk) Simple Map -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
     }
 
@@ -64,13 +64,13 @@ int main(int argc, char **argv){
     const unsigned int nq2 =  4;
 
     unsigned int nelmt              = (argc > 1) ? atoi(argv[1]) : 2 << 18;
-    unsigned int numThreads         = (argc > 2) ? atoi(argv[2]) : nelmt * nq0 * nq1 * nq2 / 2;
+    unsigned int numThreads3D       = (argc > 2) ? atoi(argv[2]) : nelmt * nq0 * nq1 * nq2 / 2;
     unsigned int ntests             = (argc > 3) ? atoi(argv[3]) : 50u;
 
     Kokkos::initialize(argc, argv);
 
     std::cout.precision(8);
-    run_test<float,nq0, nq1, nq2>(numThreads, nelmt, ntests);
+    run_test<float,nq0, nq1, nq2>(numThreads3D, nelmt, ntests);
 
     Kokkos::finalize();
     return 0;

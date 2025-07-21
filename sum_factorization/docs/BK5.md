@@ -13,7 +13,7 @@ This benchmark compares different CUDA kernels implementing the sum factorizatio
 **Input parameters:**
 - **nq0**, **nq1**, **nq2**: Quadrature points in each dimension (element dof per direction + 1)
 - **nelmt**: Number of elements
-- **numThreads**: Number of total threads
+- **numThreads3D**: Number of total threads for 3D block kernels
 - **threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ**: Number of threads per block in each dimension
 - **ntests**: Number of benchmark repetitions (minimum across all tests, used as a reference for comparison)
 
@@ -26,7 +26,7 @@ This benchmark also compares CUDA kernels but number of quadrature points (nq) a
 
 **Input parameters:**
 - **nelmt**: Number of elements
-- **numThreads**: Number of total threads
+- **numThreads3D**: Number of total threads for 3D block kernels
 - **threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ**: Number of threads per block in each dimension
 - **ntests**: Number of benchmark repetitions (minimum across all tests, used as a reference for comparison)
 
@@ -40,7 +40,7 @@ This benchmark also compares CUDA kernels but number of quadrature points (nq) a
 **Input parameters:**
 - **nq0**, **nq1**, **nq2**: Quadrature points in each dimension (element dof per direction + 1)
 - **nelmt**: Number of elements
-- **numThreads**: Number of total threads
+- **numThreads3D**: Number of total threads for 3D block kernels
 - **threadsPerBlock**: Number of threads per block
 - **ntests**: Number of benchmark repetitions (minimum across all tests, used as a reference for comparison)
 
@@ -53,7 +53,7 @@ This benchmark also compares Kokkos kernels but number of quadrature points (nq)
 
 **Input parameters:**
 - **nelmt**: Number of elements
-- **numThreads**: Number of total threads
+- **numThreads3D**: Number of total threads for 3D block kernels
 - **ntests**: Number of benchmark repetitions (minimum across all tests, used as a reference for comparison)
 
 
