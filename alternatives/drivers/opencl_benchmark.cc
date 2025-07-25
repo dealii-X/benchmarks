@@ -177,11 +177,14 @@ void run_test(
     };   
 
     auto print_stats_helper = [&](const cl::Kernel& kernel, double time) {
-        std::printf("%s\t%s\t%u\t%f\n",
-            static_size ? "static" : "dynamic",
+        std::printf("%s\t%u\t%f\n",
             kernel.getInfo<CL_KERNEL_FUNCTION_NAME>().c_str(),
             nelmt,
             dof_rate(time));
+    };
+
+    const auto makeKernelName = [](const std::string& base) {
+        return base + (static_size ? "_static" : "");
     };
 
     const size_t globalSize = numBlocks * threadsPerBlock;
@@ -189,7 +192,7 @@ void run_test(
 
     // ------------------------- Kernel with 1D block size -------------------------------
     {
-        const std::string kernelName = "BwdTransHexKernel_QP_1D";
+        const auto kernelName = makeKernelName("BwdTransHexKernel_QP_1D"); 
 
         auto kernel = kernel_helper(kernelName);
 
@@ -217,7 +220,7 @@ void run_test(
 
     // ------------------------- Kernel with 3D block size -------------------------------
     {
-        const std::string kernelName = "BwdTransHexKernel_QP_1D_3D_BLOCKS";
+        const auto kernelName = makeKernelName("BwdTransHexKernel_QP_1D_3D_BLOCKS");
 
         auto kernel = kernel_helper(kernelName);
 
@@ -245,7 +248,7 @@ void run_test(
 
     // ------------------------- Kernel with 3D block size + SimpleMap -------------------------------
     {
-        const std::string kernelName = "BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap";
+        const auto kernelName = makeKernelName("BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap");
 
         auto kernel = kernel_helper(kernelName);
 

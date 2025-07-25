@@ -2,7 +2,7 @@
 
 
 #define BK1_KERNEL_STATIC(name) \
-__kernel void name( \
+__kernel void name##_static( \
     const index_type nelmt, \
     __global const real *restrict d_basis0, \
     __global const real *restrict d_basis1, \
