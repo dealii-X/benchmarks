@@ -10,7 +10,6 @@
 #include <iostream>
 #include <cstdio>
 #include <fstream>
-#include <execution>
 #include <vector>
 #include <cmath>
 #include <string>
@@ -250,10 +249,11 @@ void run_test(
 
         auto kernel = kernel_helper(kernelName);
 
-//        dim3 gridDim(numBlocks);
-//        dim3 blockDim(nq0, nq1, nq2);
-        cl::NDRange local = cl::NDRange(nq0, nq1, nq2);
-        cl::NDRange global = cl::NDRange(numBlocks*nq0,nq1,nq2);
+//        dim3 gridDim(numBlocks);      // number of blocks in the grid
+//        dim3 blockDim(nq0, nq1, nq2); // dimensions of block
+
+        cl::NDRange local = cl::NDRange(nq0, nq1, nq2); // local thread size
+        cl::NDRange global = cl::NDRange(numBlocks*nq0,nq1,nq2); // global thread size
 
         double time = std::numeric_limits<double>::max();
         Timer clTimer;
@@ -285,15 +285,15 @@ int main(int argc, char **argv){
         exit(0);
     }
 
-    int nq0                = (argc > 1) ? atoi(argv[1]) : 4;
-    int nq1                = (argc > 2) ? atoi(argv[2]) : 4;
-    int nq2                = (argc > 3) ? atoi(argv[3]) : 4;
-    int nelmt              = (argc > 4) ? atoi(argv[4]) : 2 << 18;
-    int numThreads         = (argc > 5) ? atoi(argv[5]) : nelmt * nq0 * nq1 * nq2 / 2;
-    int threadsPerBlockX   = (argc > 6) ? atoi(argv[6]) : nq0;
-    int threadsPerBlockY   = (argc > 7) ? atoi(argv[7]) : nq1;
-    int threadsPerBlockZ   = (argc > 8) ? atoi(argv[8]) : nq2;
-    int ntests             = (argc > 9) ? atoi(argv[9]) : 50;
+    size_t nq0                = (argc > 1) ? atoi(argv[1]) : 4;
+    size_t nq1                = (argc > 2) ? atoi(argv[2]) : 4;
+    size_t nq2                = (argc > 3) ? atoi(argv[3]) : 4;
+    size_t nelmt              = (argc > 4) ? atoi(argv[4]) : 2 << 18;
+    size_t numThreads         = (argc > 5) ? atoi(argv[5]) : nelmt * nq0 * nq1 * nq2 / 2;
+    size_t threadsPerBlockX   = (argc > 6) ? atoi(argv[6]) : nq0;
+    size_t threadsPerBlockY   = (argc > 7) ? atoi(argv[7]) : nq1;
+    size_t threadsPerBlockZ   = (argc > 8) ? atoi(argv[8]) : nq2;
+    size_t ntests             = (argc > 9) ? atoi(argv[9]) : 50;
 
     const char *env = getenv("SHOW_NORM");
     show_norm = (env && strcmp(env, "1") == 0) ? 1 : 0;

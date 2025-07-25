@@ -1,9 +1,12 @@
 #!/bin/bash
 
 exec_name="./opencl_benchmark"
-nq0=4
-nq1=4
-nq2=4
+
+nq=${1:-4}
+
+nq0=$nq
+nq1=$nq
+nq2=$nq
 
 nm0=$((nq0 - 1))
 nm1=$((nq1 - 1))
