@@ -464,11 +464,16 @@ void run_test(
 
 int main(int argc, char **argv){
 
-    size_t nelmt           = (argc > 4) ? atoi(argv[4]) : 2 << 18;
-    int ntests             = (argc > 9) ? atoi(argv[9]) : 3;
+
+    size_t nelmt           = (argc > 1) ? atoi(argv[1]) : 2 << 18;
+    int ntests             = (argc > 2) ? atoi(argv[2]) : 3;
 
     const char *env = getenv("SHOW_NORM");
     show_norm = (env && strcmp(env, "1") == 0) ? 1 : 0;
+
+// Empty region to initialize runtime
+#pragma omp target
+{}
 
     run_test<float,4,4,4>(nelmt,ntests);
 
