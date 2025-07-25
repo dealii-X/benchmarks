@@ -130,7 +130,8 @@ void run_test(
     // Helper function to select a particular kernel by name
     auto kernel_helper = [&](std::string kernelName) -> cl::Kernel {
 
-        cl::Kernel kernel(program,kernelName);
+        cl::Kernel kernel(program,
+            kernelName + (static_size ? "_static" : ""));
 
     // In the static kernel, the small integer sizes have
     // been passed directly to the OpenCL JIT compiler
@@ -183,18 +184,13 @@ void run_test(
             dof_rate(time));
     };
 
-    const auto makeKernelName = [](const std::string& base) {
-        return base + (static_size ? "_static" : "");
-    };
 
     const size_t globalSize = numBlocks * threadsPerBlock;
 
 
     // ------------------------- Kernel with 1D block size -------------------------------
     {
-        const auto kernelName = makeKernelName("BwdTransHexKernel_QP_1D"); 
-
-        auto kernel = kernel_helper(kernelName);
+        auto kernel = kernel_helper("BwdTransHexKernel_QP_1D");
 
 //    dim3 gridDim(numBlocks)
 //    dim3 blockDim(std::min(nq0 * nq1 * nq2, threadsPerBlock))
@@ -220,9 +216,7 @@ void run_test(
 
     // ------------------------- Kernel with 3D block size -------------------------------
     {
-        const auto kernelName = makeKernelName("BwdTransHexKernel_QP_1D_3D_BLOCKS");
-
-        auto kernel = kernel_helper(kernelName);
+        auto kernel = kernel_helper("BwdTransHexKernel_QP_1D_3D_BLOCKS");
 
 //        dim3 gridDim(numBlocks);
 //        dim3 blockDim(std::min(nq0,threadsPerBlockX), std::min(nq1,threadsPerBlockY), std::min(nq2, threadsPerBlockZ));
@@ -248,9 +242,7 @@ void run_test(
 
     // ------------------------- Kernel with 3D block size + SimpleMap -------------------------------
     {
-        const auto kernelName = makeKernelName("BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap");
-
-        auto kernel = kernel_helper(kernelName);
+        auto kernel = kernel_helper("BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap");
 
 //        dim3 gridDim(numBlocks);      // number of blocks in the grid
 //        dim3 blockDim(nq0, nq1, nq2); // dimensions of block
