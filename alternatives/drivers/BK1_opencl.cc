@@ -32,7 +32,7 @@ std::string buildOpenCLDefines(const std::unordered_map<std::string, T>& defines
 
 std::string loadKernelSource(bool static_size, int& status, bool verbose = false) {
 
-    std::string filename = static_size ? "opencl_kernels_static.cl" : "opencl_kernels.cl";
+    std::string filename = static_size ? "BK1_static.cl" : "BK1.cl";
     std::ifstream kernelFile;
     std::string baseDir;
 
