@@ -21,7 +21,7 @@ For OpenCL-based benchmarks (including the TinyTC variants):
 For TinyTC-based benchmarks:
 - [Tiny Tensor Compiler](https://github.com/intel/tiny-tensor-compiler)
 
-For SYCL benchmarks:
+For SYCL benchmarks, select one:
 - [Intel oneAPI DPC++/C++ Compiler](https://www.intel.com/content/www/us/en/developer/tools/oneapi/dpc-compiler.html)
 - [AdaptiveCpp](https://github.com/AdaptiveCpp/AdaptiveCpp)
 
@@ -66,6 +66,9 @@ Some settings are configurable for ease of use:
 
 - Translation from CUDA using [Intel DPC++ Compatibility Tool](https://www.intel.com/content/www/us/en/developer/tools/oneapi/dpc-compatibility-tool.html)
 - Translation using [Coccinelle](https://coccinelle.gitlabpages.inria.fr/website/)
+- JIT-Compilation:
+  - [Jitify2 (Nvidia)](https://github.com/NVIDIA/jitify/tree/jitify2)
+  - [Jitify (ROCm)](https://github.com/ROCm/jitify)
 
 ## Resources
 
