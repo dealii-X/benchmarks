@@ -1,5 +1,7 @@
 #include "kernels_common.h"
 
+// We append the "_static" postfix to all names to distinguish
+// them when profiling
 
 #define BK1_KERNEL_STATIC(name) \
 __kernel void name##_static( \

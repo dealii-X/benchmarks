@@ -163,11 +163,12 @@ void run_test(
     };
 
     // Helper function to calculate performance in GDoF/s
-    double dof_rate = [=](double elapsed) { 
+    auto dof_rate = [=](double elapsed) { 
         return 1.0e-9 * nelmt * nm0 * nm1 * nm2 / elapsed; 
     };
 
     auto print_stats_helper = [&](const cl::Kernel& kernel, double time) {
+        
         std::printf("%s\t%u\t%f\n",
             kernel.getInfo<CL_KERNEL_FUNCTION_NAME>().c_str(),
             nelmt,
@@ -211,7 +212,7 @@ void run_test(
         cl::NDRange global = cl::NDRange(globalSize);
         cl::NDRange local = cl::NDRange(std::min(nq0 * nq1 * nq2, threadsPerBlock));
 
-        double time = run_kernel(kernel,global,local);
+        double time = run_kernel(kernel, global, local);
         print_stats_helper(kernel, time);
     }
 
@@ -237,7 +238,7 @@ void run_test(
         cl::NDRange global = cl::NDRange(numBlocks*nq0,nq1,nq2); // global thread size
         cl::NDRange local = cl::NDRange(nq0, nq1, nq2); // local thread size
 
-        double time = run_kernel(kernel,global,local);
+        double time = run_kernel(kernel, global, local);
         print_stats_helper(kernel, time);
     }
 

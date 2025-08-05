@@ -8,6 +8,8 @@ option(BUILD_OPENCL "Build OpenCL benchmarks")
 option(BUILD_SYCL   "Build SYCL benchmarks")
 option(BUILD_TINYTC "Build TinyTC benchmarks")
 
+set (CMAKE_CXX_STANDARD 17)
+
 include_directories(${CMAKE_SOURCE_DIR}/../sum_factorization/include)
 
 add_executable(BK1_openmp drivers/BK1_openmp.cc)
@@ -28,5 +30,8 @@ if(BUILD_OPENCL)
 
 	add_executable(BK1_opencl drivers/BK1_opencl.cc)
 	target_link_libraries(BK1_opencl PRIVATE OpenCL::OpenCL)
+
+	add_executable(BK5_opencl drivers/BK5_opencl.cc)
+	target_link_libraries(BK5_opencl PRIVATE OpenCL::OpenCL)
 
 endif()

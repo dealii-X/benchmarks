@@ -1,8 +1,10 @@
 #include "kernels_common.h"
 
+// We append the "_static" postfix to all names to distinguish
+// them when profiling
 
 #define BK5_KERNEL_STATIC(name) \
-__kernel void name( \
+__kernel void name##_static( \
     const index_type nelmt, \
     __global const real *restrict d_dbasis0, \
     __global const real *restrict d_dbasis1, \
