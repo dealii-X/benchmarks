@@ -69,4 +69,5 @@ Some settings are configurable for ease of use:
 - JIT-Compilation:
   - [Jitify2 (Nvidia)](https://github.com/NVIDIA/jitify/tree/jitify2)
   - [Jitify (ROCm)](https://github.com/ROCm/jitify)
+  - [SYCL Specialization Constants](https://github.khronos.org/SYCL_Reference/iface/specialization-constants.html)
 
