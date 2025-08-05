@@ -17,7 +17,7 @@
 #include <numeric>
 
 #include "timer.hpp"
-
+#include "common.hpp"
 
 // Take a list of key value pairs to be used as compile-time options
 template <typename T>
@@ -163,27 +163,41 @@ void run_test(
     };
 
     // Helper function to calculate performance in GDoF/s
-    auto dof_rate = [=](double elapsed) { 
+    double dof_rate = [=](double elapsed) { 
         return 1.0e-9 * nelmt * nm0 * nm1 * nm2 / elapsed; 
     };
-
-    auto show_norm_helper = [&]() -> void {
-        if (show_norm) {
-            // 2. Copy data from device buffer d_out to host
-            queue.enqueueReadBuffer(d_out, CL_TRUE, 0, sizeof(T) * out.size(), out.data());
-            // Evaluate the norm in double precision
-            T normSqr = inner_product(out.begin(),out.end(),out.begin(),(T)0);
-            std::cout << "# OpenCL kernel norm = " << std::sqrt(normSqr) << '\n';
-        }
-    };   
 
     auto print_stats_helper = [&](const cl::Kernel& kernel, double time) {
         std::printf("%s\t%u\t%f\n",
             kernel.getInfo<CL_KERNEL_FUNCTION_NAME>().c_str(),
             nelmt,
             dof_rate(time));
+
+        if (show_norm) {
+            // 2. Copy data from device buffer d_out to host
+            queue.enqueueReadBuffer(d_out, CL_TRUE, 0, sizeof(T) * out.size(), out.data());
+            // Evaluate the norm in double precision
+            double normSqr = squared_norm<T,double>(out.data(),out.size());
+            std::cout << "# OpenCL kernel norm = " << std::sqrt(normSqr) << '\n';
+        }
     };
 
+    auto run_kernel = [&](const cl::Kernel& kernel, const cl::NDRange& global, const cl::NDRange& local) {
+
+        double time = std::numeric_limits<double>::max();
+        Timer clTimer;
+        for (int t = 0; t < ntests; ++t)
+        {
+            clTimer.start();
+            
+            queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,local);
+            queue.finish();
+
+            clTimer.stop();
+            time = std::min(time, clTimer.elapsedSeconds());
+        }
+        return time;
+    };
 
     const size_t globalSize = numBlocks * threadsPerBlock;
 
@@ -192,79 +206,39 @@ void run_test(
     {
         auto kernel = kernel_helper("BwdTransHexKernel_QP_1D");
 
-//    dim3 gridDim(numBlocks)
-//    dim3 blockDim(std::min(nq0 * nq1 * nq2, threadsPerBlock))
-        cl::NDRange local = cl::NDRange(std::min(nq0 * nq1 * nq2, threadsPerBlock));
+//      dim3 gridDim(numBlocks)
+//      dim3 blockDim(std::min(nq0 * nq1 * nq2, threadsPerBlock))
         cl::NDRange global = cl::NDRange(globalSize);
+        cl::NDRange local = cl::NDRange(std::min(nq0 * nq1 * nq2, threadsPerBlock));
 
-        double time = std::numeric_limits<double>::max();
-        Timer clTimer;
-        for (int t = 0; t < ntests; ++t)
-        {
-            clTimer.start();
-            
-            queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,local);
-            queue.finish();
-
-            clTimer.stop();
-            time = std::min(time, clTimer.elapsedSeconds());
-        }
-
+        double time = run_kernel(kernel,global,local);
         print_stats_helper(kernel, time);
-        show_norm_helper();
     }
 
     // ------------------------- Kernel with 3D block size -------------------------------
     {
         auto kernel = kernel_helper("BwdTransHexKernel_QP_1D_3D_BLOCKS");
 
-//        dim3 gridDim(numBlocks);
-//        dim3 blockDim(std::min(nq0,threadsPerBlockX), std::min(nq1,threadsPerBlockY), std::min(nq2, threadsPerBlockZ));
-        cl::NDRange local = cl::NDRange(std::min(nq0,threadsPerBlockX), std::min(nq1,threadsPerBlockY), std::min(nq2, threadsPerBlockZ));
+//      dim3 gridDim(numBlocks);
+//      dim3 blockDim(std::min(nq0,threadsPerBlockX), std::min(nq1,threadsPerBlockY), std::min(nq2, threadsPerBlockZ));
         cl::NDRange global = cl::NDRange(globalSize);
+        cl::NDRange local = cl::NDRange(std::min(nq0,threadsPerBlockX), std::min(nq1,threadsPerBlockY), std::min(nq2, threadsPerBlockZ));
 
-        double time = std::numeric_limits<double>::max();
-        Timer clTimer;
-        for (int t = 0; t < ntests; ++t)
-        {
-            clTimer.start();
-            
-            queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,local);
-            queue.finish();
-
-            clTimer.stop();
-            time = std::min(time, clTimer.elapsedSeconds());
-        }
-
+        double time = run_kernel(kernel, global, local);
         print_stats_helper(kernel, time);
-        show_norm_helper();
     }
 
     // ------------------------- Kernel with 3D block size + SimpleMap -------------------------------
     {
         auto kernel = kernel_helper("BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap");
 
-//        dim3 gridDim(numBlocks);      // number of blocks in the grid
-//        dim3 blockDim(nq0, nq1, nq2); // dimensions of block
-
-        cl::NDRange local = cl::NDRange(nq0, nq1, nq2); // local thread size
+//      dim3 gridDim(numBlocks);      // number of blocks in the grid
+//      dim3 blockDim(nq0, nq1, nq2); // dimensions of block
         cl::NDRange global = cl::NDRange(numBlocks*nq0,nq1,nq2); // global thread size
+        cl::NDRange local = cl::NDRange(nq0, nq1, nq2); // local thread size
 
-        double time = std::numeric_limits<double>::max();
-        Timer clTimer;
-        for (int t = 0; t < ntests; ++t)
-        {
-            clTimer.start();
-            
-            queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,local);
-            queue.finish();
-
-            clTimer.stop();
-            time = std::min(time, clTimer.elapsedSeconds());
-        }
-
+        double time = run_kernel(kernel,global,local);
         print_stats_helper(kernel, time);
-        show_norm_helper();
     }
 
 }

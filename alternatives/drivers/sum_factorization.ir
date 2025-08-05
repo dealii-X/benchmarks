@@ -1,0 +1,34 @@
+
+
+func @sum_factorization(%basis0: memref<f32x4x3>,
+						%basis1: memref<f32x4x3>,
+						%basis2: memref<f32x4x3>,
+						%JxW:    memref<f32x4x4x4x?>,
+						%in:     memref<f32x3x3x3x?>,
+						%out:    memref<f32x3x3x3x?>) {
+
+    %gid = group_id                                ; Get our index e
+
+    %B0 = load %basis0 : memref<f32x3x4>
+    %B1 = load %basis1 : memref<f32x3x4>
+    %B2 = load %basis2 : memref<f32x3x4>
+
+    %wsp0 = alloca -> memref<f32x3x3x3>; // Reserve temporary memory
+    %wsp1 = alloca -> memref<f32x3x3x4>; // Reserve temporary memory
+    %wsp2 = alloca -> memref<f32x3x4x4>; // Reserve temporary memory
+    %wsp3 = alloca -> memref<f32x4x4x4>; // Reserve temporary memory
+
+    %J_e = subview %JxW[:,:,:,%gid] : memref<f32x4x4x4>
+    %in_e = subview %in[:,:,:,%gid] : memref<f32x3x3x3> 
+    %out_e = subview %out[:,:,:,%gid] : memref<f32x3x3x3>
+
+	for %j = 0, 3 {
+		%tmp = subview %in_e[:,j,:] : memref<f32x3x3>
+		%res = subview %wsp1[:,j,:] : memref<f32x3x4>
+
+		gemm.n.n 1.0, %tmp, %B0, 0.0, %wsp1 ;
+			f32, memref<f32x3x3>, memref<f32x3x4>, f32, memref<f32x3x4> 
+	}
+
+
+}

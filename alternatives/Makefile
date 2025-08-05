@@ -1,7 +1,7 @@
 
 
 CXX=g++-15
-CXXFLAGS=-std=c++17 -Wall -O3 -mcpu=native -fopenmp -funroll-loops
+CXXFLAGS=-std=c++17 -Wall -O3 -mcpu=native -funroll-loops
 CXXFLAGS+=-I./src/ -I../sum_factorization/include
 
 OPENCL_HPP_ROOT = $(HOME)/OpenCL-CLHPP
@@ -22,6 +22,9 @@ all: opencl_benchmark bk5_opencl
 opencl_benchmark: drivers/opencl_benchmark.cc
 	$(CXX) $(CXXFLAGS) $(OPENCL_INC) $(OPENCL_LDFLAGS) -o $@ $<
 
+tinytc_benchmark: drivers/tinytc_benchmark.cc
+	$(CXX) $(CXXFLAGS) $(OPENCL_INC) $(OPENCL_LDFLAGS) -o $@ $<
+
 bk5_opencl: drivers/bk5_opencl.cc
 	$(CXX) $(CXXFLAGS) $(OPENCL_INC) $(OPENCL_LDFLAGS) -o $@ $<
 
@@ -31,16 +34,26 @@ sycl_benchmark: drivers/sycl_benchmark.cc
 openmp_benchmark: drivers/openmp_benchmark.cc bk1.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
+BK5_openmp: drivers/BK5_openmp.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
+bk1_openmp_v2: drivers/bk1_openmp_v2.cc kernels.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ -lgfortran
+
 FC=gfortran
 #FFLAGS=-Wall -O2 -ftree-vectorize -funroll-loops -ffast-math -fopenmp -mcpu=native
-FFLAGS=-Wall -O3 -funroll-loops -fopenmp -mcpu=native
+FFLAGS=-Wall -O3 -funroll-loops -mcpu=native
+
+kernels.o: src/kernels.f90
+	$(FC) $(FFLAGS) -c $<
 
 bk1.o: src/bk1.F90
 	$(FC) -cpp $(FFLAGS) -c $<
 
 .PHONY: clean
 clean:
-	$(RM) *.o opencl_benchmark openmp_benchmark sycl_benchmark
+	$(RM) *.o opencl_benchmark openmp_benchmark sycl_benchmark \
+		BK5_openmp bk1_openmp_v2
 
 
 .PHONY: run_openmp
