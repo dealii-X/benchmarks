@@ -18,8 +18,8 @@ target_link_libraries(BK1_openmp OpenMP::OpenMP_CXX)
 add_executable(BK5_openmp drivers/BK5_openmp.cc)
 target_link_libraries(BK5_openmp OpenMP::OpenMP_CXX)
 
-
 if(BUILD_OPENCL)
+	message(STATUS "OpenCL benchmarks are enabled")
 
 	find_package(OpenCL REQUIRED)
 	include_directories($ENV{OPENCL_CLHPP_ROOT}/include)
@@ -34,4 +34,14 @@ if(BUILD_OPENCL)
 	add_executable(BK5_opencl drivers/BK5_opencl.cc)
 	target_link_libraries(BK5_opencl PRIVATE OpenCL::OpenCL)
 
+endif()
+
+if(BUILD_TINYTC)
+	message(STATUS "TinyTC benchmark is enabled")
+
+	find_package(tinytc REQUIRED)
+	find_package(tinytc_cl REQUIRED)
+
+	add_executable(BK1_tinytc drivers/BK1_tinytc.cc)
+	target_link_libraries(BK1_tinytc tinytc::tinytc tinytc::tinytc_cl)
 endif()

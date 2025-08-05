@@ -1,25 +1,71 @@
-This folder implements the CEED Bakeoff problems using alternative programming models.
-The main purpose is to allow evaluation across a wider array of accelerator devices.
+# CEED Benchmarks - Alternatives
 
-Currently, only the following two models are included:
+This folder implements the *CEED Benchmarks* using alternative programming models.
 
+The purpose is to evaluate the benchmarks across a wider array of accelerator devices in addition to the CUDA and Kokkos variants found in the main [`sum_factorization/`](../sum_factorization/) folder.
+
+The alternative models considered include:
+- OpenMP
 - OpenCL
-- SYCL
 
-The kernels have been ported manually (i.e. search & replace) from the CUDA variants in the [sum_factorization/][../sum_factorization/] folder.
+The kernels have been ported manually (i.e. search & replace) from the CUDA variants in the original [`sum_factorization/`](../sum_factorization/) folder. 
 
-## Prerequisites
+Drivers using SYCL and [TinyTC](https://github.com/intel/tiny-tensor-compiler) are a work in progress.
 
-- OpenCL
+## Dependencies
+
+For OpenCL-based benchmarks (including the TinyTC variants):
+- OpenCL (Apple, Intel, Nvidia, ...)
 - [OpenCL-CLHPP](https://github.com/KhronosGroup/OpenCL-CLHPP)
+
+For TinyTC-based benchmarks:
+- [Tiny Tensor Compiler](https://github.com/intel/tiny-tensor-compiler)
+
+For SYCL benchmarks:
+- [Intel oneAPI DPC++/C++ Compiler](https://www.intel.com/content/www/us/en/developer/tools/oneapi/dpc-compiler.html)
+- [AdaptiveCpp](https://github.com/AdaptiveCpp/AdaptiveCpp)
 
 ## Setup
 
+For the default OpenMP variants:
+
+```
+mkdir build && cd build
+cmake .. -DCMAKE_CXX_COMPILER=<compiler-of-choice>
+make -j4
+```
+
+### Build options
+
+
+| Option       | Description           | Default value |
+|--------------|-----------------------|---------------|
+| BUILD_OPENCL | Build OpenCL variants | OFF           |
+| BUILD_SYCL   | Build SYCL variants   | OFF           |
+| BUILD_TINYTC | Build TinyTC variants | OFF           |
+
+
+The OpenCL variants expect the following environment variable is set:
+
+```
+set OPENCL_CLHPP_ROOT=<path/to/OpenCL-CLHPP>
+```
+
+Note that the OpenMP drivers are always available as they double also as serial validation.
+To run the serial version set the environment variable `OMP_TARGET_OFFLOAD=DISABLED`.
+
 ### Environment variables
 
-- `SHOW_NORM=<0,1>`: show square norm of output array (only for quick validation)
-- `CL_KERNEL_DIR=<path>`: folder containing the kernels (still subject of change...)
+Some settings are configurable for ease of use:
 
+- `SHOW_NORM=0|1`: show square norm of output array (only for quick validation)
+- `CL_KERNEL_DIR=<path>`: folder containing the OpenCL kernels (still subject of change...)
+
+
+## Future ideas
+
+- Translation from CUDA using [Intel DPC++ Compatibility Tool](https://www.intel.com/content/www/us/en/developer/tools/oneapi/dpc-compatibility-tool.html)
+- Translation using [Coccinelle](https://coccinelle.gitlabpages.inria.fr/website/)
 
 ## Resources
 
