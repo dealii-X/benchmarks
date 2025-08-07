@@ -1,82 +1,63 @@
-// opencl_benchmarks.cc
+/*
+Input Parameters for Kernels;
+nm : Number of the node on each direction
+nq : Number of the gauss points on each direction
+nelmt : Number of finite elements
+basis : 1D basis functions on each dimension (l0, l1 etc.)
 
+wsp : intermediate storages 
+*/
 
-#define CL_HPP_ENABLE_EXCEPTIONS
-#define CL_HPP_TARGET_OPENCL_VERSION 120  // or 120, 100, depending on what you want
-#define CL_HPP_MINIMUM_OPENCL_VERSION 120
-
-#include <CL/opencl.hpp>  // or cl2.hpp if you prefer
+#include <sycl/sycl.hpp>
+#include <tinytc/tinytc.hpp>
+#include <tinytc/tinytc_sycl.hpp>
 
 #include <iostream>
-#include <cstdio>
 #include <fstream>
+#include <cstdio>
+#include <numeric>
 #include <vector>
 #include <cmath>
-#include <string>
-#include <unordered_map>
-#include <numeric>
-
-#include "timer.hpp"
-
-// Take a list of key value pairs to be used as compile-time options
-template <typename T>
-std::string buildOpenCLDefines(const std::unordered_map<std::string, T>& defines) {
-    std::string options;
-    for (const auto& [key, value] : defines) {
-        options += "-D " + key + "=" + std::to_string(value) + " ";
-    }
-    return options;
-}
+#include <array>
+#include <tuple>
 
 
-std::string loadKernelSource(const std::string &filename, int& status, bool verbose = false) {
-
-    //std::string filename = static_size ? "opencl_kernels_static.cl" : "opencl_kernels.cl";
-    std::ifstream kernelFile;
-    std::string baseDir;
-
-    // 1. Try CL_KERNEL_DIR
-    if (const char* envDir = std::getenv("CL_KERNEL_DIR")) {
-        baseDir = envDir;
-        std::string fullPath = baseDir + "/" + filename;
-        kernelFile.open(fullPath);
-        if (kernelFile.is_open() && verbose) {
-            std::cout << "Loaded kernel from CL_KERNEL_DIR: " << fullPath << "\n";
-        }
+class Timer {
+public:
+    void start(){
+        m_StartTime = m_clock::now();
+        m_bRunning  = true;
     }
 
-    // 2. Fallback path
-    if (!kernelFile.is_open()) {
-        baseDir = "./src";
-        std::string fullPath = baseDir + "/" + filename;
-        kernelFile.open(fullPath);
-        if (kernelFile.is_open() && verbose) {
-            std::cout << "Loaded kernel from fallback path: " << fullPath << "\n";
-        }
+    void stop(){
+        m_EndTime  = m_clock::now();
+        m_bRunning = false;
     }
 
-    // 3. Bail on failure
-    if (!kernelFile.is_open()) {
-        std::cerr << "Failed to open kernel file: " << filename << "\n";
-        status = -1;
-        return {};
+    double elapsedNanoseconds(){
+        auto endTime = m_bRunning ? m_clock::now() : m_EndTime;
+        return std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - m_StartTime).count();
     }
 
-    // 4. Read kernel source into a string
-    std::string source((std::istreambuf_iterator<char>(kernelFile)),
-                       std::istreambuf_iterator<char>());
-    status = 0;
-    return source;
-}
+    double elapsedSeconds(){
+        return elapsedNanoseconds() / 1.0e9;
+    }
+
+private:
+    using m_clock = std::chrono::high_resolution_clock;
+    std::chrono::time_point<m_clock> m_StartTime{};
+    std::chrono::time_point<m_clock> m_EndTime{};
+    bool m_bRunning = false;
+};
 
 
-int show_norm = -1; // -1 means uninitialized
-
-template<typename T = float, int nq0, int nq1, int nq2>
+template<typename T, int nq0, int nq1, int nq2>
 void run_test(
-    cl::Context &context,
-    cl::CommandQueue &queue, cl::Program &program,
-    const unsigned int nelmt, const int ntests)
+    sycl::queue &queue,
+    sycl::kernel_bundle<sycl::bundle_state::executable>& bundle,
+    const unsigned int nelmt,
+    const unsigned int ntests,
+    bool show_norm)
 {
     const int nm0 = nq0 - 1;
     const int nm1 = nq1 - 1;
@@ -84,100 +65,101 @@ void run_test(
 
     std::vector<T> basis0(nm0 * nq0), basis1(nm1 * nq1), basis2(nm2 * nq2);
 
+    //Initialize the input and output arrays
     std::vector<T> JxW(nelmt * nq0 * nq1 * nq2, (T)1.0);
     std::vector<T> in(nelmt * nm0 * nm1 * nm2, (T)3.0);
     std::vector<T> out(nelmt * nm0 * nm1 * nm2, (T)0.0);
 
     //Initialization of basis functions
-    for(int p = 0; p < nq0; p++) {
-        for(int i = 0; i < nm0; i++) {
+    for(unsigned int p = 0u; p < nq0; p++) {
+        for(unsigned int i = 0u; i < nm0; i++) {
             basis0[p * nm0 + i] = std::cos((T)(p * nm0 + i));
         }
     }
-    for(int q = 0; q < nq1; q++) {
-        for(int j = 0; j < nm1; j++) {
+    for(unsigned int q = 0u; q < nq1; q++) {
+        for(unsigned int j = 0u; j < nm1; j++) {
             basis1[q * nm1 + j] = std::cos((T)(q * nm1 + j));
         }
     }
-    for(int r = 0; r < nq2; r++) {
-        for(int k = 0; k < nm2; k++) {
+    for(unsigned int r = 0u; r < nq2; r++) {
+        for(unsigned int k = 0u; k < nm2; k++) {
             basis2[r * nm2 + k] = std::cos((T)(r * nm2 + k));
         }
     }
 
-    cl::Buffer d_basis0(context,basis0.begin(),basis0.end(),true);
-    cl::Buffer d_basis1(context,basis1.begin(),basis1.end(),true);
-    cl::Buffer d_basis2(context,basis2.begin(),basis2.end(),true);
-    cl::Buffer d_JxW(context,JxW.begin(),JxW.end(),true);
-    cl::Buffer d_in(context,in.begin(),in.end(),true);
-    cl::Buffer d_out(context,out.begin(),out.end(),false);
+    const size_t size_JxW = JxW.size();
+    const size_t size_in = in.size();
+    const size_t size_out = out.size();
+    const size_t size_basis0 = basis0.size();
+    const size_t size_basis1 = basis1.size();
+    const size_t size_basis2 = basis2.size();
 
-    // Helper function to select a particular kernel by name
-    auto kernel = [&]() -> cl::Kernel {
+    T *d_JxW    = sycl::malloc_device<T>(size_JxW, queue);
+    T *d_in     = sycl::malloc_device<T>(size_in, queue);
+    T *d_out    = sycl::malloc_device<T>(size_out, queue);
+    T *d_basis0 = sycl::malloc_device<T>(size_basis0, queue);
+    T *d_basis1 = sycl::malloc_device<T>(size_basis1, queue);
+    T *d_basis2 = sycl::malloc_device<T>(size_basis2, queue);
 
-        cl::Kernel kernel(program,"sum_factorization");
+    queue.copy(in.data(),d_in,size_in);
+    queue.copy(JxW.data(),d_JxW,size_JxW);
+    queue.copy(basis0.data(),d_basis0,size_basis0);
+    queue.copy(basis1.data(),d_basis1,size_basis1);
+    queue.copy(basis2.data(),d_basis2,size_basis2);
+    queue.wait_and_throw();
 
-        kernel.setArg(0, d_basis0);
-        kernel.setArg(1, d_basis1);
-        kernel.setArg(2, d_basis2);
-        kernel.setArg(3, d_JxW);
-        kernel.setArg(4, JxW.size());
-        kernel.setArg(5, d_in);
-        kernel.setArg(6, in.size());
-        kernel.setArg(7, d_out);
-        kernel.setArg(8, out.size());
+//    const size_t localSize = std::min(nq0 * nq1 * nq2, (int) threadsPerBlock);
+//    const size_t globalSize = numBlocks * localSize;
 
-        return kernel;
-    }();
+//    const sycl::nd_range<1> kernelRange{{globalSize},{localSize}};
 
-    const size_t ndofs = nelmt * nm0 * nm1 * nm1;
+//    const std::array<unsigned int,3> nms{nm0,nm1,nm2};
+//    const std::array<unsigned int,3> nqs{nq0,nq1,nq2};
 
-    // Helper function to calculate performance in GDoF/s
+//    const std::array<int,3> nq_sf{nq0,nq1,nq2};
+
+    // Performance in GDoF/s
     auto dof_rate = [=](double elapsed) {
         return 1.0e-9 * nelmt * nm0 * nm1 * nm2 / elapsed;
     };
 
-    auto show_norm_helper = [&]() -> void {
-        if (show_norm) {
-            // 2. Copy data from device buffer d_out to host
-            queue.enqueueReadBuffer(d_out, CL_TRUE, 0, sizeof(T) * out.size(), out.data());
-
-            double normSqr = 0.0;
-            for (auto d : out) {
-                double dd = d;
-                normSqr += dd * dd;
-            }
-
-            std::cout << "# OpenCL kernel norm = " << std::sqrt(normSqr) << '\n';
-        }
-    };
-
-    auto print_stats_helper = [&](const cl::Kernel& kernel, double time) {
-        std::printf("%s\t%u\t%f\n",
-            kernel.getInfo<CL_KERNEL_FUNCTION_NAME>().c_str(),
-            nelmt,
-            dof_rate(time));
-    };
-
     {
-        cl::NDRange local = cl::NullRange;
-        cl::NDRange global = cl::NDRange(64,1,nelmt);
+        const size_t howmany = nelmt;
+        auto bk1_kernel = tinytc::create_kernel(bundle, "sum_factorization");
+        auto exe_range = tinytc::get_execution_range(
+            bk1_kernel, sycl::range<3u>{1u,1u,howmany});
 
-        double time = std::numeric_limits<double>::max();
+        double time_cl = std::numeric_limits<double>::max();
         Timer clTimer;
-        for (int t = 0; t < ntests; ++t)
+
+        for (unsigned int t = 0u; t < ntests; ++t)
         {
             clTimer.start();
 
-            queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,cl::NullRange);
-            queue.finish();
+            queue.submit([=](sycl::handler &h){
+                h.set_args(d_basis0,d_basis1,d_basis2,d_JxW,howmany,d_in,howmany,d_out,howmany);
+                h.parallel_for(exe_range,bk1_kernel);
+            }).wait_and_throw();
 
             clTimer.stop();
-            time = std::min(time, clTimer.elapsedSeconds());
+            time_cl = std::min(time_cl, clTimer.elapsedSeconds());
         }
 
-        print_stats_helper(kernel, time);
-        show_norm_helper();
+        std::cout << "# TinyTC -> nelmt " << nelmt << " GDoF/s = " << dof_rate(time_cl) << '\n';
+
+    }
+
+    if (show_norm) {
+
+        // 2. Copy data from device buffer d_out to host buffer out
+        queue.copy(d_out,out.data(),out.size()).wait_and_throw();
+
+        double normSqr{0.0};
+        for (auto h : out) {
+            normSqr += ((double) h) * ((double) h);
+        }
+
+        std::cout << "# TinyTC kernel norm = " << std::sqrt(normSqr) << '\n';
     }
 
 }
@@ -185,77 +167,56 @@ void run_test(
 
 int main(int argc, char **argv){
 
-    // Default precision
-    using real_type = float;
-
-    if (argc > 1 && strcmp(argv[1], "--help") == 0) {
-        printf("Usage: %s [--help] [nelmt [ntests]]\n", argv[0]);
-        exit(0);
-    }
+    const unsigned int nq0 = 4;
+    const unsigned int nq1 = 4;
+    const unsigned int nq2 = 4;
 
     unsigned int nelmt              = (argc > 1) ? atoi(argv[1]) : 2 << 18;
     unsigned int ntests             = (argc > 2) ? atoi(argv[2]) : 5u;
 
-    const char *env = getenv("SHOW_NORM");
-    show_norm = (env && strcmp(env, "1") == 0) ? 1 : 0;
+    const char *env = std::getenv("SHOW_NORM");
+    bool show_norm = (env && strcmp(env, "1") == 0);
 
     try {
-        // 1. Get all platforms (e.g., NVIDIA, Intel, AMD)
-        std::vector<cl::Platform> platforms;
-        cl::Platform::get(&platforms);
-        if (platforms.empty()) {
-            std::cerr << "No OpenCL platforms found.\n";
-            return 1;
+        // This tries to create a queue on a GPU device if available,
+        // otherwise it throws an exception.
+        sycl::queue queue(sycl::default_selector_v);
+
+        auto device = queue.get_device();
+
+        std::cout << "# Device name: " << device.get_info<sycl::info::device::name>() << '\n';
+        std::cout << "#   Max Compute Units (EUs): " << device.get_info<sycl::info::device::max_compute_units>() << '\n';
+        std::cout << "#   Max Work Group Size: " << device.get_info<sycl::info::device::max_work_group_size>() << '\n';
+        std::cout << "#   Sub-group Sizes: ";
+        for (const auto &s : device.get_info<sycl::info::device::sub_group_sizes>()) {
+            std::cout << s << " ";
         }
+        std::cout << std::endl;
 
-        // 2. Select the first platform
-        cl::Platform platform = platforms[0];
-        std::cout << "# Using platform: " << platform.getInfo<CL_PLATFORM_NAME>() << "\n";
+        auto info = tinytc::create_core_info(device);
+        tinytc::set_core_features(info.get(), tinytc_core_feature_flag_large_register_file);
 
-        // 3. Get GPU devices from platform (fallback to CPU if needed)
-        std::vector<cl::Device> devices;
-        platform.getDevices(CL_DEVICE_TYPE_GPU, &devices);
-        if (devices.empty()) {
-            std::cout << "No GPU devices found; trying CPU devices...\n";
-            platform.getDevices(CL_DEVICE_TYPE_CPU, &devices);
-            if (devices.empty()) {
-                std::cerr << "No devices found.\n";
-                return 1;
-            }
-        }
-
-        // 4. Select the first device
-        cl::Device device = devices[0];
-        std::cout << "# Using device: " << device.getInfo<CL_DEVICE_NAME>() << "\n";
-
-        // 5. Create context with the selected device
-        cl::Context context(device);
-
-        // 6. Create command queue (enable profiling if needed)
-        cl::CommandQueue queue(context, device);
+        auto ctx = tinytc::create_compiler_context();
+        tinytc::set_error_reporter(ctx.get(), [](char const *what, const tinytc_location_t *, void *) {
+           std::cerr << what << std::endl;
+        });
 
 
-        // --- TinyTC Kernel ---
-        {
-            int ierr;
-            auto source = loadKernelSource("sum_factorization.cl",ierr);
-            std::string buildOptions{""};
+        // Parse program bundle
+        auto prog = tinytc::parse_file("sum_factorization.ir", ctx.get());
 
-            cl::Program program(context,source);
-            try {
-                program.build({device},buildOptions);
-            } catch (const cl::Error &) {
-                std::cerr << "Build failed:\n" 
-                          << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << "\n";
-                return 1;
-            }
+        auto bin = tinytc::compile_to_spirv_and_assemble(prog.get(), info.get());
 
-            run_test<float,4,4,4>(context,queue,program,nelmt,ntests);
-        }
+        auto bundle = tinytc::create_kernel_bundle(queue.get_context(), device, bin.get());
 
+        // Now you can set kernel arguments and enqueue kernel as shown before
+        run_test<float,nq0,nq1,nq2>(queue, bundle, nelmt, ntests, show_norm);
 
-    } catch (cl::Error& e) {
-        std::cerr << "OpenCL error: " << e.what() << " (" << e.err() << ")\n";
+    } catch (tinytc::status const& st) {
+        std::cerr << "tinytc: Error (" << static_cast<int>(st) << ")" << std::endl;
+        return 1;
+    } catch (sycl::exception const& e) {
+        std::cerr << "SYCL exception caught: " << e.what() << std::endl;
         return 1;
     }
 

@@ -3,97 +3,74 @@ func @sum_factorization(%basis0: memref<f32x3x4>,
                         %basis2: memref<f32x3x4>,
                         %JxW:    memref<f32x4x4x4x?>,
                         %in:     memref<f32x3x3x3x?>,
-                        %out:    memref<f32x3x3x3x?>) 
-{
-    %gid = group_id                                ; Get our index e
+                        %out:    memref<f32x3x3x3x?>) {
+                        
+    %gid = group_id.x : index                               ; Get our index e
+    %wsp0 = alloca : memref<f32x3x3x3,local>; // Reserve temporary memory
+    %wsp1 = alloca : memref<f32x3x3x4,local>; // Reserve temporary memory
+    %wsp2 = alloca : memref<f32x3x4x4,local>; // Reserve temporary memory
+    %wsp3 = alloca : memref<f32x4x4x4,local>; // Reserve temporary memory
 
-    %wsp0 = alloca -> memref<f32x3x3x3>; // Reserve temporary memory
-    %wsp1 = alloca -> memref<f32x3x3x4>; // Reserve temporary memory
-    %wsp2 = alloca -> memref<f32x3x4x4>; // Reserve temporary memory
-    %wsp3 = alloca -> memref<f32x4x4x4>; // Reserve temporary memory
-;    %wsp4 = alloca -> memref<f32x4x4x4>;
+    %J_e = subview %JxW[0:4,0:4,0:4,%gid] : memref<f32x4x4x4>;
+    %in_e = subview %in[0:3,0:3,0:3,%gid] : memref<f32x3x3x3>;
+    %out_e = subview %out[0:3,0:3,0:3,%gid] : memref<f32x3x3x3>;
 
-    %J_e = subview %JxW[:,:,:,%gid] : memref<f32x4x4x4x?>;
-    %in_e = subview %in[:,:,:,%gid] : memref<f32x3x3x3x?>;
-    %out_e = subview %out[:,:,:,%gid] : memref<f32x3x3x3x?>;
+    %c0 = constant 1.0 : f32
+    %c1 = constant 0.0 : f32
 
-;    for %j = 0, 3 { ; Batch of GEMMs
-;
-;        %tmp = subview %in_e[:,%j,:] : memref<f32x3x3x3>
-;        %res = subview %wsp1[:,%j,:] : memref<f32x3x3x4>
-;
-;        gemm.n.n 1.0, %tmp, %basis0, 0.0, %res :
-;            f32, memref<f32x3x3,strided<1,9>>, memref<f32x3x4>, f32, memref<f32x3x4,strided<1,9>>;
-;    }
+; Direction 0
 
-    %tmp1 = fuse %in_e[0,1] : memref<f32x3x3x3>
-    %res1 = fuse %wsp1[0,1] : memref<f32x3x3x4>
-    gemm.n.n 1.0, %tmp1, %basis0, 0.0, %res1 :
-        f32, memref<f32x9x3>, memref<f32x3x4>, f32, memref<f32x9x4>
-
+    %tmp1 = fuse %in_e[0,1] : memref<f32x9x3>
+    %res1 = fuse %wsp1[0,1] : memref<f32x9x4,local>    
+    gemm.n.n %c1, %tmp1, %basis0, %c0, %res1
     
-    for %p = 0, 4 { ; Batch of GEMMs
-        %tmp = subview %wsp1[:,:,%p] : memref<f32x3x3x4>
-        %res = subview %wsp2[:,%p,:] : memref<f32x3x4x4>
+: Direction 1
 
-        gemm.n.n 1.0, %tmp, %basis1, 0.0, %res :
-            f32, memref<f32x3x3>, memref<f32x3x4>, f32, memref<f32x3x4,strided<1,12>>
+    %dir1_from = constant 0 : index
+    %dir2_to   = constant 4 : index  
+    for %p = %dir1_from, %dir2_to { ; Batch of GEMMs
+        %tmp = subview %wsp1[0:3,0:3,%p] : memref<f32x3x3,local>
+        %res = subview %wsp2[0:3,%p,0:4] : memref<f32x3x4,strided<1,12>,local>
+        gemm.n.n %c1, %tmp, %basis1, %c0, %res
     }
 
-;    for %q_ = 0, 4 { ; Batch of GEMV
-;        for %p_ = 0, 4 {
-;        
-;            %tmp = subview %wsp2[:,%p_,%q_] : memref<f32x3x4x4>
-;            %res = subview %wsp3[:,%q_,%p_] : memref<f32x4x4x4>
-;
-;            gemv.t 1.0, %basis2, %tmp, 0.0, %res :
-;                f32, memref<f32x3x4>, memref<f32x3>, f32, memref<f32x4> 
-;        }
-;    }    
+; Direction 2 
 
-    %tmp4 = fuse %wsp2[1,2] : memref<f32x3x4x4>
-    %res4 = fuse %wsp3[1,2] : memref<f32x4x4x4>
+    %tmp4 = fuse %wsp2[1,2] : memref<f32x3x16,local>
+    %res4 = fuse %wsp3[1,2] : memref<f32x4x16,local>
+    gemm.t.n %c1, %basis2, %tmp4, %c0, %res4
 
-    gemm.t.n 1.0, %basis2, %tmp4, 0.0, %res4 :
-        f32, memref<f32x3x4>, memref<f32x3x16>, f32, memref<f32x4x16>
+; Multiply with weights and determinant of Jacobi
 
+    %flat1 = fuse %J_e[0,2] : memref<f32x64>
+    %flat2 = fuse %wsp3[0,2] : memref<f32x64,local>
+    hadamard %c1, %flat1, %flat2, %c0, %flat2
 
-    %flat1 = fuse %J_e[0,2] : memref<f32x4x4x4>
-    %flat2 = fuse %wsp3[0,2] : memref<f32x4x4x4>
-;    %flat3 = fuse %wsp4[0,2] : memref<f32x4x4x4> ;  This one is probably redundant...
+; Direction 2 (reverse)
 
-    hadamard 1.0, %flat1, %flat2, 0.0, %flat2 :
-        f32, memref<f32x64>, memref<f32x64>, f32, memref<f32x64>
+    %tmp6 = fuse %wsp3[1,2] : memref<f32x4x16,local>
+    %res6 = fuse %wsp2[1,2] : memref<f32x3x16,local>
+    gemm.n.n %c1, %basis2, %tmp6, %c0, %res6
 
+; Direction 1 (reverse)
 
-;    for %q6 = 0, 4 {                               ; Step 6
-;        for %p6 = 0, 4 {            
-;            %tmp = subview %wsp3[:,%q6,%p6] : memref<f32x4x4x4>
-;            %res = subview %wsp2[:,%p6,%q6] : memref<f32x3x4x4>
-;            gemv.n 1.0, %basis2, %tmp, 0.0, %res :
-;                f32, memref<f32x3x4>, memref<f32x4>, f32, memref<f32x3> 
-;        }
-;    }
-
-    %tmp6 = fuse %wsp3[1,2] : memref<f32x4x4x4>
-    %res6 = fuse %wsp2[1,2] : memref<f32x3x4x4>
-    gemm.n.n 1.0, %basis2, %tmp6, 0.0, %res6 :
-        f32, memref<f32x3x4>, memref<f32x4x16>, f32, memref<f32x3x16>
-
-
-    for %p7 = 0, 4 {
-        %tmp = subview %wsp2[:,%p7,:] : memref<f32x3x4x4>
-        %res = subview %wsp1[:,:,%p7] : memref<f32x3x3x4>
+    %dir1r_from = constant 0 : index
+    %dir1r_to   = constant 4 : index
+    for %p7 = %dir1r_from, %dir1r_to {
+        %tmp = subview %wsp2[0:3,%p7,0:4] : memref<f32x3x4,strided<1,12>,local>
+        %res = subview %wsp1[0:3,0:3,%p7] : memref<f32x3x3,local>
         
-        gemm.n.t 1.0, %tmp, %basis1, 0.0, %res :
-            f32, memref<f32x3x4,strided<1,12>>,memref<f32x3x4>, f32, memref<f32x3x3>
+        gemm.n.t %c1, %tmp, %basis1, %c0, %res
     }
 
-    for %j8 = 0, 3 {
-        %tmp = subview %wsp1[:,%j8,:] : memref<f32x3x3x4>
-        %res = subview %out_e[:,%j8,:] : memref<f32x3x3x3>
-        gemm.n.t 1.0, %tmp, %basis0, 0.0, %res :
-            f32, memref<f32x3x4,strided<1,9>>, memref<f32x3x4>, f32, memref<f32x3x3,strided<1,9>>
+: Direction 0 (reverse)
+
+    %dir0r_from = constant 0 : index
+    %dir0r_to   = constant 3 : index
+    for %j8 = %dir0r_from, %dir0r_to {
+        %tmp = subview %wsp1[0:3,%j8,0:4] : memref<f32x3x4,strided<1,9>,local>
+        %res = subview %out_e[0:3,%j8,0:3] : memref<f32x3x3,strided<1,9>>
+        gemm.n.t %c1, %tmp, %basis0, %c1, %res
     }
     
 }
