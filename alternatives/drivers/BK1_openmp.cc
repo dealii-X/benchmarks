@@ -714,19 +714,6 @@ void BwdTransHexKernel_QP_1D_hybrid(
 }
 
 
-extern "C"
-void sevalf(
-    int nm0, int nm1, int nm2,
-    int nq0, int nq1, int nq2,
-    int nelmt,
-    const float* __restrict__ basis0, 
-    const float* __restrict__ basis1,
-    const float* __restrict__ basis2,
-    const float* __restrict__ JxW,
-    const float* __restrict__ in,
-          float* __restrict__ out);
-
-
 template<typename T, int nq0, int nq1, int nq2>
 void run_test(const size_t nelmt, const int ntests, bool show_norm)
 {
@@ -818,7 +805,7 @@ int main(int argc, char **argv){
     size_t nelmt  = (argc > 4) ? atoi(argv[4]) : 2 << 18;
     int ntests    = (argc > 5) ? atoi(argv[5]) : 5;
 
-    const char *env = getenv("SHOW_NORM");
+    const char *env = std::getenv("SHOW_NORM");
     bool show_norm = (env && strcmp(env, "1") == 0);
 
     std::cout.precision(8);

@@ -265,7 +265,7 @@ int main(int argc, char **argv){
     size_t threadsPerBlockZ   = (argc > 8) ? atoi(argv[8]) : nq2;
     size_t ntests             = (argc > 9) ? atoi(argv[9]) : 50;
 
-    const char *env = getenv("SHOW_NORM");
+    const char *env = std::getenv("SHOW_NORM");
     show_norm = (env && strcmp(env, "1") == 0) ? 1 : 0;
 
     // FIXME: initialize OpenCL context

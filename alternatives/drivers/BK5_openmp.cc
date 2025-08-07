@@ -170,7 +170,7 @@ int main(int argc, char **argv){
     size_t nelmt  = (argc > 4) ? atoi(argv[4]) : 2 << 18;
     int ntests    = (argc > 5) ? atoi(argv[5]) : 5;
 
-    const char *env = getenv("SHOW_NORM");
+    const char *env = std::getenv("SHOW_NORM");
     bool show_norm = (env && strcmp(env, "1") == 0);
 
     std::cout.precision(8);

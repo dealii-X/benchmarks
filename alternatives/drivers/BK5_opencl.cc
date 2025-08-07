@@ -17,7 +17,7 @@
 #include <numeric>
 
 #include "timer.hpp"
-
+#include "common.hpp"
 
 // Take a list of key value pairs to be used as compile-time options
 template <typename T>
@@ -122,7 +122,6 @@ void run_test(
     cl::Buffer d_in(context,in.begin(),in.end(),true);
     cl::Buffer d_out(context,out.begin(),out.end(),false);
 
-
     // Helper function to select a particular kernel by name
     auto kernel_helper = [&](std::string kernelName, size_t sharedMemSize) -> cl::Kernel {
 
@@ -143,15 +142,6 @@ void run_test(
         return kernel;
     };
 
-    auto show_norm_helper = [&]() -> void {
-        if (show_norm) {
-            // 2. Copy data from device buffer d_out to host
-            queue.enqueueReadBuffer(d_out, CL_TRUE, 0, sizeof(T) * out.size(), out.data());
-            // Evaluate the norm in double precision
-            T normSqr = inner_product(out.begin(),out.end(),out.begin(),(T)0);
-            std::cout << "# OpenCL kernel norm = " << std::sqrt(normSqr) << '\n';
-        }
-    }; 
 
     // Helper function to calculate performance in GDoF/s
     auto dof_rate = [=](double elapsed) { 
@@ -159,13 +149,37 @@ void run_test(
     };
 
     auto print_stats_helper = [&](const cl::Kernel& kernel, double time) {
+        
         std::printf("%s\t%s\t%u\t%f\n",
             static_size ? "static" : "dynamic",
             kernel.getInfo<CL_KERNEL_FUNCTION_NAME>().c_str(),
             nelmt,
             dof_rate(time));
+
+        if (show_norm) {
+            // 2. Copy data from device buffer d_out to host
+            queue.enqueueReadBuffer(d_out, CL_TRUE, 0, sizeof(T) * out.size(), out.data());
+            // Evaluate the norm in double precision
+            T normSqr = squared_norm<T,double>(out.data(),out.size());
+            std::cout << "# OpenCL kernel norm = " << std::sqrt(normSqr) << '\n';
+        }
     };
 
+    auto run_kernel = [&](cl::Kernel& kernel, cl::NDRange& global, cl::NDRange&local) {
+        double time = std::numeric_limits<double>::max();
+        Timer clTimer;
+        for (int t = 0u; t < ntests; ++t)
+        {   
+            clTimer.start();
+
+            queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,local);
+            queue.finish();
+
+            clTimer.stop();
+            time = std::min(time, clTimer.elapsedSeconds());
+        }
+        return time;
+    };
 
 //    const size_t globalSize = numBlocks * threadsPerBlock;
     const size_t globalSize = numThreads;
@@ -187,22 +201,8 @@ void run_test(
         cl::NDRange global = cl::NDRange(globalSize);
         cl::NDRange local = cl::NDRange(nq0 * nq1 * nq2);
 
-        double time = std::numeric_limits<double>::max();
-        Timer clTimer;
-        for (int t = 0u; t < ntests; ++t)
-        {   
-            clTimer.start();
-
-            queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,local);
-            queue.finish();
-
-            clTimer.stop();
-            time = std::min(time, clTimer.elapsedSeconds());
-        }
-
+        double time = run_kernel(kernel,global,local);
         print_stats_helper(kernel, time);
-        show_norm_helper();
-
     }
 
 
@@ -217,21 +217,8 @@ void run_test(
         cl::NDRange global = cl::NDRange(globalSize);
         cl::NDRange local = cl::NDRange(std::min(nq0 * nq1 * nq2, threadsPerBlock));
 
-        double time = std::numeric_limits<double>::max();
-        Timer clTimer;
-        for (int t = 0u; t < ntests; ++t)
-        {   
-            clTimer.start();
-            
-            queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,local);
-            queue.finish();
-
-            clTimer.stop();
-            time = std::min(time, clTimer.elapsedSeconds());
-        }
-
+        double time = run_kernel(kernel,global,local);
         print_stats_helper(kernel, time);
-        show_norm_helper();
     }
 
 
@@ -248,21 +235,8 @@ void run_test(
         cl::NDRange global = cl::NDRange(globalSize);
         cl::NDRange local = cl::NDRange(std::min(nq0 * nq1, threadsPerBlock));
 
-        double time = std::numeric_limits<double>::max();
-        Timer clTimer;
-        for (int t = 0u; t < ntests; ++t)
-        {   
-            clTimer.start();
-
-            queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,local);
-            queue.finish();
-
-            clTimer.stop();
-            time = std::min(time, clTimer.elapsedSeconds());
-        }
-
+        double time = run_kernel(kernel,global,local);
         print_stats_helper(kernel, time);
-        show_norm_helper();
     }
 
 
@@ -279,23 +253,8 @@ void run_test(
         cl::NDRange global = cl::NDRange(globalSize);
         cl::NDRange local = cl::NDRange(std::min(nq0 * nq1, threadsPerBlock));
 
-
-        double time = std::numeric_limits<double>::max();
-        Timer clTimer;
-        for (int t = 0u; t < ntests; ++t)
-        {   
-            clTimer.start();
-            
-            queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,local);
-            queue.finish();
-
-            clTimer.stop();
-            time = std::min(time, clTimer.elapsedSeconds());
-        }
-
+        double time = run_kernel(kernel,global,local);
         print_stats_helper(kernel, time);
-        show_norm_helper();
-
     }
 
 
@@ -312,22 +271,8 @@ void run_test(
         cl::NDRange global = cl::NDRange(globalSize);
         cl::NDRange local = cl::NDRange(nq1 * nq2);
 
-        double time = std::numeric_limits<double>::max();
-        Timer clTimer;
-        for (int t = 0u; t < ntests; ++t)
-        {   
-            clTimer.start();
-            
-            queue.enqueueNDRangeKernel(kernel,cl::NullRange,global,local);
-            queue.finish();
-
-            clTimer.stop();
-            time = std::min(time, clTimer.elapsedSeconds());
-        }
-
+        double time = run_kernel(kernel,global,local);
         print_stats_helper(kernel, time);
-        show_norm_helper();
-
     }
 
 }
@@ -408,7 +353,7 @@ int main(int argc, char **argv){
     int threadsPerBlockZ   = (argc > 8) ? atoi(argv[8]) : nq2;
     int ntests             = (argc > 9) ? atoi(argv[9]) : 50u;
 
-    const char *env = getenv("SHOW_NORM");
+    const char *env = std::getenv("SHOW_NORM");
     show_norm = (env && strcmp(env, "1") == 0);
 
     std::cout.precision(8);
