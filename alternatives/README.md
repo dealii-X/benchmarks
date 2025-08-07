@@ -61,7 +61,6 @@ Some settings are configurable for ease of use:
 - `SHOW_NORM=0|1`: show square norm of output array (only for quick validation)
 - `CL_KERNEL_DIR=<path>`: folder containing the OpenCL kernels (still subject of change...)
 
-
 ## Future ideas
 
 - Translation from CUDA using [Intel DPC++ Compatibility Tool](https://www.intel.com/content/www/us/en/developer/tools/oneapi/dpc-compatibility-tool.html)
@@ -71,3 +70,31 @@ Some settings are configurable for ease of use:
   - [Jitify (ROCm)](https://github.com/ROCm/jitify)
   - [SYCL Specialization Constants](https://github.khronos.org/SYCL_Reference/iface/specialization-constants.html)
 
+## Other Notes
+
+### TinyTC installation 
+
+The TinyTC-based driver currently targets the `develop` branch of TinyTC. To install the develop version create a local Spack repo and override the Tiny Tensor Compiler package using:
+
+```python
+from spack.pkg.builtin.tiny_tensor_compiler import TinyTensorCompiler as BuiltinTinyTC
+
+class TinyTensorCompiler(BuiltinTinyTC):
+    git = "https://github.com/intel/tiny-tensor-compiler.git"
+    version("develop", branch="develop")
+```
+
+To install the develop version use,
+
+```
+spack install tiny-tensor-compiler@develop%oneapi@+sycl ^oneapi-level-zero%oneapi
+```
+
+Until the CMake build is completed, the following paths can be used to build the TinyTC-based driver:
+
+```
+export TINYTC_ROOT=`spack location -i tiny-tensor-compiler`
+export LEVELZERO_ROOT=`spack location -i oneapi-level-zero`
+```
+
+In case multiple variants are installed use `spack find -lv <package>` to narrow down the one you want to use.
