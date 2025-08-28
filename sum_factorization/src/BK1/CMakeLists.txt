@@ -7,11 +7,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/BK1)
 add_executable(kokkos_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/kokkos_benchmark.cc)
 add_executable(cuda_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/cuda_benchmark.cc)
 add_executable(templated_cuda_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/templated_cuda_benchmark.cc)
+add_executable(templated_kokkos_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/templated_kokkos_benchmark.cc)
 add_executable(output_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/output_benchmark.cc)
 
 TARGET_LINK_LIBRARIES(kokkos_benchmark Kokkos::kokkos)
 TARGET_LINK_LIBRARIES(cuda_benchmark Kokkos::kokkos)
 TARGET_LINK_LIBRARIES(templated_cuda_benchmark Kokkos::kokkos)
+TARGET_LINK_LIBRARIES(templated_kokkos_benchmark Kokkos::kokkos)
 TARGET_LINK_LIBRARIES(output_benchmark Kokkos::kokkos)
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/BK1/outputs)
