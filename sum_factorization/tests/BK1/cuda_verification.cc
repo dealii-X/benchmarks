@@ -179,7 +179,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             thrust::square<T>(), (T)0.0,
             thrust::plus<T>());
     
-        std::cout << "Cuda 3D blocks Simple Map norm = " << std::sqrt(result) << std::endl;
+        std::cout << "Cuda 3D blocks norm = " << std::sqrt(result) << std::endl;
     }
 
     // ------------------------- Cuda kernel with 3D block size + Simple Map --------------------------------------

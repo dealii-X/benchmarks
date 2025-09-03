@@ -104,10 +104,9 @@ __global__ void TransHexKernel_QP_2D_Block_jk_SimpleMap(
     const T *__restrict__ d_dbasis2, const T *__restrict__ d_G, const T *__restrict__ d_in, T *__restrict__ d_out)
 {
     
-     
-    T r_i[10];
-    T r_j[10];
-    T r_k[10];
+    T r_i[nq0];
+    T r_j[nq1];
+    T r_k[nq2];
     
     extern __shared__ T shared[];
 

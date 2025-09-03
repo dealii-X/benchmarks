@@ -14,6 +14,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         T* basis2 = new T[nm2 * nq2];
         T* JxW = new T[nelmt * nq0 * nq1 * nq2];
         T* in = new T[nelmt * nm0 * nm1 * nm2];
+        T* out = new T[nelmt * nm0 * nm1 * nm2];
+
 
         //Initialize the input and output arrays
         std::fill(JxW, JxW + nelmt * nq0 * nq1 * nq2, (T)1.0f);
@@ -44,10 +46,10 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
 
         //---------------------------Serial Kernels--------------------------------------------------------
-        T SerialDirectEval = BK1::Serial::DirectEvaluation<T>(nq0, nq1, nq2, nelmt, basis0, basis1, basis2, JxW, in);
+        T SerialDirectEval = BK1::Serial::DirectEvaluation<T>(nq0, nq1, nq2, nelmt, basis0, basis1, basis2, JxW, in, out);
         
         std::fill(in, in + nelmt * nm0 * nm1 * nm2, (T)3.0f);
-        T SerialSumFact = BK1::Serial::SumFactorization<T>(nq0, nq1, nq2, nelmt, basis0, basis1, basis2, JxW, in);
+        T SerialSumFact = BK1::Serial::SumFactorization<T>(nq0, nq1, nq2, nelmt, basis0, basis1, basis2, JxW, in, out);
 
         std::cout << "SerialDirectEval norm = " << std::sqrt(SerialDirectEval) << "\n";
         std::cout << "SerialSumFact norm = " << std::sqrt(SerialSumFact) << "\n";

@@ -25,4 +25,5 @@ make -j
 ```
 ## Implementations
 [Bake-off Kernel 1](docs/BK1.md) : scalar E-vector-to-E-vector evaluation of mass matrix, q = p + 2 (Gauss-Legendre). <br>
+[Bake-off Kernel 3](docs/BK3.md) : scalar E-vector-to-E-vector evaluation of stifness matrix, q = p + 1 (Gauss-Legendre). <br>
 [Bake-off Kernel 5](docs/BK5.md) : scalar E-vector-to-E-vector evaluation of stiffness matrix, q = p + 1 (Gauss-Lobatto-Legendre).

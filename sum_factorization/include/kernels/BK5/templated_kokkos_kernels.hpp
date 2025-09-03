@@ -219,10 +219,9 @@ std::vector<T> KokkosKernel_2D_Block_jk_SimpleMap(
                 Kokkos::parallel_for(policy,
                     KOKKOS_LAMBDA (member_type team_member){
 
-                        T r_i[10];
-                        T r_j[10];
-                        T r_k[10];
-
+                        T r_i[nq0];
+                        T r_j[nq1];
+                        T r_k[nq2];
                         //element index
                         unsigned int e = team_member.league_rank();
 

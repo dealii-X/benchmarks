@@ -386,7 +386,6 @@ __global__ void BwdTransHexKernel_QP_1D(
         s_basis2[tid] = d_basis2[tid];
     }
 
-    int i, j, k, p, q, r;
     unsigned int e = blockIdx.x;
 
     while(e < nelmt)
@@ -402,9 +401,9 @@ __global__ void BwdTransHexKernel_QP_1D(
         //step-2 : direction 0
         for(unsigned int tid = threadIdx.x; tid < nq0 * nm1 * nm2; tid += blockDim.x)
         {
-            p = tid / (nm1 * nm2);
-            j = (tid % (nm1 * nm2)) / nm2;
-            k = tid % nm2;
+            int p = tid / (nm1 * nm2);
+            int j = (tid % (nm1 * nm2)) / nm2;
+            int k = tid % nm2;
 
             T tmp = 0.0;
             for(unsigned int i = 0; i < nm0; ++i)
@@ -419,9 +418,9 @@ __global__ void BwdTransHexKernel_QP_1D(
         //step-3 : direction 1
         for(unsigned int tid = threadIdx.x; tid < nq0 * nq1 * nm2; tid += blockDim.x)
         {
-            q = tid / (nq0 * nm2);
-            p = (tid % (nq0 * nm2)) / nm2;
-            k = tid % nm2;
+            int q = tid / (nq0 * nm2);
+            int p = (tid % (nq0 * nm2)) / nm2;
+            int k = tid % nm2;
 
             T tmp = 0.0;
             for(unsigned int j = 0; j < nm1; j++)
@@ -436,9 +435,9 @@ __global__ void BwdTransHexKernel_QP_1D(
         //step-4 : direction 2
         for(unsigned int tid = threadIdx.x; tid < nq0 * nq1 * nq2; tid += blockDim.x)
         {
-            p = tid / (nq1 * nq2);
-            q = (tid % (nq1 * nq2)) / nq2;
-            r = tid % nq2;
+            int p = tid / (nq1 * nq2);
+            int q = (tid % (nq1 * nq2)) / nq2;
+            int r = tid % nq2;
 
             T tmp = 0.0;
             for(unsigned int k = 0; k < nm2; ++k)
@@ -461,9 +460,9 @@ __global__ void BwdTransHexKernel_QP_1D(
         //step-6 : direction 2
         for(unsigned int tid = threadIdx.x; tid < nq0 * nq1 * nm2; tid += blockDim.x)
         {
-            q = tid / (nq0 * nm2);
-            p = (tid % (nq0 * nm2)) / nm2;
-            k = tid % nm2;
+            int q = tid / (nq0 * nm2);
+            int p = (tid % (nq0 * nm2)) / nm2;
+            int k = tid % nm2;
 
             T tmp = 0.0;
             for(unsigned int r = 0; r < nq2; ++r)
@@ -477,9 +476,9 @@ __global__ void BwdTransHexKernel_QP_1D(
         //step-7 : direction 1
         for(unsigned int tid = threadIdx.x; tid < nm1 * nm2 * nq0; tid += blockDim.x)
         {
-            p = tid / (nm1 * nm2);
-            j = (tid % (nm1 * nm2)) / nm2;
-            k = tid % nm2;
+            int p = tid / (nm1 * nm2);
+            int j = (tid % (nm1 * nm2)) / nm2;
+            int k = tid % nm2;
 
             T tmp = 0.0;
             for(unsigned int q = 0; q < nq1; q++)
@@ -493,9 +492,9 @@ __global__ void BwdTransHexKernel_QP_1D(
         //step-8 : direction 0
         for(unsigned int tid = threadIdx.x; tid < nm0 * nm1 * nm2; tid += blockDim.x)
         {
-            i = tid / (nm1 * nm2);
-            j = (tid % (nm1 * nm2)) / nm2;
-            k = tid % nm2;
+            int i = tid / (nm1 * nm2);
+            int j = (tid % (nm1 * nm2)) / nm2;
+            int k = tid % nm2;
 
             T tmp = 0.0;
             for(unsigned int p = 0; p < nq0; ++p)
@@ -542,20 +541,20 @@ __global__ void BwdTransHexKernel_QP_1D(
     
         //Finding global indices
         unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
-        unsigned int blockThreadIdx = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
+        unsigned int linearThreadIdx = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
 
         //copy to shared memory
-        for(unsigned int tid = blockThreadIdx; tid < nq0 * nm0; tid += blockSize)
+        for(unsigned int tid = linearThreadIdx; tid < nq0 * nm0; tid += blockSize)
         {
             s_basis0[tid] = d_basis0[tid];
         }
     
-        for(unsigned int tid = blockThreadIdx; tid < nq1 * nm1; tid += blockSize)
+        for(unsigned int tid = linearThreadIdx; tid < nq1 * nm1; tid += blockSize)
         {
             s_basis1[tid] = d_basis1[tid];
         }
     
-        for(unsigned int tid = blockThreadIdx; tid < nq2 * nm2; tid += blockSize)
+        for(unsigned int tid = linearThreadIdx; tid < nq2 * nm2; tid += blockSize)
         {
             s_basis2[tid] = d_basis2[tid];
         }
@@ -568,7 +567,7 @@ __global__ void BwdTransHexKernel_QP_1D(
         while(e < nelmt)
         {
             //step-1 : Copy from in to the wsp0
-            for(unsigned int tid = blockThreadIdx; tid < nm0 * nm1 * nm2; tid += blockSize)
+            for(unsigned int tid = linearThreadIdx; tid < nm0 * nm1 * nm2; tid += blockSize)
             {
                 s_wsp0[tid] = d_in[nm0 * nm1 * nm2 * e + tid];
             }
@@ -631,7 +630,7 @@ __global__ void BwdTransHexKernel_QP_1D(
             //Reverse Operations
     
             //step-5 : Multiply with weights and determinant of Jacobi
-            for(unsigned int tid = blockThreadIdx; tid < nq0 * nq1 * nq2; tid += blockSize){
+            for(unsigned int tid = linearThreadIdx; tid < nq0 * nq1 * nq2; tid += blockSize){
                 s_wsp1[tid] *= d_JxW[e * nq0 * nq1 * nq2 + tid];
             }
             __syncthreads();
@@ -686,7 +685,7 @@ __global__ void BwdTransHexKernel_QP_1D(
 
 
             //step-9 : Copy wsp0 to out
-            for(unsigned int tid = blockThreadIdx; tid < nm0 * nm1 * nm2; tid += blockSize)
+            for(unsigned int tid = linearThreadIdx; tid < nm0 * nm1 * nm2; tid += blockSize)
             {
                 d_out[e * nm0 * nm1 * nm2 + tid] = s_wsp0[tid];
             } 
@@ -715,24 +714,24 @@ __global__ void BwdTransHexKernel_QP_1D(
         T *s_wsp1 = s_wsp0 + nq0 * nq1 * nq2;
     
         //Finding global indices
-        unsigned int blockThreadIdx = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
+        int linearThreadIdx = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
+        int blockSize = blockDim.x * blockDim.y * blockDim.z;
         
         //copy to shared memory
-        if(blockThreadIdx < nq0 * nm0)
+        for(unsigned int tid = linearThreadIdx; tid < nm0 * nq0; tid += blockSize)
         {
-            s_basis0[blockThreadIdx] = d_basis0[blockThreadIdx];
+            s_basis0[tid] = d_basis0[tid];
         }
-        
-        if(blockThreadIdx < nq1 * nm1)
+
+        for(unsigned int tid = linearThreadIdx; tid < nm1 * nq1; tid += blockSize)
         {
-            s_basis1[blockThreadIdx] = d_basis1[blockThreadIdx];
+            s_basis1[tid] = d_basis1[tid];
         }
-    
-        if(blockThreadIdx < nq2 * nm2)
+
+        for(unsigned int tid = linearThreadIdx; tid < nm2 * nq2; tid += blockSize)
         {
-            s_basis2[blockThreadIdx] = d_basis2[blockThreadIdx];
+            s_basis2[tid] = d_basis2[tid];
         }
-        
         
         unsigned int p, q, r, i, j, k;
         unsigned int e = blockIdx.x;
@@ -740,9 +739,9 @@ __global__ void BwdTransHexKernel_QP_1D(
         while(e < nelmt)
         {   
             //step-1 : Copy from in to the wsp0
-            if(blockThreadIdx < nm0 * nm1 * nm2)
+            if(linearThreadIdx < nm0 * nm1 * nm2)
             {
-                s_wsp0[blockThreadIdx] = d_in[e * nm0 * nm1 * nm2 + blockThreadIdx];
+                s_wsp0[linearThreadIdx] = d_in[e * nm0 * nm1 * nm2 + linearThreadIdx];
             }
             __syncthreads();
     
@@ -796,9 +795,9 @@ __global__ void BwdTransHexKernel_QP_1D(
             //Reverse Operations
 
             //step-5 : Multiply with weights and determinant of Jacobi
-            if(blockThreadIdx < nq0 * nq1 * nq2)
+            if(linearThreadIdx < nq0 * nq1 * nq2)
             {
-                s_wsp1[blockThreadIdx] *= d_JxW[e * nq0 * nq1 * nq2 + blockThreadIdx];
+                s_wsp1[linearThreadIdx] *= d_JxW[e * nq0 * nq1 * nq2 + linearThreadIdx];
             }
             __syncthreads();
             
@@ -851,9 +850,9 @@ __global__ void BwdTransHexKernel_QP_1D(
             __syncthreads();
 
             //step-9 : Copy wsp0 to out
-            if(blockThreadIdx < nm0 * nm1 * nm2)
+            if(linearThreadIdx < nm0 * nm1 * nm2)
             {
-                d_out[e * nm0 * nm1 * nm2 + blockThreadIdx] = s_wsp0[blockThreadIdx];
+                d_out[e * nm0 * nm1 * nm2 + linearThreadIdx] = s_wsp0[linearThreadIdx];
             } 
             __syncthreads();
     
