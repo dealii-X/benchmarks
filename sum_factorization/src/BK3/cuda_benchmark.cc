@@ -141,7 +141,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "3D Block -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time << std::endl;
+        std::cout << "3D Block -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
     }
 
 
@@ -189,7 +189,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "2D Block(pq) -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time << std::endl;
+        std::cout << "2D Block(pq) -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
     }
 
 
@@ -218,7 +218,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             thrust::plus<T>()
         );
             
-        std::cout << "2D Block(pq) Simple Map -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time << std::endl;
+        std::cout << "2D Block(pq) Simple Map -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
     }
     cudaFree(d_basis0); cudaFree(d_basis1); cudaFree(d_basis2); cudaFree(d_dbasis0); cudaFree(d_dbasis1); cudaFree(d_dbasis2); cudaFree(d_G); cudaFree(d_in); cudaFree(d_out);
     delete[] basis0; delete[] basis1; delete[] basis2; delete[] dbasis0; delete[] dbasis1; delete[] dbasis2; delete[] G; delete[] in; delete[] out;
