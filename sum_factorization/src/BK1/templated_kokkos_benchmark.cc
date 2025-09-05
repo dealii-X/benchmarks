@@ -9,7 +9,7 @@ wsp : intermediate storages
 */
 
 #include <iostream>
-#include <kernels/BK1/kokkos_kernels.hpp>
+#include <kernels/BK1/templated_kokkos_kernels.hpp>
 #include <timer.hpp>
 
 template<typename T, unsigned int nq0, unsigned int nq1, unsigned int nq2>
@@ -62,7 +62,7 @@ void run_test(
     }
 
     // ------------------------- Kokkos Kernel ---------------------------------------------------
-    std::vector<T> results = Parallel::KokkosKernel<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
+    std::vector<T> results = Parallel::KokkosKernel<T,nq0 ,nq1, nq2>(basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
     std::cout << "Kokkos -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
     
 
@@ -70,9 +70,9 @@ void run_test(
 }
 
 int main(int argc, char **argv){
-    constexpr unsigned int nq0                = 4u;
-    constexpr unsigned int nq1                = 4u;
-    constexpr unsigned int nq2                = 4u;
+    constexpr unsigned int nq0      = 4u;
+    constexpr unsigned int nq1      = 4u;
+    constexpr unsigned int nq2      = 4u;
     unsigned int nelmt              = (argc > 1) ? atoi(argv[1]) : 2 << 18;
     unsigned int numThreads         = (argc > 2) ? atoi(argv[2]) : nelmt * nq0 * nq1 * nq2 / 2;
     unsigned int threadsPerBlock    = (argc > 3) ? atoi(argv[3]) : nq0 * nq1 * nq2;
