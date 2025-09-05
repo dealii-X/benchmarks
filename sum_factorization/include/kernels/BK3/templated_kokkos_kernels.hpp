@@ -75,10 +75,6 @@ std::vector<T> KokkosKernel_3D_Block(
                 Kokkos::parallel_for(policy,
                 KOKKOS_LAMBDA (member_type team_member){
 
-                    T r_p[10];
-                    T r_q[10];
-                    T r_r[10];
-
                     //shared memory access
                     T* scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
                     T *s_basis0  = scratch;
@@ -411,10 +407,6 @@ std::vector<T> KokkosKernel_3D_Block_SimpleMap(
                 Kokkos::parallel_for(policy,
                 KOKKOS_LAMBDA (member_type team_member){
 
-                    T r_p[10];
-                    T r_q[10];
-                    T r_r[10];
-
                     //shared memory access
                     T* scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
                     T *s_basis0  = scratch;
@@ -732,9 +724,9 @@ std::vector<T> KokkosKernel_2D_Block_pq(
                 Kokkos::parallel_for(policy,
                 KOKKOS_LAMBDA (member_type team_member){
 
-                    T r_p[10];
-                    T r_q[10];
-                    T r_r[10];
+                    T r_p[nq0];
+                    T r_q[nq1];
+                    T r_r[nq2];
 
                     //shared memory access
                     T *scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
@@ -1111,9 +1103,9 @@ std::vector<T> KokkosKernel_2D_Block_pq_SimpleMap(
                 Kokkos::parallel_for(policy,
                 KOKKOS_LAMBDA (member_type team_member){
 
-                    T r_p[10];
-                    T r_q[10];
-                    T r_r[10];
+                    T r_p[nq0];
+                    T r_q[nq1];
+                    T r_r[nq2];
 
                     //shared memory access
                     T *scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
