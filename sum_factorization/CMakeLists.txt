@@ -14,5 +14,3 @@ add_subdirectory(src/BK5)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
 add_executable(test_lagrange ${CMAKE_SOURCE_DIR}/tests/test_lagrange.cc)
-
-

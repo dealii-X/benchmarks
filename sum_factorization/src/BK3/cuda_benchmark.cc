@@ -146,19 +146,17 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
 
     // ------------------------- Kernel with 3D block size + SimpleMap -------------------------------
-    {
-        const unsigned int numBlocks = numThreads3D / (nq0 * nq1 * nq2);
+    {   
+        unsigned int threadsPerBlock = nq0 * nq1 * nq2;
+        const unsigned int numBlocks = numThreads3D / threadsPerBlock;
         unsigned int ssize = nm0 * nq0 + nm1 * nq1 + nm2 * nq2 + nq0 * nq0 + nq1 * nq1 + nq2 * nq2 + 5 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         double time = std::numeric_limits<double>::max();
         Timer Timer;
-        dim3 gridDim(numBlocks);
-        dim3 blockDim(nq0, nq1, nq2);
-
         for (unsigned int t = 0u; t < ntests; ++t)
         {
             Timer.start();
-            BK3::Parallel::TransHexKernel_QP_3D_Block_SimpleMap<T><<<numBlocks, blockDim, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
+            BK3::Parallel::TransHexKernel_QP_3D_Block_SimpleMap<T><<<numBlocks, threadsPerBlock, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
                                                             d_basis0, d_basis1, d_basis2, d_dbasis0, d_dbasis1, d_dbasis2, d_G, d_in, d_out);
             CUDA_LAST_ERROR_CHECK();
             CUDA_CHECK(cudaDeviceSynchronize());

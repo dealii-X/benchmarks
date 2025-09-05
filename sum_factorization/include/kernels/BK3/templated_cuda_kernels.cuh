@@ -1,5 +1,5 @@
-#ifndef BK3_CUDA_KERNELS_CUH
-#define BK3_CUDA_KERNELS_CUH
+#ifndef BK3_TEMPLATED_CUDA_KERNELS_CUH
+#define BK3_TEMPLATED_CUDA_KERNELS_CUH
 
 #include <timer.hpp>
 #include <vector>
@@ -7,9 +7,9 @@
 namespace BK3{
 namespace Parallel{
 
-template<typename T>
+template<typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
 __global__ void TransHexKernel_QP_3D_Block(
-    const unsigned int nq0, const unsigned int nq1, const unsigned int nq2, const unsigned int nelmt,
+    const unsigned int nelmt,
     const T *__restrict__ d_basis0, const T *__restrict__ d_basis1, const T *__restrict__ d_basis2, 
     const T *__restrict__ d_dbasis0, const T *__restrict__ d_dbasis1,
     const T *__restrict__ d_dbasis2, const T *__restrict__ d_G, const T *__restrict__ d_in, T *__restrict__ d_out)
@@ -254,9 +254,9 @@ __global__ void TransHexKernel_QP_3D_Block(
 }
 
 
-template<typename T>
+template<typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
 __global__ void TransHexKernel_QP_3D_Block_SimpleMap(
-    const unsigned int nq0, const unsigned int nq1, const unsigned int nq2, const unsigned int nelmt,
+    const unsigned int nelmt,
     const T *__restrict__ d_basis0, const T *__restrict__ d_basis1, const T *__restrict__ d_basis2, 
     const T *__restrict__ d_dbasis0, const T *__restrict__ d_dbasis1,
     const T *__restrict__ d_dbasis2, const T *__restrict__ d_G, const T *__restrict__ d_in, T *__restrict__ d_out)
@@ -491,9 +491,9 @@ __global__ void TransHexKernel_QP_3D_Block_SimpleMap(
 }
 
 
-template<typename T>
+template<typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
 __global__ void TransHexKernel_QP_2D_Block_pq(
-    const unsigned int nq0, const unsigned int nq1, const unsigned int nq2, const unsigned int nelmt,
+    const unsigned int nelmt,
     const T *__restrict__ d_basis0, const T *__restrict__ d_basis1, const T *__restrict__ d_basis2, 
     const T *__restrict__ d_dbasis0, const T *__restrict__ d_dbasis1,
     const T *__restrict__ d_dbasis2, const T *__restrict__ d_G, const T *__restrict__ d_in, T *__restrict__ d_out)
@@ -793,9 +793,9 @@ __global__ void TransHexKernel_QP_2D_Block_pq(
     }
 }
 
-template<typename T>
+template<typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
 __global__ void TransHexKernel_QP_2D_Block_pq_SimpleMap(
-    const unsigned int nq0, const unsigned int nq1, const unsigned int nq2, const unsigned int nelmt,
+    const unsigned int nelmt,
     const T *__restrict__ d_basis0, const T *__restrict__ d_basis1, const T *__restrict__ d_basis2, 
     const T *__restrict__ d_dbasis0, const T *__restrict__ d_dbasis1,
     const T *__restrict__ d_dbasis2, const T *__restrict__ d_G, const T *__restrict__ d_in, T *__restrict__ d_out)
@@ -1074,4 +1074,4 @@ __global__ void TransHexKernel_QP_2D_Block_pq_SimpleMap(
 } //namespace Parallel
 } //namespace BK3
 
-#endif //BK3_CUDA_KERNELS_CUH
+#endif //BK3_TEMPLATED_CUDA_KERNELS_CUH
