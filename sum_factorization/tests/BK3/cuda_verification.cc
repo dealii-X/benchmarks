@@ -196,7 +196,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             thrust::plus<T>()
         );
             
-        std::cout << "Cuda 2D blocks(pq) norm = " << std::sqrt(result) << std::endl;
+        std::cout << "Cuda 2D blocks(pq) SimpleMap norm = " << std::sqrt(result) << std::endl;
     }
     
     cudaFree(d_basis0); cudaFree(d_basis1); cudaFree(d_basis2); cudaFree(d_dbasis0); cudaFree(d_dbasis1); cudaFree(d_dbasis2); cudaFree(d_G); cudaFree(d_in); cudaFree(d_out);
