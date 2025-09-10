@@ -43,9 +43,6 @@ void run_test(
     const unsigned int threadsPerBlockY, const unsigned int threadsPerBlockZ,
     const unsigned int ntests)
 {
-    unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
-    const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
-
     const unsigned int nm0 = nq0 - 1;
     const unsigned int nm1 = nq1 - 1;
     const unsigned int nm2 = nq2 - 1;
@@ -165,6 +162,9 @@ void run_test(
 
     // ------------------------- Kernel with 1D block size -------------------------------
     {   
+        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
+        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+
         double time = std::numeric_limits<double>::max();
         Timer Timer;
         for (unsigned int t = 0u; t < ntests; ++t)
@@ -180,8 +180,31 @@ void run_test(
         std::cout << "1D_Block -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
     }
 
+    // ------------------------- Kernel with 1D block size + SimpleMap -------------------------------
+    {   
+        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
+        const unsigned int numBlocks = numThreads / (nq0 * nq1 * nq2);
+
+        double time = std::numeric_limits<double>::max();
+        Timer Timer;
+        for (unsigned int t = 0u; t < ntests; ++t)
+        {   
+            Timer.start();
+            BK1::Parallel::BwdTransHexKernel_QP_1D_SimpleMap<T, nq0, nq1, nq2><<<numBlocks, std::min(nq0 * nq1 * nq2, threadsPerBlock), ssize * sizeof(T)>>>(nelmt, d_basis0, d_basis1, d_basis2,
+                                                                                                                                                        d_JxW, d_in, d_out);
+            CUDA_LAST_ERROR_CHECK();
+            CUDA_CHECK(cudaDeviceSynchronize());
+            Timer.stop();
+            time = std::min(time, Timer.elapsedSeconds());
+        }
+        std::cout << "1D_Block -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+    }
+
     // ------------------------- Kernel with 3D block size -------------------------------
     {
+        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
+        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+
         double time = std::numeric_limits<double>::max();
         Timer Timer;
         dim3 gridDim(numBlocks);
@@ -201,6 +224,9 @@ void run_test(
 
     // ------------------------- Kernel with 3D block size + SimpleMap -------------------------------
     {
+        unsigned int threadsPerBlock = nq0 * nq1 * nq2;
+        const unsigned int numBlocks = numThreads / threadsPerBlock;
+
         double time = std::numeric_limits<double>::max();
         Timer Timer;
         dim3 gridDim(numBlocks);
@@ -217,6 +243,46 @@ void run_test(
             time = std::min(time, Timer.elapsedSeconds());
         }
         std::cout << "3D_Block Simple Map -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+    }
+
+    // ------------------------- Kernel with 2D block (pq) -------------------------------
+    {   
+        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY;
+        const unsigned int numBlocks = numThreads / nq2 / (std::min(nq0 * nq1, threadsPerBlock));
+
+        double time = std::numeric_limits<double>::max();
+        Timer Timer;
+        for (unsigned int t = 0u; t < ntests; ++t)
+        {   
+            Timer.start();
+            BK1::Parallel::BwdTransHexKernel_QP_1D_2D_BLOCKS_pq<T, nq0, nq1, nq2><<<numBlocks, std::min(nq0 * nq1, threadsPerBlock), ssize * sizeof(T)>>>(nelmt, d_basis0, d_basis1, d_basis2,
+                                                                                                                                                        d_JxW, d_in, d_out);
+            CUDA_LAST_ERROR_CHECK();
+            CUDA_CHECK(cudaDeviceSynchronize());
+            Timer.stop();
+            time = std::min(time, Timer.elapsedSeconds());
+        }
+        std::cout << "2D_Block(pq) -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+    }
+
+        // ------------------------- Kernel with 2D block (pq) + SimpleMap-------------------------------
+    {   
+        unsigned int threadsPerBlock = nq0 * nq1;
+        const unsigned int numBlocks = numThreads / nq2 / (nq0 * nq1);
+
+        double time = std::numeric_limits<double>::max();
+        Timer Timer;
+        for (unsigned int t = 0u; t < ntests; ++t)
+        {   
+            Timer.start();
+            BK1::Parallel::BwdTransHexKernel_QP_1D_2D_BLOCKS_pq_SimpleMap<T, nq0, nq1, nq2><<<numBlocks, std::min(nq0 * nq1, threadsPerBlock), ssize * sizeof(T)>>>(nelmt, d_basis0, d_basis1, d_basis2,
+                                                                                                                                                        d_JxW, d_in, d_out);
+            CUDA_LAST_ERROR_CHECK();
+            CUDA_CHECK(cudaDeviceSynchronize());
+            Timer.stop();
+            time = std::min(time, Timer.elapsedSeconds());
+        }
+        std::cout << "2D_Block(pq) -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
     }
     
     cudaFree(d_basis0); cudaFree(d_basis1); cudaFree(d_basis2); cudaFree(d_JxW); cudaFree(d_in); cudaFree(d_out);

@@ -3,8 +3,8 @@
 #include <cmath>
 
 template<typename T>
-void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2, const unsigned int numThreads, const unsigned int threadsPerBlockX,
-    const unsigned int threadsPerBlockY, const unsigned int threadsPerBlockZ, const unsigned int nelmt){
+void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2, const unsigned int numThreads,
+    const unsigned int threadsPerBlock, const unsigned int nelmt){
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -47,12 +47,29 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             }
         }
         
-        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
-        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        // ------------------------- 3D Block ---------------------------------------------------
+        {
+        std::vector<T> results = BK1::Parallel::Kokkos_BwdTransHexKernel_QP_1D<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, 1);
+        std::cout << "1D block norm = " << results[1] << std::endl;
+        }
 
+        // ------------------------- 3D Block + Simple Map ---------------------------------------------------
+        {
+            std::vector<T> results = BK1::Parallel::Kokkos_BwdTransHexKernel_QP_1D_SimpleMap<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, 1);
+            std::cout << "1D block SimpleMap norm = " << results[1] << std::endl;
+        }
 
-        std::vector<T> results = Parallel::KokkosKernel<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, 1);
-        std::cout << "Kokkos norm = " << results[1] << std::endl;
+        // ------------------------- 2D Block(pq) ---------------------------------------------------
+        {
+        std::vector<T> results = BK1::Parallel::Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, 1);
+        std::cout << "2D block(pq) norm = " << results[1] << std::endl;
+        }
+
+        // ------------------------- 2D Block(pq) + Simple Map ---------------------------------------------------
+        {
+        std::vector<T> results = BK1::Parallel::Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq_SimpleMap<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, 1);
+        std::cout << "2D block(pq) norm = " << results[1] << std::endl;
+        }
 
         delete[] basis0; delete[] basis1; delete[] basis2; delete[] JxW; delete[] in; delete[] out;
         
@@ -65,14 +82,12 @@ int main(int argc, char **argv){
     unsigned int nelmt              = (argc > 4) ? atoi(argv[4]) : 2 << 18;
     unsigned int numThreads         = (argc > 5) ? atoi(argv[5]) : nelmt * nq0 * nq1 * nq2 / 2;
 
-    unsigned int threadsPerBlockX   = nq0 / 2;
-    unsigned int threadsPerBlockY   = nq1 / 2;
-    unsigned int threadsPerBlockZ   = nq2 / 2;
+    unsigned int threadsPerBlock   = nq0 * nq1 * nq2;
 
     Kokkos::initialize(argc, argv);
 
     std::cout.precision(8);
-    run_test<double>(nq0, nq1, nq2, numThreads, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt);
+    run_test<double>(nq0, nq1, nq2, numThreads, threadsPerBlock, nelmt);
     
     Kokkos::finalize();
     return 0;

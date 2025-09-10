@@ -40,9 +40,6 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     const unsigned int threadsPerBlockY, const unsigned int threadsPerBlockZ,
     const unsigned int nelmt, const unsigned int ntests)
 {
-    unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
-    const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
-
     const unsigned int nm0 = nq0 - 1;
     const unsigned int nm1 = nq1 - 1;
     const unsigned int nm2 = nq2 - 1;
@@ -170,6 +167,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
     // ------------------------- Kernel with 1D block size -------------------------------
     {   
+        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
+        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+
         double time = std::numeric_limits<double>::max();
         Timer Timer;
         for (unsigned int t = 0u; t < ntests; ++t)
@@ -185,8 +185,31 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         std::cout << "1D_Block -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
     }
 
+    // ------------------------- Kernel with 1D block size + SimpleMap -------------------------------
+    {   
+        unsigned int threadsPerBlock = nq0 * nq1 * nq2;
+        const unsigned int numBlocks = numThreads / threadsPerBlock;
+
+        double time = std::numeric_limits<double>::max();
+        Timer Timer;
+        for (unsigned int t = 0u; t < ntests; ++t)
+        {   
+            Timer.start();
+            BK1::Parallel::BwdTransHexKernel_QP_1D_SimpleMap<T><<<numBlocks, threadsPerBlock, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
+                                                            d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
+            CUDA_LAST_ERROR_CHECK();
+            CUDA_CHECK(cudaDeviceSynchronize());
+            Timer.stop();
+            time = std::min(time, Timer.elapsedSeconds());
+        }
+        std::cout << "1D_Block Simple Map -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+    }
+
     // ------------------------- Kernel with 3D block size -------------------------------
     {
+        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
+        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+
         double time = std::numeric_limits<double>::max();
         Timer Timer;
         dim3 gridDim(numBlocks);
@@ -207,6 +230,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
     // ------------------------- Kernel with 3D block size + SimpleMap -------------------------------
     {
+        const unsigned int threadsPerBlock = nq0 * nq1 * nq2;
+        const unsigned int numBlocks = numThreads / threadsPerBlock;
+
         double time = std::numeric_limits<double>::max();
         Timer Timer;
         dim3 gridDim(numBlocks);
@@ -224,10 +250,61 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         }
         std::cout << "3D_Block Simple Map -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
     }
+
+    // ------------------------- Kernel with 2D block size (pq)-------------------------------
+    {   
+        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY;
+        const unsigned int numBlocks = (numThreads / nq2) / (std::min(nq0 * nq1, threadsPerBlock));
+        unsigned int ssize = nm0 * nq0 + nm1 * nq1 + nm2 * nq2 + 2 * nq0 * nq1 * nq2;          //shared memory dynamic size
+
+        double time = std::numeric_limits<double>::max();
+        Timer Timer;
+        for (unsigned int t = 0u; t < ntests; ++t)
+        {   
+            Timer.start();
+            BK1::Parallel::BwdTransHexKernel_QP_1D_2D_BLOCKS_pq<T><<<numBlocks, std::min(nq0 * nq1, threadsPerBlock), ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
+                                                            d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
+            CUDA_LAST_ERROR_CHECK();
+            CUDA_CHECK(cudaDeviceSynchronize());
+            Timer.stop();
+            time = std::min(time, Timer.elapsedSeconds());
+        }
+        std::cout << "2D Block(pq) -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+    }
+
+
+    // ------------------------- Kernel with 2D block size (pq) + SimpleMap-------------------------------
+    {   
+        const unsigned int numBlocks = (numThreads / nq2) / (nq0 * nq1);
+        unsigned int ssize = nm0 * nq0 + nm1 * nq1 + nm2 * nq2 + 2 * nq0 * nq1 * nq2;          //shared memory dynamic size
+
+        double time = std::numeric_limits<double>::max();
+        Timer Timer;
+        for (unsigned int t = 0u; t < ntests; ++t)
+        {   
+            Timer.start();
+            BK1::Parallel::BwdTransHexKernel_QP_1D_2D_BLOCKS_pq_SimpleMap<T><<<numBlocks, nq0 * nq1, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
+                                                        d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
+            CUDA_LAST_ERROR_CHECK();
+            CUDA_CHECK(cudaDeviceSynchronize());
+            Timer.stop();
+            time = std::min(time, Timer.elapsedSeconds());
+        }
+
+        T result = thrust::transform_reduce(
+            thrust::device, d_out, d_out + nelmt * nm0 * nm1 * nm2,
+            thrust::square<T>(), (T)0.0,
+            thrust::plus<T>()
+        );
             
+        std::cout << "2D Block(pq) Simple Map -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+    }
+
     cudaFree(d_basis0); cudaFree(d_basis1); cudaFree(d_basis2); cudaFree(d_JxW); cudaFree(d_in); cudaFree(d_out);
     delete[] basis0; delete[] basis1; delete[] basis2; delete[] JxW; delete[] in; delete[] out;
 }
+
+
 
 
 int main(int argc, char **argv){

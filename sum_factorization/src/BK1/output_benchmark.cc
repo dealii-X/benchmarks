@@ -94,7 +94,7 @@ std::vector<T> run_test(const unsigned int nq0, const unsigned int nq1, const un
     std::vector<T> results(5);
     // ------------------------- Kokkos Kernel ---------------------------------------------------
     {   
-        std::vector<T> kokkos_results = Parallel::KokkosKernel<T>(nq0, nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
+        std::vector<T> kokkos_results = BK1::Parallel::Kokkos_BwdTransHexKernel_QP_1D<T>(nq0, nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
         results[0] = kokkos_results[0];
     }
 

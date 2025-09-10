@@ -71,8 +71,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     }
 
 
-    unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
-    const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+
 
     T  *d_basis0, *d_basis1, *d_basis2, *d_JxW, *d_in, *d_out;
 
@@ -152,9 +151,13 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
     // ------------------------- Cuda kernel with 1D block size --------------------------------------
     {
+        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
+        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+
         BK1::Parallel::BwdTransHexKernel_QP_1D<T><<<numBlocks, std::min(nq0 * nq1 * nq2, threadsPerBlock), ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
                                                     d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
-        cudaDeviceSynchronize();
+        CUDA_LAST_ERROR_CHECK();
+        CUDA_CHECK(cudaDeviceSynchronize());
 
         T resultCuda = thrust::transform_reduce(
             thrust::device, d_out, d_out + nelmt * nm0 * nm1 * nm2,
@@ -164,8 +167,29 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         std::cout << "Cuda 1D blocks norm = " << std::sqrt(resultCuda) << std::endl;
     }
 
+    // ------------------------- Cuda kernel with 1D block size + SimpleMap --------------------------------------
+    {
+        unsigned int threadsPerBlock = nq0 * nq1 * nq2;
+        const unsigned int numBlocks = numThreads / threadsPerBlock;
+
+        BK1::Parallel::BwdTransHexKernel_QP_1D_SimpleMap<T><<<numBlocks, threadsPerBlock, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
+                                                    d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
+        CUDA_LAST_ERROR_CHECK();
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        T resultCuda = thrust::transform_reduce(
+            thrust::device, d_out, d_out + nelmt * nm0 * nm1 * nm2,
+            thrust::square<T>(), (T)0.0f,
+            thrust::plus<T>());
+            
+        std::cout << "Cuda 1D blocks Simple Map norm = " << std::sqrt(resultCuda) << std::endl;
+    }
+
     // ------------------------ Cuda kernel with 3D block size --------------------------------------
     {
+        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
+        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+
         dim3 gridDim(numBlocks);
         dim3 blockDim(std::min(nq0,threadsPerBlockX), std::min(nq1,threadsPerBlockY), std::min(nq2, threadsPerBlockZ));
             
@@ -184,6 +208,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
     // ------------------------- Cuda kernel with 3D block size + Simple Map --------------------------------------
     {
+        const unsigned int threadsPerBlock = nq0 * nq1 * nq2;
+        const unsigned int numBlocks = numThreads / threadsPerBlock;
+
         dim3 blockDim(nq0, nq1, nq2);
 
         BK1::Parallel::BwdTransHexKernel_QP_1D_3D_BLOCKS_SimpleMap<T><<<numBlocks, blockDim, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
@@ -197,6 +224,46 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         thrust::plus<T>());
             
         std::cout << "Cuda 3D blocks Simple Map norm = " << std::sqrt(result) << std::endl;
+    }
+
+    // ------------------------- Kernel with 2D block size (pq)-------------------------------
+    {   
+        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY;
+        const unsigned int numBlocks = (numThreads / nq2) / (std::min(nq0 * nq1, threadsPerBlock));
+
+        unsigned int ssize = nm0 * nq0 + nm1 * nq1 + nm2 * nq2 + 2 * nq0 * nq1 * nq2;          //shared memory dynamic size
+
+        BK1::Parallel::BwdTransHexKernel_QP_1D_2D_BLOCKS_pq<T><<<numBlocks, std::min(nq0 * nq1, threadsPerBlock), ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
+                                                        d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
+        CUDA_LAST_ERROR_CHECK();
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        T result = thrust::transform_reduce(
+        thrust::device, d_out, d_out + nelmt * nm0 * nm1 * nm2,
+        thrust::square<T>(), (T)0.0,
+        thrust::plus<T>());
+            
+        std::cout << "Cuda 2D blocks(pq) norm = " << std::sqrt(result) << std::endl;
+    }
+
+
+    // ------------------------- Kernel with 2D block size (pq) + SimpleMap-------------------------------
+    {   
+        const unsigned int numBlocks = (numThreads / nq2) / (nq0 * nq1);
+        unsigned int ssize = nm0 * nq0 + nm1 * nq1 + nm2 * nq2 + 2 * nq0 * nq1 * nq2;          //shared memory dynamic size
+
+        BK1::Parallel::BwdTransHexKernel_QP_1D_2D_BLOCKS_pq_SimpleMap<T><<<numBlocks, nq0 * nq1, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
+                                                        d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
+        CUDA_LAST_ERROR_CHECK();
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        T result = thrust::transform_reduce(
+            thrust::device, d_out, d_out + nelmt * nm0 * nm1 * nm2,
+            thrust::square<T>(), (T)0.0,
+            thrust::plus<T>()
+        );
+            
+        std::cout << "Cuda 2D blocks(pq) SimpleMap norm = " << std::sqrt(result) << std::endl;
     }
 
     cudaFree(d_basis0); cudaFree(d_basis1); cudaFree(d_basis2); cudaFree(d_JxW); cudaFree(d_in); cudaFree(d_out);

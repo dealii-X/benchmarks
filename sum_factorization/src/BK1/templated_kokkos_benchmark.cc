@@ -17,8 +17,6 @@ void run_test(
     const unsigned int numThreads, const unsigned int threadsPerBlock, 
     const unsigned int nelmt, const unsigned int ntests)
 {
-    const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
-
     const unsigned int nm0 = nq0 - 1;
     const unsigned int nm1 = nq1 - 1;
     const unsigned int nm2 = nq2 - 1;
@@ -61,10 +59,29 @@ void run_test(
         }
     }
 
-    // ------------------------- Kokkos Kernel ---------------------------------------------------
-    std::vector<T> results = Parallel::KokkosKernel<T,nq0 ,nq1, nq2>(basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
-    std::cout << "Kokkos -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
-    
+    // ------------------------- 1D Block ---------------------------------------------------
+    {
+        std::vector<T> results = Parallel::Kokkos_BwdTransHexKernel_QP_1D<T,nq0 ,nq1, nq2>(basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
+        std::cout << "1D Block -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
+    }
+
+    // ------------------------- 1D Block + SimpleMap---------------------------------------------------
+    {
+        std::vector<T> results = Parallel::Kokkos_BwdTransHexKernel_QP_1D_SimpleMap<T,nq0 ,nq1, nq2>(basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
+        std::cout << "1D Block SimpleMap -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
+    }
+
+    // ------------------------- 2D Block (pq) ---------------------------------------------------
+    {
+        std::vector<T> results = Parallel::Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq<T,nq0 ,nq1, nq2>(basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
+        std::cout << "2D Block(pq) -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
+    }
+
+    // ------------------------- 2D Block (pq) + SimpleMap ---------------------------------------------------
+    {
+        std::vector<T> results = Parallel::Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq_SimpleMap<T,nq0 ,nq1, nq2>(basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
+        std::cout << "2D Block(pq) SimpleMap -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
+    }
 
     delete[] basis0; delete[] basis1; delete[] basis2; delete[] JxW; delete[] in; delete[] out;
 }
