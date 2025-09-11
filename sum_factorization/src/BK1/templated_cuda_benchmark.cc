@@ -197,7 +197,7 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "1D_Block -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        std::cout << "1D_Block SimpleMap-> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
     }
 
     // ------------------------- Kernel with 3D block size -------------------------------
@@ -282,7 +282,7 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "2D_Block(pq) -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        std::cout << "2D_Block(pq) SimpleMap -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
     }
     
     cudaFree(d_basis0); cudaFree(d_basis1); cudaFree(d_basis2); cudaFree(d_JxW); cudaFree(d_in); cudaFree(d_out);
