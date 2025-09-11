@@ -1028,9 +1028,9 @@ __global__ void BwdTransHexKernel_QP_1D_SimpleMap(
         const unsigned int nm1 = nq1 - 1;
         const unsigned int nm2 = nq2 - 1;
 
-        T r_p[10];
-        T r_q[10];
-        T r_r[10];
+        T r_p[nq0];
+        T r_q[nq1];
+        T r_r[nq2];
 
         extern __shared__ T shared[];
         T *s_basis0 = shared;
@@ -1236,9 +1236,9 @@ __global__ void BwdTransHexKernel_QP_1D_SimpleMap(
         const unsigned int nm1 = nq1 - 1;
         const unsigned int nm2 = nq2 - 1;
 
-        T r_p[10];
-        T r_q[10];
-        T r_r[10];
+        T r_p[nq0];
+        T r_q[nq1];
+        T r_r[nq2];
 
         extern __shared__ T shared[];
         T *s_basis0 = shared;

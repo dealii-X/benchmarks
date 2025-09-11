@@ -513,9 +513,9 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq(
                         //register for dot product ops
                         T r_tmp = 0; 
 
-                        T r_p[10];
-                        T r_q[10];
-                        T r_r[10];
+                        T r_p[nq0];
+                        T r_q[nq1];
+                        T r_r[nq2];
 
 
                         //shared memory access
@@ -784,9 +784,9 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq_SimpleMap(
                         //register for dot product ops
                         T r_tmp = 0; 
 
-                        T r_p[10];
-                        T r_q[10];
-                        T r_r[10];
+                        T r_p[nq0];
+                        T r_q[nq1];
+                        T r_r[nq2];
 
 
                         //shared memory access
