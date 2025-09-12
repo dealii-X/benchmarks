@@ -13,7 +13,7 @@ template<typename T, unsigned int nq0, unsigned int nq1, unsigned int nq2>
 __global__ void BwdTransHexKernel_QP_1D_Warp(
     unsigned int nelmt,
     const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
-    const T *__restrict__ d_basis2, const T *__restrict__ JxW,
+    const T *__restrict__ d_basis2, const T *__restrict__ d_JxW,
     const T *__restrict__ d_in, T *__restrict__ d_out)
 {
     const unsigned int nm0 = nq0 - 1;
@@ -96,7 +96,7 @@ __global__ void BwdTransHexKernel_QP_1D_Warp(
         __syncwarp();
 
 
-        //step-4 : direction 2
+        //step-4 : direction 2 + step-5 : Multiply with weights and determinant of Jacobi
         for(unsigned int tid = laneId; tid < nq0 * nq1 * nq2; tid += warpSize)
         {
             int p = tid / (nq1 * nq2);
@@ -108,18 +108,12 @@ __global__ void BwdTransHexKernel_QP_1D_Warp(
             {
                 tmp += s_wsp0[warpId * nq0 * nq1 * nq2 + q * nq0 * nm2 + p * nm2 + k] * s_basis2[r * nm2 + k];
             }
-            s_wsp1[warpId * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r] = tmp;
+            s_wsp1[warpId * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r] = tmp * d_JxW[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r];
         }
         __syncwarp();
 
 
         //Reverse Operations
-
-        //step-5 : Multiply with weights and determinant of Jacobi
-        for(unsigned int tid = laneId; tid < nq0 * nq1 * nq2; tid += warpSize){
-            s_wsp1[warpId * nq0 * nq1 * nq2 + tid] *= JxW[e * nq0 * nq1 * nq2 + tid];
-        }
-        __syncwarp();
 
         //step-6 : direction 2
         for(unsigned int tid = laneId; tid < nq0 * nq1 * nm2; tid += warpSize)
@@ -184,7 +178,7 @@ __global__ void BwdTransHexKernel_QP_1D_Warp(
 template<typename T, unsigned int nq0, unsigned int nq1, unsigned int nq2>
 __global__ void BwdTransHexKernel_QP_1D_Warp_Q1(
     unsigned int nelmt, const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
-    const T *__restrict__ d_basis2, const T *__restrict__ JxW, const T *__restrict__ d_in,
+    const T *__restrict__ d_basis2, const T *__restrict__ d_JxW, const T *__restrict__ d_in,
     T *__restrict__ d_out)
 {
     unsigned int warpsPerBlock = blockDim.x / warpSize;
@@ -268,7 +262,7 @@ __global__ void BwdTransHexKernel_QP_1D_Warp_Q1(
         __syncwarp();
 
 
-        //step-4 : direction 2
+        //step-4 : direction 2 + step-5 : Multiply with weights and determinant of Jacobi
         if(laneId < nq0 * nq1 * nq2)
         {
             int p = laneId / (nq1 * nq2);
@@ -280,19 +274,11 @@ __global__ void BwdTransHexKernel_QP_1D_Warp_Q1(
             {
                 tmp += s_wsp0[warpId * nq0 * nq1 * nq2 + q * nq0 * nm2 + p * nm2 + k] * s_basis2[r * nm2 + k];
             }
-            s_wsp1[warpId * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r] = tmp;
+            s_wsp1[warpId * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r] = tmp * d_JxW[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r];
         }
         __syncwarp();
-
 
         //Reverse Operations
-
-        //step-5 : Multiply with weights and determinant of Jacobi
-        if(laneId < nq0 * nq1 * nq2)
-        {
-            s_wsp1[warpId * nq0 * nq1 * nq2 + laneId] *= JxW[e * nq0 * nq1 * nq2 + laneId];
-        }
-        __syncwarp();
 
         //step-6 : direction 2
         if(laneId < nq0 * nq1 * nm2)
@@ -356,7 +342,7 @@ __global__ void BwdTransHexKernel_QP_1D_Warp_Q1(
 template<typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
 __global__ void BwdTransHexKernel_QP_1D(
     const unsigned int nelmt, const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
-    const T *__restrict__ d_basis2, const T *__restrict__ JxW, const T *__restrict__ d_in, T *__restrict__ d_out)
+    const T *__restrict__ d_basis2, const T *__restrict__ d_JxW, const T *__restrict__ d_in, T *__restrict__ d_out)
 {
     const unsigned int nm0 = nq0 - 1;
     const unsigned int nm1 = nq1 - 1;
@@ -432,7 +418,7 @@ __global__ void BwdTransHexKernel_QP_1D(
         __syncthreads();
 
 
-        //step-4 : direction 2
+        //step-4 : direction 2 + step-5 : Multiply with weights and determinant of Jacobi
         for(unsigned int tid = threadIdx.x; tid < nq0 * nq1 * nq2; tid += blockDim.x)
         {
             int p = tid / (nq1 * nq2);
@@ -444,18 +430,12 @@ __global__ void BwdTransHexKernel_QP_1D(
             {
                 tmp += s_wsp0[q * nq0 * nm2 + p * nm2 + k] * s_basis2[r * nm2 + k];
             }
-            s_wsp1[p * nq1 * nq2 + q * nq2 + r] = tmp;
+            s_wsp1[p * nq1 * nq2 + q * nq2 + r] = tmp * d_JxW[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r];
         }
         __syncthreads();
 
 
         //Reverse Operations
-
-        //step-5 : Multiply with weights and determinant of Jacobi
-        for(unsigned int tid = threadIdx.x; tid < nq0 * nq1 * nq2; tid += blockDim.x){
-            s_wsp1[tid] *= JxW[e * nq0 * nq1 * nq2 + tid];
-        }
-        __syncthreads();
 
         //step-6 : direction 2
         for(unsigned int tid = threadIdx.x; tid < nq0 * nq1 * nm2; tid += blockDim.x)
@@ -519,7 +499,7 @@ __global__ void BwdTransHexKernel_QP_1D(
 template<typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
 __global__ void BwdTransHexKernel_QP_1D_SimpleMap(
     const unsigned int nelmt, const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
-    const T *__restrict__ d_basis2, const T *__restrict__ JxW, const T *__restrict__ d_in, T *__restrict__ d_out)
+    const T *__restrict__ d_basis2, const T *__restrict__ d_JxW, const T *__restrict__ d_in, T *__restrict__ d_out)
 {
     const unsigned int nm0 = nq0 - 1;
     const unsigned int nm1 = nq1 - 1;
@@ -597,7 +577,7 @@ __global__ void BwdTransHexKernel_QP_1D_SimpleMap(
         __syncthreads();
 
 
-        //step-4 : direction 2
+        //step-4 : direction 2 + step-5 : Multiply with weights and determinant of Jacobi
         int p = tid / (nq1 * nq2);
         int q = (tid % (nq1 * nq2)) / nq2;
         int r = tid % nq2;
@@ -607,18 +587,12 @@ __global__ void BwdTransHexKernel_QP_1D_SimpleMap(
         {
             tmp += s_wsp0[q * nq0 * nm2 + p * nm2 + k] * s_basis2[r * nm2 + k];
         }
-        s_wsp1[p * nq1 * nq2 + q * nq2 + r] = tmp;
+        s_wsp1[p * nq1 * nq2 + q * nq2 + r] = tmp * d_JxW[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r];
 
         __syncthreads();
 
 
         //Reverse Operations
-
-        //step-5 : Multiply with weights and determinant of Jacobi
-        
-        s_wsp1[tid] *= JxW[e * nq0 * nq1 * nq2 + tid];
-        
-        __syncthreads();
 
         //step-6 : direction 2
         if(tid < nq0 * nq1 * nm2)
@@ -769,7 +743,7 @@ __global__ void BwdTransHexKernel_QP_1D_SimpleMap(
             __syncthreads();
     
 
-            //step-4 : direction 2
+            //step-4 : direction 2 + step-5 : Multiply with weights and determinant of Jacobi
             for(unsigned int p = threadIdx.x; p < nq0; p += blockDim.x){
                 for(unsigned int q = threadIdx.y; q < nq1; q += blockDim.y){
                     for(unsigned int r = threadIdx.z; r < nq2; r += blockDim.z){
@@ -779,22 +753,14 @@ __global__ void BwdTransHexKernel_QP_1D_SimpleMap(
                         {
                             tmp += s_wsp0[q * nq0 * nm2 + p * nm2 + k] * s_basis2[r * nm2 + k];
                         }
-                        s_wsp1[p * nq1 * nq2 + q * nq2 + r] = tmp;
+                        s_wsp1[p * nq1 * nq2 + q * nq2 + r] = tmp * d_JxW[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r];
                     }
                 }
             }
-            __syncthreads();
-    
-            
+            __syncthreads();       
 
             //Reverse Operations
-    
-            //step-5 : Multiply with weights and determinant of Jacobi
-            for(unsigned int tid = linearThreadIdx; tid < nq0 * nq1 * nq2; tid += blockSize){
-                s_wsp1[tid] *= d_JxW[e * nq0 * nq1 * nq2 + tid];
-            }
-            __syncthreads();
-    
+      
             //step-6 : direction 2
             for(unsigned int q = threadIdx.y; q < nq1; q += blockDim.y){
                 for(unsigned int p = threadIdx.x; p < nq0; p += blockDim.x){
@@ -936,7 +902,7 @@ __global__ void BwdTransHexKernel_QP_1D_SimpleMap(
             __syncthreads();
     
 
-            //step-4 : direction 2
+            //step-4 : direction 2 + step-5 : Multiply with weights and determinant of Jacobi
             {
             int p = threadIdx.x;
             int q = threadIdx.y;
@@ -947,18 +913,11 @@ __global__ void BwdTransHexKernel_QP_1D_SimpleMap(
             {
                 tmp += s_wsp0[q * nq0 * nm2 + p * nm2 + k] * s_basis2[r * nm2 + k];
             }
-            s_wsp1[p * nq1 * nq2 + q * nq2 + r] = tmp;
+            s_wsp1[p * nq1 * nq2 + q * nq2 + r] = tmp * d_JxW[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r];
             }
             __syncthreads();
             
-            //Reverse Operations
-
-            //step-5 : Multiply with weights and determinant of Jacobi
-
-            s_wsp1[linearThreadIdx] *= d_JxW[e * nq0 * nq1 * nq2 + linearThreadIdx];
-            
-            __syncthreads();
-            
+      
             //step-6 : direction 2
             if(threadIdx.z < nm2)
             {
@@ -1116,7 +1075,7 @@ __global__ void BwdTransHexKernel_QP_1D_SimpleMap(
             __syncthreads();
 
 
-            //step-4 : direction 2
+            //step-4 : direction 2 + step-5 : Multiply with weights and determinant of Jacobi
             for(int tid = threadIdx.x; tid < nq0 * nq1; tid += blockDim.x)
             {
                 const int p = tid / nq1;
@@ -1133,19 +1092,13 @@ __global__ void BwdTransHexKernel_QP_1D_SimpleMap(
                     for(int k = 0; k < nm2; ++k){
                         r_tmp += r_r[k] * s_basis2[r * nm2 + k];
                     }
-                    s_wsp1[r * nq0 * nq1 + p * nq1 + q] = r_tmp;
+                    s_wsp1[r * nq0 * nq1 + p * nq1 + q] = r_tmp * d_JxW[e * nq0 * nq1 * nq2 + r * nq0 * nq1 + p * nq1 + q];
                 }
             }
             __syncthreads();
 
             //Reverse Operations
     
-            //step-5 : Multiply with weights and determinant of Jacobi
-            for(unsigned int tid = threadIdx.x; tid < nq0 * nq1 * nq2; tid += blockDim.x){
-                s_wsp1[tid] *= d_JxW[e * nq0 * nq1 * nq2 + tid];
-            }
-            __syncthreads();
-
             //step-6 : direction 2
             for(int tid = threadIdx.x; tid < nq0 * nq1; tid += blockDim.x)
             {
@@ -1323,7 +1276,7 @@ __global__ void BwdTransHexKernel_QP_1D_SimpleMap(
             __syncthreads();
 
 
-            //step-4 : direction 2
+            //step-4 : direction 2 + step-5 : Multiply with weights and determinant of Jacobi
 
             //copy to register
             for(int k = 0; k < nm2; ++k){
@@ -1336,19 +1289,12 @@ __global__ void BwdTransHexKernel_QP_1D_SimpleMap(
                 for(int k = 0; k < nm2; ++k){
                     r_tmp += r_r[k] * s_basis2[r * nm2 + k];
                 }
-                s_wsp1[r * nq0 * nq1 + q * nq0 + p] = r_tmp;
+                s_wsp1[r * nq0 * nq1 + q * nq0 + p] = r_tmp * d_JxW[e * nq0 * nq1 * nq2 + r * nq0 * nq1 + q * nq0 + p];
             }
             __syncthreads();
 
             //Reverse Operations
     
-            //step-5 : Multiply with weights and determinant of Jacobi
-            for(unsigned int tidx = threadIdx.x; tidx < nq0 * nq1 * nq2; tidx += blockDim.x){
-                s_wsp1[tidx] *= d_JxW[e * nq0 * nq1 * nq2 + tidx];
-            }
-            __syncthreads();
-
-
             //step-6 : direction 2
 
             //copy to register

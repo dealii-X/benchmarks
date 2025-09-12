@@ -127,7 +127,7 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_1D(
                             }
                             team_member.team_barrier();
 
-                            //step-4 : direction 2
+                            //step-4 : direction 2 + step-5 : Multiply with weights and determinant of Jacobi
                             for(unsigned int tid = threadIdx; tid < nq0 * nq1 * nq2; tid += blockSize)
                             {
                                 p = tid / (nq1 * nq2);
@@ -139,17 +139,11 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_1D(
                                 {
                                     tmp += s_wsp0[q * nq0 * nm2 + p * nm2 + k] * s_basis2[r * nm2 + k];
                                 }
-                                s_wsp1[p * nq1 * nq2 + q * nq2 + r] = tmp;
+                                s_wsp1[p * nq1 * nq2 + q * nq2 + r] = tmp * d_JxW[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r];
                             }
                             team_member.team_barrier();
                             
                             //Reverse Operations
-                            
-                            //step-5 : Multiply with weights and determinant of Jacobi
-                            for(unsigned int tid = threadIdx; tid < nq0 * nq1 * nq2; tid += blockSize){
-                                s_wsp1[tid] *= d_JxW[e * nq0 * nq1 * nq2 + tid];
-                            }
-                            team_member.team_barrier();
                             
                             //step-6 : direction 2
                             for(unsigned int tid = threadIdx; tid < nq0 * nq1 * nm2; tid += blockSize)
@@ -351,7 +345,7 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_1D_SimpleMap(
                             team_member.team_barrier();
 
 
-                            //step-4 : direction 2
+                            //step-4 : direction 2 + step-5 : Multiply with weights and determinant of Jacobi
                             int p = threadIdx / (nq1 * nq2);
                             int q = (threadIdx % (nq1 * nq2)) / nq2;
                             int r = threadIdx % nq2;
@@ -361,18 +355,11 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_1D_SimpleMap(
                             {
                                 tmp += s_wsp0[q * nq0 * nm2 + p * nm2 + k] * s_basis2[r * nm2 + k];
                             }
-                            s_wsp1[p * nq1 * nq2 + q * nq2 + r] = tmp;
+                            s_wsp1[p * nq1 * nq2 + q * nq2 + r] = tmp * d_JxW[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r];
 
                             team_member.team_barrier();
                             
-
                             //Reverse Operations
-                            
-                            //step-5 : Multiply with weights and determinant of Jacobi
-                            
-                            s_wsp1[threadIdx] *= d_JxW[e * nq0 * nq1 * nq2 + threadIdx];
-                            
-                            team_member.team_barrier();
                             
                             //step-6 : direction 2
                             if(threadIdx < nq0 * nq1 * nm2)
@@ -597,7 +584,7 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq(
                             }
                             team_member.team_barrier();
 
-                            //step-4 : direction 2
+                            //step-4 : direction 2 + step-5 : Multiply with weights and determinant of Jacobi
                             for(int tid = threadIdx; tid < nq0 * nq1; tid += blockSize)
                             {
                                 const int p = tid / nq1;
@@ -614,18 +601,12 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq(
                                     for(int k = 0; k < nm2; ++k){
                                         r_tmp += r_r[k] * s_basis2[r * nm2 + k];
                                     }
-                                    s_wsp1[r * nq0 * nq1 + p * nq1 + q] = r_tmp;
+                                    s_wsp1[r * nq0 * nq1 + p * nq1 + q] = r_tmp * d_JxW[e * nq0 * nq1 * nq2 + r * nq0 * nq1 + p * nq1 + q];
                                 }
                             }
                             team_member.team_barrier();
                             
                             //Reverse Operations
-                            
-                            //step-5 : Multiply with weights and determinant of Jacobi
-                            for(unsigned int tid = threadIdx; tid < nq0 * nq1 * nq2; tid += blockSize){
-                                s_wsp1[tid] *= d_JxW[e * nq0 * nq1 * nq2 + tid];
-                            }
-                            team_member.team_barrier();
                             
                             //step-6 : direction 2
                             for(int tid = threadIdx; tid < nq0 * nq1; tid += blockSize)
@@ -865,7 +846,7 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq_SimpleMap(
                             }
                             team_member.team_barrier();
 
-                            //step-4 : direction 2
+                            //step-4 : direction 2 + step-5 : Multiply with weights and determinant of Jacobi
 
                             //copy to register
                             for(int k = 0; k < nm2; ++k){
@@ -878,17 +859,11 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq_SimpleMap(
                                 for(int k = 0; k < nm2; ++k){
                                     r_tmp += r_r[k] * s_basis2[r * nm2 + k];
                                 }
-                                s_wsp1[r * nq0 * nq1 + q * nq0 + p] = r_tmp;
+                                s_wsp1[r * nq0 * nq1 + q * nq0 + p] = r_tmp * d_JxW[e * nq0 * nq1 * nq2 + r * nq0 * nq1 + q * nq0 + p];
                             }
                             team_member.team_barrier();
                             
                             //Reverse Operations
-                            
-                            //step-5 : Multiply with weights and determinant of Jacobi
-                            for(unsigned int tid = threadIdx; tid < nq0 * nq1 * nq2; tid += blockSize){
-                                s_wsp1[tid] *= d_JxW[e * nq0 * nq1 * nq2 + tid];
-                            }
-                            team_member.team_barrier();
                             
                             //step-6 : direction 2
                             //copy to register
