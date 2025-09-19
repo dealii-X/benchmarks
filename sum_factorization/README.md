@@ -47,13 +47,10 @@ cd <build_dir>/roofline
 # Modifying the "Input Parameters" in rooflineBK?.py
 python3 rooflineBK?.py
 ```
-The theoretical bandwidth and TFLOPs of NVIDIA devices can be calculated using simple formulas.
+The theoretical bandwidth of NVIDIA devices can be calculated using simple formulas.
 
-$$
-\boxed{\text{Global Memory Bandwidth (GB/s)} = \text{Memory Clock (GHz)} \times \text{Bus Width (bits)} / 8}
-$$
+<strong>Global Memory Bandwidth (GB/s)</strong> = Memory Clock (GHz) x Bus Width (bits) / 8
 
-$$
-\boxed{\text{Shared Memory Bandwidth (GB/s)} = \text{SM Clock (GHz)} \times \text{\#SM} \times \text{word length} \times \text{\#Banks}}
-$$
+<strong>Shared Memory Bandwidth (GB/s)</strong> = SM Clock (GHz) x #SM x word length x #Banks
+
 
