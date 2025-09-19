@@ -21,7 +21,7 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_1D(const unsigned int nq0, const unsi
         const unsigned int nm2 = nq2 - 1;
         
         T result_kokkos = 0.0;
-        std::vector<T> results(2);
+        std::vector<T> results(3);
         {   
             Kokkos::View<const T*, Kokkos::HostSpace> basis0_view(basis0, nm0 * nq0);
             Kokkos::View<const T*, Kokkos::HostSpace> basis1_view(basis1, nm1 * nq1);
@@ -221,7 +221,10 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_1D(const unsigned int nq0, const unsi
             result_kokkos = std::sqrt(result_kokkos);
 
             T gdofPerSeconds = 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time_kokkos;
-            results[0] = gdofPerSeconds; results[1] = result_kokkos;
+            results[0] = gdofPerSeconds; 
+            results[1] = result_kokkos; 
+            results[2] = time_kokkos;
+
         }
 
         return results;
@@ -240,7 +243,7 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_1D_SimpleMap(const unsigned int nq0, 
         const unsigned int nm2 = nq2 - 1;
         
         T result_kokkos = 0.0;
-        std::vector<T> results(2);
+        std::vector<T> results(3);
         {   
             Kokkos::View<const T*, Kokkos::HostSpace> basis0_view(basis0, nm0 * nq0);
             Kokkos::View<const T*, Kokkos::HostSpace> basis1_view(basis1, nm1 * nq1);
@@ -438,7 +441,9 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_1D_SimpleMap(const unsigned int nq0, 
             result_kokkos = std::sqrt(result_kokkos);
 
             T gdofPerSeconds = 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time_kokkos;
-            results[0] = gdofPerSeconds; results[1] = result_kokkos;
+            results[0] = gdofPerSeconds;
+            results[1] = result_kokkos;
+            results[2] = time_kokkos;
         }
 
         return results;
@@ -457,7 +462,7 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq(const unsigned int nq0, 
         const unsigned int nm2 = nq2 - 1;
         
         T result_kokkos = 0.0;
-        std::vector<T> results(2);
+        std::vector<T> results(3);
         {   
             Kokkos::View<const T*, Kokkos::HostSpace> basis0_view(basis0, nm0 * nq0);
             Kokkos::View<const T*, Kokkos::HostSpace> basis1_view(basis1, nm1 * nq1);
@@ -703,7 +708,9 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq(const unsigned int nq0, 
             result_kokkos = std::sqrt(result_kokkos);
 
             T gdofPerSeconds = 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time_kokkos;
-            results[0] = gdofPerSeconds; results[1] = result_kokkos;
+            results[0] = gdofPerSeconds;
+            results[1] = result_kokkos;
+            results[2] = time_kokkos;
         }
 
         return results;
@@ -722,7 +729,7 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq_SimpleMap(const unsigned
         const unsigned int nm2 = nq2 - 1;
         
         T result_kokkos = 0.0;
-        std::vector<T> results(2);
+        std::vector<T> results(3);
         {   
             Kokkos::View<const T*, Kokkos::HostSpace> basis0_view(basis0, nm0 * nq0);
             Kokkos::View<const T*, Kokkos::HostSpace> basis1_view(basis1, nm1 * nq1);
@@ -955,7 +962,9 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq_SimpleMap(const unsigned
             result_kokkos = std::sqrt(result_kokkos);
 
             T gdofPerSeconds = 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time_kokkos;
-            results[0] = gdofPerSeconds; results[1] = result_kokkos;
+            results[0] = gdofPerSeconds;
+            results[1] = result_kokkos;
+            results[2] = time_kokkos;
         }
 
         return results;

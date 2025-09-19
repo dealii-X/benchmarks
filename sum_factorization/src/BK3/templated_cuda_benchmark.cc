@@ -3,6 +3,7 @@
 #include <timer.hpp>
 #include <thrust/execution_policy.h>
 #include <thrust/transform_reduce.h>
+#include <iomanip>
 
 #define CUDA_CHECK(call)                                                          \
     do {                                                                          \
@@ -121,9 +122,23 @@ void run_test(
 
     int device;   cudaGetDevice(&device);   cudaDeviceProp prop;
     cudaGetDeviceProperties(&prop, device);
-    
 
-    // ------------------------- Kernel with 3D block size -------------------------------
+    std::cout << std::fixed << std::setprecision(3);
+
+    std::cout << std::left  << std::setw(15) << "Kernel"
+              << std::right << std::setw(4)  << "p0"
+              << std::right << std::setw(4)  << "p1"
+              << std::right << std::setw(4)  << "p2"
+              << std::right << std::setw(12)  << "nelmt"
+              << std::right << std::setw(16) << "numThreads"
+              << std::right << std::setw(16)  << "DOF"
+              << std::right << std::setw(10)  << "time"
+              << std::right << std::setw(8)  << "GDOF/s"
+              << std::endl;
+
+
+    
+    // ------------------------- Kernel with 1D block size -------------------------------
     {   
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
         const unsigned int numBlocks = numThreads3D / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
@@ -141,11 +156,20 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "3D Block -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        std::cout << std::left  << std::setw(15) << "1D" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12)  << nelmt
+                  << std::right << std::setw(16) << numBlocks * std::min(nq0,threadsPerBlockX) * std::min(nq1,threadsPerBlockY) * std::min(nq2, threadsPerBlockZ)
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << time
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
+                  << std::endl;
     }
 
 
-    // ------------------------- Kernel with 3D block size + SimpleMap -------------------------------
+    // ------------------------- Kernel with 1D block size + SimpleMap -------------------------------
     {   
         unsigned int threadsPerBlock = nq0 * nq1 * nq2;
         const unsigned int numBlocks = numThreads3D / threadsPerBlock;
@@ -163,7 +187,16 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "3D_Block Simple Map -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        std::cout << std::left  << std::setw(15) << "1DS" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12)  << nelmt
+                  << std::right << std::setw(16) << numBlocks * threadsPerBlock
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << time
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
+                  << std::endl;
     }
 
 
@@ -187,7 +220,16 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "2D Block(pq) -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        std::cout << std::left  << std::setw(15) << "2D" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12)  << nelmt
+                  << std::right << std::setw(16) << numBlocks * std::min(nq0 * nq1, threadsPerBlock)
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << time
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
+                  << std::endl;
     }
 
 
@@ -216,7 +258,16 @@ void run_test(
             thrust::plus<T>()
         );
             
-        std::cout << "2D Block(pq) Simple Map -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        std::cout << std::left  << std::setw(15) << "2DS" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12)  << nelmt
+                  << std::right << std::setw(16) << numBlocks * nq0 * nq1
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << time
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
+                  << std::endl;
     }
     cudaFree(d_basis0); cudaFree(d_basis1); cudaFree(d_basis2); cudaFree(d_dbasis0); cudaFree(d_dbasis1); cudaFree(d_dbasis2); cudaFree(d_G); cudaFree(d_in); cudaFree(d_out);
     delete[] basis0; delete[] basis1; delete[] basis2; delete[] dbasis0; delete[] dbasis1; delete[] dbasis2; delete[] G; delete[] in; delete[] out;

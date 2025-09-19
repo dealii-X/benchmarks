@@ -1,6 +1,7 @@
 #include <iostream>
 #include <kernels/BK3/templated_kokkos_kernels.hpp>
 #include <timer.hpp>
+#include <iomanip>
 
 template<typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
 void run_test(
@@ -73,41 +74,90 @@ void run_test(
             dbasis2[k * nq2 + c] = std::cos((T)(k * nq2 + c));
         }
     }
+    std::cout << std::fixed << std::setprecision(3);
 
-    // ------------------------- 3D Block Kernel ---------------------------------------------------
+    std::cout << std::left  << std::setw(15) << "Kernel"
+              << std::right << std::setw(4)  << "p0"
+              << std::right << std::setw(4)  << "p1"
+              << std::right << std::setw(4)  << "p2"
+              << std::right << std::setw(12)  << "nelmt"
+              << std::right << std::setw(16) << "numThreads"
+              << std::right << std::setw(16)  << "DOF"
+              << std::right << std::setw(10)  << "time"
+              << std::right << std::setw(8)  << "GDOF/s"
+              << std::endl;
+
+
+    // ------------------------- 1D Block Kernel ---------------------------------------------------
     {
         std::vector<T> results = Parallel::KokkosKernel_3D_Block<T,nq0 ,nq1, nq2>(basis0, basis1, basis2, 
                                             dbasis0, dbasis1, dbasis2, G, in, out,
-                                            numThreads3D, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, 1);
-        std::cout << "3D Block -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
+                                            numThreads3D, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
+        
+        std::cout << std::left  << std::setw(15) << "1D" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12) << nelmt
+                  << std::right << std::setw(16) << numThreads3D
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << results[2]
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]
+                  << std::endl;
     }
 
-    // ------------------------- 3D Block Kernel + Simple Map ---------------------------------------------
+    // ------------------------- 1D Block Kernel + Simple Map ---------------------------------------------
     {
         std::vector<T> results = Parallel::KokkosKernel_3D_Block_SimpleMap<T, nq0 ,nq1, nq2>(basis0, basis1, basis2, 
-                                            dbasis0, dbasis1, dbasis2, G, in, out, numThreads3D, nelmt, 1);
-        std::cout << "3D Block SimpleMap-> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
+                                            dbasis0, dbasis1, dbasis2, G, in, out, numThreads3D, nelmt, ntests);
+
+        std::cout << std::left  << std::setw(15) << "1DS" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12) << nelmt
+                  << std::right << std::setw(16) << numThreads3D
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << results[2]
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]
+                  << std::endl;
     }
 
     // ------------------------- 2D Block(pq) Kernel ---------------------------------------------------
     {
         std::vector<T> results = Parallel::KokkosKernel_2D_Block_pq<T, nq0 ,nq1, nq2>(basis0, basis1, basis2, 
                                             dbasis0, dbasis1, dbasis2, G, in, out,
-                                            numThreads3D, threadsPerBlockX, threadsPerBlockY, nelmt, 1);
-        std::cout << "2D Block(pq) -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
+                                            numThreads3D, threadsPerBlockX, threadsPerBlockY, nelmt, ntests);
+        std::cout << std::left  << std::setw(15) << "2D" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12) << nelmt
+                  << std::right << std::setw(16) << numThreads3D / nq2
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << results[2]
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]
+                  << std::endl;
     }
 
     // ------------------------- 2D Block(pq) Simple Map Kernel ---------------------------------------------------
     {
         std::vector<T> results = Parallel::KokkosKernel_2D_Block_pq_SimpleMap<T, nq0 ,nq1, nq2>(basis0, basis1, basis2, 
                                             dbasis0, dbasis1, dbasis2, G, in, out,
-                                            numThreads3D, nelmt, 1);
-        std::cout << "2D Block(pq) SimpleMap -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
+                                            numThreads3D, nelmt, ntests);
+        std::cout << std::left  << std::setw(15) << "2DS" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12) << nelmt
+                  << std::right << std::setw(16) << numThreads3D / nq2
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << results[2]
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]
+                  << std::endl;
     }
 
 
-
-    
     delete[] basis0; delete[] basis1; delete[] basis2; delete[] dbasis0; delete[] dbasis1; delete[] dbasis2; delete[] G; delete[] in; delete[] out;
 }
 

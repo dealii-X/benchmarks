@@ -15,6 +15,7 @@ wsp : intermediate storages
 #include <timer.hpp>
 #include <array>
 #include <vector>
+#include <iomanip>
 
 #define CUDA_CHECK(call)                                                          \
     do {                                                                          \
@@ -96,6 +97,18 @@ void run_test(
     CUDA_CHECK(cudaMemcpy(d_out, out.data(), out.size() * sizeof(T), cudaMemcpyHostToDevice));
 
 
+    std::cout << std::fixed << std::setprecision(3);
+
+    std::cout << std::left  << std::setw(15) << "Kernel"
+              << std::right << std::setw(4)  << "p0"
+              << std::right << std::setw(4)  << "p1"
+              << std::right << std::setw(4)  << "p2"
+              << std::right << std::setw(12)  << "nelmt"
+              << std::right << std::setw(16) << "numThreads"
+              << std::right << std::setw(16)  << "DOF"
+              << std::right << std::setw(10)  << "time"
+              << std::right << std::setw(8)  << "GDOF/s"
+              << std::endl;
 
     // ------------------------- Kernel with Warp Centric Computation -------------------------------
     {
@@ -107,8 +120,8 @@ void run_test(
         int nelmtPerBlock = (shmem / sizeof(T) - nq0 * nm0 - nq1 * nm1 - nq2 * nm2) / (2 * nq0 * nq1 * nq2);
         nelmtPerBlock = std::min(nelmtPerBlock, maxThreadsPerBlock / warpSize);
 
-        dim3 blockDim(warpSize * nelmtPerBlock);
-        dim3 gridDim(numThreads / (warpSize * nelmtPerBlock));
+        int blockDim(warpSize * nelmtPerBlock);
+        int gridDim(numThreads / (warpSize * nelmtPerBlock));
 
         const unsigned int ssize = nelmtPerBlock * 2 * nq0 * nq1 * nq2 + nm0 * nq0 + nm1 * nq1 + nm2 * nq2;          //shared memory dynamic size
 
@@ -123,7 +136,16 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "Warp-Centric -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        std::cout << std::left  << std::setw(15) << "WarpCentric" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12)  << nelmt
+                  << std::right << std::setw(16) << gridDim * blockDim
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << time
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
+                  << std::endl;
     }
 
     // ------------------------- Kernel with Warp Centric Computation for Linear Element (Q1) -------------------------------
@@ -137,8 +159,8 @@ void run_test(
         int nelmtPerBlock = (shmem / sizeof(T) - nq0 * nm0 - nq1 * nm1 - nq2 * nm2) / (2 * nq0 * nq1 * nq2);
         nelmtPerBlock = std::min(nelmtPerBlock, maxThreadsPerBlock / warpSize);
 
-        dim3 blockDim(warpSize * nelmtPerBlock);
-        dim3 gridDim(numThreads / (warpSize * nelmtPerBlock));
+        int blockDim(warpSize * nelmtPerBlock);
+        int gridDim(numThreads / (warpSize * nelmtPerBlock));
 
         const unsigned int ssize = nelmtPerBlock * 2 * nq0 * nq1 * nq2 + nm0 * nq0 + nm1 * nq1 + nm2 * nq2;          //shared memory dynamic size
 
@@ -154,7 +176,16 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "Warp-Centric Q1 -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        std::cout << std::left  << std::setw(15) << "WarpCentricQ1" 
+                  << std::right << std::setw(4)  << nq0 - 2  
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12)  << nelmt
+                  << std::right << std::setw(16) << gridDim * blockDim
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << time
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
+                  << std::endl;
     }
 
 
@@ -177,7 +208,16 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "1D_Block -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        std::cout << std::left  << std::setw(15) << "1D" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12)  << nelmt
+                  << std::right << std::setw(16) << numBlocks * std::min(nq0 * nq1 * nq2, threadsPerBlock)
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << time
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
+                  << std::endl;
     }
 
     // ------------------------- Kernel with 1D block size + SimpleMap -------------------------------
@@ -197,7 +237,16 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "1D_Block SimpleMap-> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        std::cout << std::left  << std::setw(15) << "1DS" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12)  << nelmt
+                  << std::right << std::setw(16) << numBlocks * threadsPerBlock
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << time
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
+                  << std::endl;
     }
 
     // ------------------------- Kernel with 3D block size -------------------------------
@@ -219,7 +268,16 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "3D_Block -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        std::cout << std::left  << std::setw(15) << "3D" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12)  << nelmt
+                  << std::right << std::setw(16) << numBlocks * std::min(nq0,threadsPerBlockX) * std::min(nq1,threadsPerBlockY) * std::min(nq2, threadsPerBlockZ)
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << time
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
+                  << std::endl;
     }
 
     // ------------------------- Kernel with 3D block size + SimpleMap -------------------------------
@@ -242,7 +300,16 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "3D_Block Simple Map -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        std::cout << std::left  << std::setw(15) << "3DS" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12)  << nelmt
+                  << std::right << std::setw(16) << numBlocks * threadsPerBlock
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << time
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
+                  << std::endl;
     }
 
     // ------------------------- Kernel with 2D block (pq) -------------------------------
@@ -262,7 +329,16 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "2D_Block(pq) -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        std::cout << std::left  << std::setw(15) << "2D" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12)  << nelmt
+                  << std::right << std::setw(16) << numBlocks * std::min(nq0 * nq1, threadsPerBlock)
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << time
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
+                  << std::endl;
     }
 
         // ------------------------- Kernel with 2D block (pq) + SimpleMap-------------------------------
@@ -282,7 +358,16 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << "2D_Block(pq) SimpleMap -> " << "nelmt = " << nelmt <<" GDoF/s = " << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time << std::endl;
+        std::cout << std::left  << std::setw(15) << "2DS" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12)  << nelmt
+                  << std::right << std::setw(16) << numBlocks * nq0 * nq1
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << time
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
+                  << std::endl;
     }
     
     cudaFree(d_basis0); cudaFree(d_basis1); cudaFree(d_basis2); cudaFree(d_JxW); cudaFree(d_in); cudaFree(d_out);

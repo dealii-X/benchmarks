@@ -15,7 +15,7 @@ std::vector<T> KokkosKernel_3D_Block_SimpleMap(
         const unsigned int numBlocks = numThreads3D / (nq0 * nq1 * nq2);
 
         T result_kokkos = 0.0;
-        std::vector<T> results(2);
+        std::vector<T> results(3);
         {   
             Kokkos::View<const T*, Kokkos::HostSpace> dbasis0_view(dbasis0, nq0 * nq0);
             Kokkos::View<const T*, Kokkos::HostSpace> dbasis1_view(dbasis1, nq1 * nq1);
@@ -159,7 +159,10 @@ std::vector<T> KokkosKernel_3D_Block_SimpleMap(
             result_kokkos = std::sqrt(result_kokkos);
 
             T gdofPerSeconds = 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time_kokkos;
-            results[0] = gdofPerSeconds; results[1] = result_kokkos;
+            results[0] = gdofPerSeconds; 
+            results[1] = result_kokkos;
+            results[2] = time_kokkos;
+
         }
 
         return results;
@@ -176,7 +179,7 @@ std::vector<T> KokkosKernel_2D_Block_jk_SimpleMap(
         const unsigned int numBlocks = (numThreads3D / nq0) / (nq1 * nq2);
 
         T result_kokkos = 0.0;
-        std::vector<T> results(2);
+        std::vector<T> results(3);
         {   
             Kokkos::View<const T*, Kokkos::HostSpace> dbasis0_view(dbasis0, nq0 * nq0);
             Kokkos::View<const T*, Kokkos::HostSpace> dbasis1_view(dbasis1, nq1 * nq1);
@@ -349,7 +352,10 @@ std::vector<T> KokkosKernel_2D_Block_jk_SimpleMap(
             result_kokkos = std::sqrt(result_kokkos);
 
             T gdofPerSeconds = 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time_kokkos;
-            results[0] = gdofPerSeconds; results[1] = result_kokkos;
+            results[0] = gdofPerSeconds;
+            results[1] = result_kokkos;
+            results[2] = time_kokkos;
+
         }
 
         return results;

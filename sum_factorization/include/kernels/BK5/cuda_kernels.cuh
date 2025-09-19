@@ -251,7 +251,7 @@ __global__ void TransHexKernel_QP_2D_Block_ij(
 
             T Grr, Grs, Grt, Gss, Gst, Gtt;
             T qr, qs, qt;
-
+            
             for(unsigned int k = 0; k < nq2; ++k){
 
                 qr = 0; qs = 0; qt = 0; 

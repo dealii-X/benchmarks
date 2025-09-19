@@ -43,5 +43,15 @@ TARGET_LINK_LIBRARIES(kokkos_verification_bk3 Kokkos::kokkos)
 add_executable(serial_verification_bk3 ${CMAKE_SOURCE_DIR}/tests/BK3/serial_verification.cc)
 set_target_properties(serial_verification_bk3 PROPERTIES OUTPUT_NAME serial_verification)
 
+#Reports
+if(Kokkos_ENABLE_CUDA)
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/BK3/reports)
+
+    add_custom_target(reportBK3
+        COMMAND ncu -f --set full -o reports/benchmark_3_3_3_400000_27000_1 cuda_benchmark 3 3 3 400000 27000 3 3 3 1
+        COMMAND nsys profile --force-overwrite=true  -o reports/benchmark_3_3_3_400000_27000_1 cuda_benchmark 3 3 3 400000 27000 3 3 3 1
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/BK3)
+endif()
+
 
 

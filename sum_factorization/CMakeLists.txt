@@ -14,3 +14,14 @@ add_subdirectory(src/BK5)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
 add_executable(test_lagrange ${CMAKE_SOURCE_DIR}/tests/test_lagrange.cc)
+
+#Post-processing directory
+configure_file(
+    ${CMAKE_SOURCE_DIR}/scripts/plot/plot.py
+    ${CMAKE_BINARY_DIR}/outputs/plot.py
+    COPYONLY
+)
+
+#Roofline directory
+file(COPY ${CMAKE_SOURCE_DIR}/scripts/roofline
+     DESTINATION ${CMAKE_BINARY_DIR}/)

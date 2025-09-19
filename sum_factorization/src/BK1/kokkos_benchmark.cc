@@ -11,6 +11,7 @@ wsp : intermediate storages
 #include <iostream>
 #include <kernels/BK1/kokkos_kernels.hpp>
 #include <timer.hpp>
+#include <iomanip>
 
 template<typename T>
 void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
@@ -60,28 +61,77 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         }
     }
 
+    std::cout << std::fixed << std::setprecision(3);
+
+    std::cout << std::left  << std::setw(15) << "Kernel"
+              << std::right << std::setw(4)  << "p0"
+              << std::right << std::setw(4)  << "p1"
+              << std::right << std::setw(4)  << "p2"
+              << std::right << std::setw(12)  << "nelmt"
+              << std::right << std::setw(16) << "numThreads"
+              << std::right << std::setw(16)  << "DOF"
+              << std::right << std::setw(10)  << "time"
+              << std::right << std::setw(8)  << "GDOF/s"
+              << std::endl;
+
     // ------------------------- 1D Block ---------------------------------------------------
     {
         std::vector<T> results = BK1::Parallel::Kokkos_BwdTransHexKernel_QP_1D<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
-        std::cout << "1D Block -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
+        std::cout << std::left  << std::setw(15) << "1D" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12) << nelmt
+                  << std::right << std::setw(16) << numThreads
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << results[2]
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]
+                  << std::endl;
     }
 
     // ------------------------- 1D Block + SimpleMap---------------------------------------------------
     {
         std::vector<T> results = BK1::Parallel::Kokkos_BwdTransHexKernel_QP_1D_SimpleMap<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
-        std::cout << "1D Block SimpleMap -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
+        std::cout << std::left  << std::setw(15) << "1DS" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12) << nelmt
+                  << std::right << std::setw(16) << numThreads
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << results[2]
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]
+                  << std::endl;
     }
 
     // ------------------------- 2D Block(pq)---------------------------------------------------
     {
         std::vector<T> results = BK1::Parallel::Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
-        std::cout << "2D Block(pq) -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
+        std::cout << std::left  << std::setw(15) << "2D" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12) << nelmt
+                  << std::right << std::setw(16) << numThreads / nq2
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << results[2]
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]
+                  << std::endl;
     }
 
     // ------------------------- 2D Block(pq) + SimpleMap---------------------------------------------------
     {
         std::vector<T> results = BK1::Parallel::Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq_SimpleMap<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, JxW, in, out, numThreads, threadsPerBlock, nelmt, ntests);
-        std::cout << "2D Block(pq) SimpleMap -> " << "nelmt = " << nelmt <<" GDoF/s = " << results[0] << std::endl;
+        std::cout << std::left  << std::setw(15) << "2DS" 
+                  << std::right << std::setw(4)  << nq0 - 2 
+                  << std::right << std::setw(4)  << nq1 - 2
+                  << std::right << std::setw(4)  << nq2 - 2
+                  << std::right << std::setw(12) << nelmt
+                  << std::right << std::setw(16) << numThreads / nq2
+                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
+                  << std::right << std::setw(10) << results[2]
+                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]
+                  << std::endl;
     }
 
     delete[] basis0; delete[] basis1; delete[] basis2; delete[] JxW; delete[] in; delete[] out;
