@@ -1,3 +1,159 @@
+; Copyright (C) 2025 Leibniz-Rechenzentrum
+; Copyright (C) 2025 Intel Corporation
+; SPDX-License-Identifier: Apache-2.0
+
+;$P = 3
+;$B = 16
+;$wgs = 128
+;$Q_pad = 4
+$Q = !calc($P 1 +)
+$P2 = !calc($P $P *)
+$P3 = !calc($P2 $P *)
+$Q2 = !calc($Q $Q *)
+$Q3 = !calc($Q2 $Q *)
+$BP = !calc($B $P *)
+$BP2 = !calc($B $P2 *)
+$BQ = !calc($B $Q *)
+$BQ3 = !calc($B $Q3 *)
+
+func @sum_factorization_block_pre(%basis0: memref<f32x$P x$Q,strided<1,$Q_pad>>,
+                                  %basis1: memref<f32x$P x$Q,strided<1,$Q_pad>>,
+                                  %basis2: memref<f32x$P x$Q,strided<1,$Q_pad>>,
+                                  %JxW:    memref<f32x$B x$Q x$Q x$Q x?>,
+                                  %in:     memref<f32x$B x$P x$P x$P x?>,
+                                  %out:    memref<f32x$B x$P x$P x$P x?>) 
+attributes{subgroup_size=16,work_group_size=[$wgs,1]}
+{
+    %gid = group_id.x : index                                ; Get our index e
+
+    %c0 = constant 0 : index
+    %cB = constant $B : index
+    %cP = constant $P : index
+    %cQ = constant $Q : index
+    %cQ2 = constant $Q2 : index
+    %cQ3 = constant $Q3 : index
+    %cBP = constant $BP : index
+    %cBP2 = constant $BP2 : index
+    %cBPQ = mul %cBP, %cQ : index
+    %cBQ2 = mul %cB, %cQ2 : index
+
+    %block_begin = mul %gid, %cB : index
+
+    %J_e = subview %JxW[0:$B,0:$Q,0:$Q,0:$Q,%gid] : memref<f32x$B x$Q x$Q x$Q>
+    %in_e = subview %in[0:$B,0:$P,0:$P,0:$P,%gid] : memref<f32x$B x$P x$P x$P>
+    %out_e = subview %out[0:$B,0:$P,0:$P,0:$P,%gid] : memref<f32x$B x$P x$P x$P>
+
+    %alpha1 = constant 1.0 : f32
+    %beta0 = constant 0.0 : f32
+
+; Direction 0: wsp1_(BIJ)c   := in_(BIJ)K basis0_Kc
+
+    %wsp2 = alloca : memref<f32x$B x$P x$Q x$Q, local> ; Reserve temporary memory
+    %wsp1 = alloca : memref<f32x$B x$P x$P x$Q,local>
+
+    %tmp1 = fuse %in_e[0,2] : memref<f32x$BP2 x$P>
+    %res1 = fuse %wsp1[0,2] : memref<f32x$BP2 x$Q,local>
+    ;gemm.n.n %alpha1, %tmp1, %basis0, %beta0, %res1
+    foreach_tile (%i)=(%c0),(%cBP2) as (%t0)<=(16) {
+        %0 = constant 0.0 : coopmatrix<f32x16x$Q,matrix_acc>
+        %1 = cooperative_matrix_load.cols_checked %tmp1[%i,%c0] : coopmatrix<f32x16x$Q_pad,matrix_a>
+        %2 = cooperative_matrix_load %basis0[%c0,%c0] : coopmatrix<f32x$Q_pad x$Q,matrix_b>
+        %3 = cooperative_matrix_mul_add %1, %2, %0 : coopmatrix<f32x16x$Q,matrix_acc>
+        cooperative_matrix_store %3, %res1[%i,%c0]
+    }
+
+; Direction 1: wsp2_(BI)b[c] := wsp1_(BI)J[c] basis1_Jb
+
+    %wsp1_fused = fuse %wsp1[0,1] : memref<f32x$BP x$P x$Q,local>
+    %wsp2_fused = fuse %wsp2[0,1] : memref<f32x$BP x$Q x$Q,local>
+
+    barrier.local
+    foreach_tile (%tile0)=(%c0),(%cBPQ) as (%t0)<=(16) {
+        %i = rem %tile0, %cBP : index
+        %c = div %tile0, %cBP : index
+        %tmp = subview %wsp1_fused[0:$BP,0:$P,%c] : memref<f32x$BP x$P,local>
+        %res = subview %wsp2_fused[0:$BP,0:$Q,%c] : memref<f32x$BP x$Q,local>
+
+        %0 = constant 0.0 : coopmatrix<f32x16x$Q,matrix_acc>
+        %1 = cooperative_matrix_load.cols_checked %tmp[%i,%c0] : coopmatrix<f32x16x$Q_pad,matrix_a>
+        %2 = cooperative_matrix_load %basis1[%c0,%c0] : coopmatrix<f32x$Q_pad x$Q,matrix_b>
+        %3 = cooperative_matrix_mul_add %1, %2, %0 : coopmatrix<f32x16x$Q,matrix_acc>
+        cooperative_matrix_store %3, %res[%i,%c0]
+    }
+
+
+; Direction 2: wsp3_Ba[b][c] := wsp2_BI[b][c] basis2_Ia
+; Multiply with weights and determinant of Jacobi: wsp3_B(abc)   := J_(abc)B wsp3_B(abc)
+; Direction 2 (reverse): wsp4_Bi[b][c] := wsp3_Ba[b][c] basis2_ia
+
+    %wsp4 = alloca : memref<f32x$B x$P x$Q x$Q, local>
+
+    barrier.local
+    foreach_tile (%tile0)=(%c0),(%cBQ2) as (%t0)<=(16) {
+        %i = rem %tile0, %cB : index
+        %bc = div %tile0, %cB : index
+        %b = rem %bc, %cQ : index
+        %c = div %bc, %cQ : index
+        %tmp = subview %wsp2[0:$B,0:$P,%b,%c] : memref<f32x$B x$P,local>
+
+        %0 = constant 0.0 : coopmatrix<f32x16x$Q_pad,matrix_acc>
+        %1 = cooperative_matrix_load.cols_checked %tmp[%i,%c0] : coopmatrix<f32x16x$Q_pad,matrix_a>
+        %2 = cooperative_matrix_load %basis2[%c0,%c0] : coopmatrix<f32x$Q_pad x$Q_pad,matrix_b>
+        %acc = cooperative_matrix_mul_add %1, %2, %0 : coopmatrix<f32x16x$Q_pad,matrix_acc>
+
+        %J_sub = subview %J_e[0:$B,0:$Q,%b,%c] : memref<f32x$B x$Q>
+        %J_bc = cooperative_matrix_load.cols_checked %J_sub[%i,%c0] : coopmatrix<f32x16x$Q_pad,matrix_acc>
+        %acc_scaled = mul %J_bc, %acc : coopmatrix<f32x16x$Q_pad,matrix_acc>
+
+        %3 = constant 0.0 : coopmatrix<f32x16x$P,matrix_acc>
+        %4 = cast %acc_scaled : coopmatrix<f32x16x$Q_pad,matrix_a> 
+        %5 = cooperative_matrix_load.t %basis2[%c0,%c0] : coopmatrix<f32x$Q_pad x$P,matrix_b>
+        %6 = cooperative_matrix_mul_add %4, %5, %3 : coopmatrix<f32x16x$P,matrix_acc>
+
+        %res = subview %wsp4[0:$B,0:$P,%b,%c] : memref<f32x$B x$P,local>
+        cooperative_matrix_store %6, %res[%i,%c0]
+    }
+
+; Direction 1 (reverse): wsp5_(Bi)j[c] := wsp4_(Bi)b[c] basis1_jb
+
+    %wsp5 = alloca : memref<f32x$B x$P x$P x$Q, local>
+
+    %wsp4_fused = fuse %wsp4[0,1] : memref<f32x$BP x$Q x$Q,local>
+    %wsp5_fused = fuse %wsp5[0,1] : memref<f32x$BP x$P x$Q,local>
+
+    barrier.local
+    foreach_tile (%tile0)=(%c0),(%cBPQ) as (%t0)<=(16) {
+        %i = rem %tile0, %cBP : index
+        %c = div %tile0, %cBP : index
+        %tmp = subview %wsp4_fused[0:$BP,0:$Q,%c] : memref<f32x$BP x$Q,local>
+        %res = subview %wsp5_fused[0:$BP,0:$P,%c] : memref<f32x$BP x$P,local>
+
+        %0 = constant 0.0 : coopmatrix<f32x16x$P,matrix_acc>
+        %1 = cooperative_matrix_load %tmp[%i,%c0] : coopmatrix<f32x16x$Q_pad,matrix_a>
+        %2 = cooperative_matrix_load.t %basis1[%c0,%c0] : coopmatrix<f32x$Q_pad x$P,matrix_b>
+        %3 = cooperative_matrix_mul_add %1, %2, %0 : coopmatrix<f32x16x$P,matrix_acc>
+        cooperative_matrix_store %3, %res[%i,%c0]
+    }
+
+; Direction 0 (reverse): out_(Bij)k    := wsp6_(Bij)c basis0_kc
+
+    %wsp5_fused2 = fuse %wsp5[0,2] : memref<f32x$BP2 x$Q,local>
+    %out_fused = fuse %out_e[0,2] : memref<f32x$BP2 x$P>
+
+    barrier.local
+    ;gemm.n.t %alpha1, %wsp5_fused2, %basis0, %beta0, %out_fused
+    foreach_tile (%i)=(%c0),(%cBP2) as (%t0)<=(16) {
+        %0 = constant 0.0 : coopmatrix<f32x16x$P,matrix_acc>
+        %1 = cooperative_matrix_load.cols_checked %wsp5_fused2[%i,%c0] : coopmatrix<f32x16x$Q_pad,matrix_a>
+        %2 = cooperative_matrix_load.t %basis0[%c0,%c0] : coopmatrix<f32x$Q_pad x$P,matrix_b>
+        %3 = cooperative_matrix_mul_add %1, %2, %0 : coopmatrix<f32x16x$P,matrix_acc>
+        cooperative_matrix_store %3, %out_fused[%i,%c0]
+    }
+}
+
+
+
+
 func @sum_factorization(%basis0: memref<f32x3x4>,
                         %basis1: memref<f32x3x4>,
                         %basis2: memref<f32x3x4>,
@@ -24,7 +180,7 @@ func @sum_factorization(%basis0: memref<f32x3x4>,
     %res1 = fuse %wsp1[0,1] : memref<f32x9x4,local>    
     gemm.n.n %c1, %tmp1, %basis0, %c0, %res1
     
-: Direction 1
+; Direction 1
 
     %dir1_from = constant 0 : index
     %dir2_to   = constant 4 : index  
@@ -63,7 +219,7 @@ func @sum_factorization(%basis0: memref<f32x3x4>,
         gemm.n.t %c1, %tmp, %basis1, %c0, %res
     }
 
-: Direction 0 (reverse)
+; Direction 0 (reverse)
 
     %dir0r_from = constant 0 : index
     %dir0r_to   = constant 3 : index
