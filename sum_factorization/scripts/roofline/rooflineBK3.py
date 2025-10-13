@@ -82,7 +82,7 @@ def AchievedPerformance(nq0, nq1, nq2, nelmt, numBlocks, byte, dt):
     return results
 
 
-def generate_roofline(rooflines, achieved_points=None, filename="rooflineBK1.pdf"):
+def generate_roofline(rooflines, achieved_points=None, filename="rooflineBK3.pdf"):
     """
     Plots and saves a roofline model from a {bandwidth: tflops} dictionary.
 
