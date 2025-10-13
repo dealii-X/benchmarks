@@ -3,7 +3,7 @@
 #include <timer.hpp>
 #include <array>
 #include <vector>
-#include <iomanip>
+#include <benchmark_printer.hpp>
 
 #define CUDA_CHECK(call)                                                          \
     do {                                                                          \
@@ -83,18 +83,9 @@ void run_test(
     cudaGetDeviceProperties(&deviceProp, 0);
     int maxThreadsPerBlock = deviceProp.maxThreadsPerBlock;
 
-    std::cout << std::fixed << std::setprecision(3);
+    BenchmarkPrinter printer;
+    printer.print_header();
 
-    std::cout << std::left  << std::setw(15) << "Kernel"
-              << std::right << std::setw(4)  << "p0"
-              << std::right << std::setw(4)  << "p1"
-              << std::right << std::setw(4)  << "p2"
-              << std::right << std::setw(12)  << "nelmt"
-              << std::right << std::setw(16) << "numThreads"
-              << std::right << std::setw(16)  << "DOF"
-              << std::right << std::setw(10)  << "time"
-              << std::right << std::setw(8)  << "GDOF/s"
-              << std::endl;
 
     // ------------------------- Kernel with 1D block size + Simple Map -------------------------------
     if(nq0 * nq1 * nq2 < maxThreadsPerBlock)
@@ -114,16 +105,9 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << std::left  << std::setw(15) << "1DS" 
-                  << std::right << std::setw(4)  << nq0 - 1 
-                  << std::right << std::setw(4)  << nq1 - 1
-                  << std::right << std::setw(4)  << nq2 - 1
-                  << std::right << std::setw(12) << nelmt
-                  << std::right << std::setw(16) << numThreads3D
-                  << std::right << std::setw(16) << nq0 * nq1 * nq2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time
-                  << std::endl;
+
+        printer("1DS", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numBlocks * nq0 * nq1 * nq2, nq0 * nq1 * nq2 * nelmt, time, 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time);
+
     }
 
     // ------------------------- Kernel with 2D block size (jk) Simple Map-------------------------------
@@ -144,16 +128,8 @@ void run_test(
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << std::left  << std::setw(15) << "2DS(jk)" 
-                  << std::right << std::setw(4)  << nq0 - 1 
-                  << std::right << std::setw(4)  << nq1 - 1
-                  << std::right << std::setw(4)  << nq2 - 1
-                  << std::right << std::setw(12) << nelmt
-                  << std::right << std::setw(16) << numThreads3D / nq0
-                  << std::right << std::setw(16) << nq0 * nq1 * nq2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time
-                  << std::endl;
+
+        printer("2DS(jk)", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numBlocks * nq1 * nq2, nq0 * nq1 * nq2 * nelmt, time, 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time);
     }
 
     cudaFree(d_dbasis0); cudaFree(d_dbasis1); cudaFree(d_dbasis2); cudaFree(d_G); cudaFree(d_in); cudaFree(d_out);
@@ -161,9 +137,9 @@ void run_test(
 
 
 int main(int argc, char **argv){
-    const unsigned int nq0 =  4;
-    const unsigned int nq1 =  4;
-    const unsigned int nq2 =  4;
+    constexpr unsigned int nq0 =  4;
+    constexpr unsigned int nq1 =  4;
+    constexpr unsigned int nq2 =  4;
 
     unsigned int nelmt              = (argc > 1) ? atoi(argv[1]) : 2<<18;
     unsigned int numThreads3D       = (argc > 2) ? atoi(argv[2]) : nelmt * nq0 * nq1 * nq2 / 2;

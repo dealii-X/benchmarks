@@ -1,7 +1,7 @@
 #include <iostream>
 #include <kernels/BK5/cuda_kernels.cuh>
 #include <timer.hpp>
-#include <iomanip>
+#include <benchmark_printer.hpp>
 
 #define CUDA_CHECK(call)                                                          \
     do {                                                                          \
@@ -88,19 +88,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     cudaGetDeviceProperties(&prop, device);
     
 
-    std::cout << std::fixed << std::setprecision(3);
-
-    std::cout << std::left  << std::setw(15) << "Kernel"
-              << std::right << std::setw(4)  << "p0"
-              << std::right << std::setw(4)  << "p1"
-              << std::right << std::setw(4)  << "p2"
-              << std::right << std::setw(12) << "nelmt"
-              << std::right << std::setw(16) << "numThreads"
-              << std::right << std::setw(16) << "DOF"
-              << std::right << std::setw(10) << "time"
-              << std::right << std::setw(8)  << "GDOF/s"
-              << std::endl;
-
+    BenchmarkPrinter printer;
+    printer.print_header();
 
     // ------------------------- Kernel with 1D block size + Simple Map -------------------------------
     if(nq0 * nq1 * nq2 < prop.maxThreadsPerBlock)
@@ -120,16 +109,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << std::left  << std::setw(15) << "1DS" 
-                  << std::right << std::setw(4)  << nq0 - 1 
-                  << std::right << std::setw(4)  << nq1 - 1
-                  << std::right << std::setw(4)  << nq2 - 1
-                  << std::right << std::setw(12) << nelmt
-                  << std::right << std::setw(16) << numBlocks * nq0 * nq1 * nq2
-                  << std::right << std::setw(16) << nq0 * nq1 * nq2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time
-                  << std::endl;
+        printer("1DS", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numBlocks * nq0 * nq1 * nq2, nq0 * nq1 * nq2 * nelmt, time, 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time);
     }
 
 
@@ -151,16 +131,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << std::left  << std::setw(15) << "1D" 
-                  << std::right << std::setw(4)  << nq0 - 1 
-                  << std::right << std::setw(4)  << nq1 - 1
-                  << std::right << std::setw(4)  << nq2 - 1
-                  << std::right << std::setw(12) << nelmt
-                  << std::right << std::setw(16) << numBlocks * std::min(nq0 * nq1 * nq2, threadsPerBlock)
-                  << std::right << std::setw(16) << nq0 * nq1 * nq2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time
-                  << std::endl;
+        printer("1D", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numBlocks * (std::min(nq0 * nq1 * nq2, threadsPerBlock)), nq0 * nq1 * nq2 * nelmt, time, 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time);
     }
 
 
@@ -182,16 +153,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << std::left  << std::setw(15) << "2D(ij)" 
-                  << std::right << std::setw(4)  << nq0 - 1 
-                  << std::right << std::setw(4)  << nq1 - 1
-                  << std::right << std::setw(4)  << nq2 - 1
-                  << std::right << std::setw(12) << nelmt
-                  << std::right << std::setw(16) << numBlocks * std::min(nq0 * nq1, threadsPerBlock)
-                  << std::right << std::setw(16) << nq0 * nq1 * nq2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time
-                  << std::endl;
+        printer("2D(ij)", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numBlocks * (std::min(nq0 * nq1, threadsPerBlock)), nq0 * nq1 * nq2 * nelmt, time, 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time);
+
     }
 
 
@@ -213,16 +176,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << std::left  << std::setw(15) << "2D(jk)" 
-                  << std::right << std::setw(4)  << nq0 - 1 
-                  << std::right << std::setw(4)  << nq1 - 1
-                  << std::right << std::setw(4)  << nq2 - 1
-                  << std::right << std::setw(12) << nelmt
-                  << std::right << std::setw(16) << numBlocks * std::min(nq1 * nq2, threadsPerBlock)
-                  << std::right << std::setw(16) << nq0 * nq1 * nq2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time
-                  << std::endl;
+        printer("2D(jk)", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numBlocks * (std::min(nq1 * nq2, threadsPerBlock)), nq0 * nq1 * nq2 * nelmt, time, 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time);
+
     }
 
 
@@ -244,16 +199,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << std::left  << std::setw(15) << "2DS(jk)" 
-                  << std::right << std::setw(4)  << nq0 - 1 
-                  << std::right << std::setw(4)  << nq1 - 1
-                  << std::right << std::setw(4)  << nq2 - 1
-                  << std::right << std::setw(12) << nelmt
-                  << std::right << std::setw(16) << numBlocks * nq1 * nq2
-                  << std::right << std::setw(16) << nq0 * nq1 * nq2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time
-                  << std::endl;
+        printer("2DS(jk)", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numBlocks * nq1 * nq2, nq0 * nq1 * nq2 * nelmt, time, 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time);
+
     }
 
     cudaFree(d_dbasis0); cudaFree(d_dbasis1); cudaFree(d_dbasis2); cudaFree(d_G); cudaFree(d_in); cudaFree(d_out);

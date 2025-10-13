@@ -5,6 +5,7 @@
 #include <timer.hpp>
 #include <vector>
 
+namespace BK5{
 namespace Parallel{
 template <typename T>
 std::vector<T> KokkosKernel_3D_Block_SimpleMap(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
@@ -363,5 +364,6 @@ std::vector<T> KokkosKernel_2D_Block_jk_SimpleMap(const unsigned int nq0, const 
     }
 
 } //namespace Parallel
+} //namespace BK5
 
 #endif //BK5_KOKKOS_KERNELS_HPP

@@ -11,9 +11,7 @@ wsp : intermediate storages
 #include <iostream>
 #include <kernels/BK1/cuda_kernels.cuh>
 #include <timer.hpp>
-#include <thrust/execution_policy.h>
-#include <thrust/transform_reduce.h>
-#include <iomanip>
+#include <benchmark_printer.hpp>
 
 #define CUDA_CHECK(call)                                                          \
     do {                                                                          \
@@ -101,18 +99,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     CUDA_CHECK(cudaMemcpy(d_out, out, nelmt * nm0 * nm1 * nm2 * sizeof(T), cudaMemcpyHostToDevice));
 
 
-    std::cout << std::fixed << std::setprecision(3);
-
-    std::cout << std::left  << std::setw(15) << "Kernel"
-              << std::right << std::setw(4)  << "p0"
-              << std::right << std::setw(4)  << "p1"
-              << std::right << std::setw(4)  << "p2"
-              << std::right << std::setw(12)  << "nelmt"
-              << std::right << std::setw(16) << "numThreads"
-              << std::right << std::setw(16)  << "DOF"
-              << std::right << std::setw(10)  << "time"
-              << std::right << std::setw(8)  << "GDOF/s"
-              << std::endl;
+    BenchmarkPrinter printer;
+    printer.print_header();
 
 
     // ------------------------- Kernel with Warp Centric Computation -------------------------------
@@ -142,16 +130,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << std::left  << std::setw(15) << "WarpCentric" 
-                  << std::right << std::setw(4)  << nq0 - 2 
-                  << std::right << std::setw(4)  << nq1 - 2
-                  << std::right << std::setw(4)  << nq2 - 2
-                  << std::right << std::setw(12)  << nelmt
-                  << std::right << std::setw(16) << gridDim * blockDim
-                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
-                  << std::endl;
+
+        printer("WarpCentric", nq0 - 2, nq1 - 2, nq2 - 2, nelmt, gridDim * blockDim, nm0 * nm1 * nm2 * nelmt, time, 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time);
     }
 
     // ------------------------- Kernel with Warp Centric Computation for Linear Element (Q1) -------------------------------
@@ -182,16 +162,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << std::left  << std::setw(15) << "WarpCentricQ1" 
-                  << std::right << std::setw(4)  << nq0 - 2
-                  << std::right << std::setw(4)  << nq1 - 2
-                  << std::right << std::setw(4)  << nq2 - 2
-                  << std::right << std::setw(12)  << nelmt
-                  << std::right << std::setw(16) << gridDim * blockDim
-                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
-                  << std::endl;
+
+        printer("WarpCentricQ1", nq0 - 2, nq1 - 2, nq2 - 2, nelmt, gridDim * blockDim, nm0 * nm1 * nm2 * nelmt, time, 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time);
+
     }
 
 
@@ -214,16 +187,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << std::left  << std::setw(15) << "1D" 
-                  << std::right << std::setw(4)  << nq0 - 2 
-                  << std::right << std::setw(4)  << nq1 - 2
-                  << std::right << std::setw(4)  << nq2 - 2
-                  << std::right << std::setw(12)  << nelmt
-                  << std::right << std::setw(16) << numBlocks * std::min(nq0 * nq1 * nq2, threadsPerBlock)
-                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
-                  << std::endl;
+
+        printer("1D", nq0 - 2, nq1 - 2, nq2 - 2, nelmt, numBlocks * (std::min(nq0 * nq1 * nq2, threadsPerBlock)), nm0 * nm1 * nm2 * nelmt, time, 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time);
+
     }
 
     // ------------------------- Kernel with 1D block size + SimpleMap -------------------------------
@@ -243,16 +209,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << std::left  << std::setw(15) << "1DS" 
-                  << std::right << std::setw(4)  << nq0 - 2 
-                  << std::right << std::setw(4)  << nq1 - 2
-                  << std::right << std::setw(4)  << nq2 - 2
-                  << std::right << std::setw(12)  << nelmt
-                  << std::right << std::setw(16) << numBlocks * threadsPerBlock
-                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
-                  << std::endl;
+        
+        printer("1DS", nq0 - 2, nq1 - 2, nq2 - 2, nelmt, numBlocks * threadsPerBlock, nm0 * nm1 * nm2 * nelmt, time, 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time);
+
     }
 
     // ------------------------- Kernel with 3D block size -------------------------------
@@ -275,16 +234,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << std::left  << std::setw(15) << "3D" 
-                  << std::right << std::setw(4)  << nq0 - 2 
-                  << std::right << std::setw(4)  << nq1 - 2
-                  << std::right << std::setw(4)  << nq2 - 2
-                  << std::right << std::setw(12)  << nelmt
-                  << std::right << std::setw(16) << numBlocks * std::min(nq0,threadsPerBlockX) * std::min(nq1,threadsPerBlockY) * std::min(nq2, threadsPerBlockZ)
-                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
-                  << std::endl;
+        printer("3D", nq0 - 2, nq1 - 2, nq2 - 2, nelmt, numBlocks * std::min(nq0 * nq1 * nq2, threadsPerBlock), nm0 * nm1 * nm2 * nelmt, time, 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time);
     }
 
     // ------------------------- Kernel with 3D block size + SimpleMap -------------------------------
@@ -307,16 +257,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << std::left  << std::setw(15) << "3DS" 
-                  << std::right << std::setw(4)  << nq0 - 2 
-                  << std::right << std::setw(4)  << nq1 - 2
-                  << std::right << std::setw(4)  << nq2 - 2
-                  << std::right << std::setw(12)  << nelmt
-                  << std::right << std::setw(16) << numBlocks * threadsPerBlock
-                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
-                  << std::endl;
+        printer("3DS", nq0 - 2, nq1 - 2, nq2 - 2, nelmt, numBlocks * threadsPerBlock, nm0 * nm1 * nm2 * nelmt, time, 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time);
     }
 
     // ------------------------- Kernel with 2D block size (pq)-------------------------------
@@ -337,16 +278,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             Timer.stop();
             time = std::min(time, Timer.elapsedSeconds());
         }
-        std::cout << std::left  << std::setw(15) << "2D" 
-                  << std::right << std::setw(4)  << nq0 - 2 
-                  << std::right << std::setw(4)  << nq1 - 2
-                  << std::right << std::setw(4)  << nq2 - 2
-                  << std::right << std::setw(12) << nelmt
-                  << std::right << std::setw(16) << numBlocks * std::min(nq0 * nq1, threadsPerBlock)
-                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
-                  << std::endl;
+        printer("2D", nq0 - 2, nq1 - 2, nq2 - 2, nelmt, numBlocks * (std::min(nq0 * nq1, threadsPerBlock)), nm0 * nm1 * nm2 * nelmt, time, 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time);
+
     }
 
 
@@ -368,22 +301,7 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
             time = std::min(time, Timer.elapsedSeconds());
         }
 
-        T result = thrust::transform_reduce(
-            thrust::device, d_out, d_out + nelmt * nm0 * nm1 * nm2,
-            thrust::square<T>(), (T)0.0,
-            thrust::plus<T>()
-        );
-            
-        std::cout << std::left  << std::setw(15) << "2DS" 
-                  << std::right << std::setw(4)  << nq0 - 2 
-                  << std::right << std::setw(4)  << nq1 - 2
-                  << std::right << std::setw(4)  << nq2 - 2
-                  << std::right << std::setw(12)  << nelmt
-                  << std::right << std::setw(16) << numBlocks * nq0 * nq1
-                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
-                  << std::right << std::setw(10) << time
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time
-                  << std::endl;
+        printer("2DS", nq0 - 2, nq1 - 2, nq2 - 2, nelmt, numBlocks * nq0 * nq1, nm0 * nm1 * nm2 * nelmt, time, 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time);
     }
 
     cudaFree(d_basis0); cudaFree(d_basis1); cudaFree(d_basis2); cudaFree(d_JxW); cudaFree(d_in); cudaFree(d_out);

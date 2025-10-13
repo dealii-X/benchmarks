@@ -1,12 +1,10 @@
 #include <iostream>
 #include <kernels/BK3/templated_kokkos_kernels.hpp>
 #include <timer.hpp>
-#include <iomanip>
+#include <benchmark_printer.hpp>
 
 template<typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
-void run_test(
-    const unsigned int numThreads3D, const unsigned int threadsPerBlockX, const unsigned int threadsPerBlockY, 
-    const unsigned int threadsPerBlockZ, const unsigned int nelmt, const unsigned int ntests)
+void run_test( const unsigned int numThreads, const unsigned int threadsPerBlock, const unsigned int nelmt, const unsigned int ntests)
 {   
     const unsigned int nm0 = nq0 - 1;
     const unsigned int nm1 = nq1 - 1;
@@ -74,87 +72,43 @@ void run_test(
             dbasis2[k * nq2 + c] = std::cos((T)(k * nq2 + c));
         }
     }
-    std::cout << std::fixed << std::setprecision(3);
 
-    std::cout << std::left  << std::setw(15) << "Kernel"
-              << std::right << std::setw(4)  << "p0"
-              << std::right << std::setw(4)  << "p1"
-              << std::right << std::setw(4)  << "p2"
-              << std::right << std::setw(12)  << "nelmt"
-              << std::right << std::setw(16) << "numThreads"
-              << std::right << std::setw(16)  << "DOF"
-              << std::right << std::setw(10)  << "time"
-              << std::right << std::setw(8)  << "GDOF/s"
-              << std::endl;
-
+    BenchmarkPrinter printer;
+    printer.print_header();
 
     // ------------------------- 1D Block Kernel ---------------------------------------------------
     {
-        std::vector<T> results = Parallel::KokkosKernel_3D_Block<T,nq0 ,nq1, nq2>(basis0, basis1, basis2, 
+        std::vector<T> results = BK3::Parallel::KokkosKernel_1D_Block<T, nq0 ,nq1, nq2>(basis0, basis1, basis2, 
                                             dbasis0, dbasis1, dbasis2, G, in, out,
-                                            numThreads3D, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
-        
-        std::cout << std::left  << std::setw(15) << "1D" 
-                  << std::right << std::setw(4)  << nq0 - 2 
-                  << std::right << std::setw(4)  << nq1 - 2
-                  << std::right << std::setw(4)  << nq2 - 2
-                  << std::right << std::setw(12) << nelmt
-                  << std::right << std::setw(16) << numThreads3D
-                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
-                  << std::right << std::setw(10) << results[2]
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]
-                  << std::endl;
+                                            numThreads, threadsPerBlock, nelmt, ntests);
+
+        printer("1D", nq0 - 2, nq1 - 2, nq2 - 2, nelmt, numThreads, nm0 * nm1 * nm2 * nelmt, results[2], 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]);
     }
 
     // ------------------------- 1D Block Kernel + Simple Map ---------------------------------------------
     {
-        std::vector<T> results = Parallel::KokkosKernel_3D_Block_SimpleMap<T, nq0 ,nq1, nq2>(basis0, basis1, basis2, 
-                                            dbasis0, dbasis1, dbasis2, G, in, out, numThreads3D, nelmt, ntests);
-
-        std::cout << std::left  << std::setw(15) << "1DS" 
-                  << std::right << std::setw(4)  << nq0 - 2 
-                  << std::right << std::setw(4)  << nq1 - 2
-                  << std::right << std::setw(4)  << nq2 - 2
-                  << std::right << std::setw(12) << nelmt
-                  << std::right << std::setw(16) << numThreads3D
-                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
-                  << std::right << std::setw(10) << results[2]
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]
-                  << std::endl;
+        std::vector<T> results = BK3::Parallel::KokkosKernel_1D_Block_SimpleMap<T, nq0 ,nq1, nq2>(basis0, basis1, basis2, 
+                                            dbasis0, dbasis1, dbasis2, G, in, out, numThreads, nelmt, ntests);
+        
+        printer("1DS", nq0 - 2, nq1 - 2, nq2 - 2, nelmt, numThreads, nm0 * nm1 * nm2 * nelmt, results[2], 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]);
     }
 
     // ------------------------- 2D Block(pq) Kernel ---------------------------------------------------
     {
-        std::vector<T> results = Parallel::KokkosKernel_2D_Block_pq<T, nq0 ,nq1, nq2>(basis0, basis1, basis2, 
+        std::vector<T> results = BK3::Parallel::KokkosKernel_2D_Block_pq<T, nq0 ,nq1, nq2>(basis0, basis1, basis2, 
                                             dbasis0, dbasis1, dbasis2, G, in, out,
-                                            numThreads3D, threadsPerBlockX, threadsPerBlockY, nelmt, ntests);
-        std::cout << std::left  << std::setw(15) << "2D" 
-                  << std::right << std::setw(4)  << nq0 - 2 
-                  << std::right << std::setw(4)  << nq1 - 2
-                  << std::right << std::setw(4)  << nq2 - 2
-                  << std::right << std::setw(12) << nelmt
-                  << std::right << std::setw(16) << numThreads3D / nq2
-                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
-                  << std::right << std::setw(10) << results[2]
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]
-                  << std::endl;
+                                            numThreads, threadsPerBlock, nelmt, ntests);
+
+        printer("2D", nq0 - 2, nq1 - 2, nq2 - 2, nelmt, numThreads / nq2, nm0 * nm1 * nm2 * nelmt, results[2], 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]);
     }
 
     // ------------------------- 2D Block(pq) Simple Map Kernel ---------------------------------------------------
     {
-        std::vector<T> results = Parallel::KokkosKernel_2D_Block_pq_SimpleMap<T, nq0 ,nq1, nq2>(basis0, basis1, basis2, 
+        std::vector<T> results = BK3::Parallel::KokkosKernel_2D_Block_pq_SimpleMap<T, nq0 ,nq1, nq2>(basis0, basis1, basis2, 
                                             dbasis0, dbasis1, dbasis2, G, in, out,
-                                            numThreads3D, nelmt, ntests);
-        std::cout << std::left  << std::setw(15) << "2DS" 
-                  << std::right << std::setw(4)  << nq0 - 2 
-                  << std::right << std::setw(4)  << nq1 - 2
-                  << std::right << std::setw(4)  << nq2 - 2
-                  << std::right << std::setw(12) << nelmt
-                  << std::right << std::setw(16) << numThreads3D / nq2
-                  << std::right << std::setw(16) << nm0 * nm1 * nm2 * nelmt
-                  << std::right << std::setw(10) << results[2]
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]
-                  << std::endl;
+                                            numThreads, nelmt, ntests);
+
+        printer("2DS", nq0 - 2, nq1 - 2, nq2 - 2, nelmt, numThreads / nq2, nm0 * nm1 * nm2 * nelmt, results[2], 1.0e-9 * nelmt * nm0 * nm1 * nm2 / results[2]);
     }
 
 
@@ -167,16 +121,14 @@ int main(int argc, char **argv){
     constexpr unsigned int nq2      = 4u;
 
     unsigned int nelmt              = (argc > 1) ? atoi(argv[1]) : 2 << 18;
-    unsigned int numThreads3D       = (argc > 2) ? atoi(argv[2]) : nelmt * nq0 * nq1 * nq2 / 2;
-    unsigned int threadsPerBlockX   = (argc > 3) ? atoi(argv[3]) : nq0;
-    unsigned int threadsPerBlockY   = (argc > 4) ? atoi(argv[4]) : nq1;
-    unsigned int threadsPerBlockZ   = (argc > 5) ? atoi(argv[5]) : nq2;
-    unsigned int ntests             = (argc > 6) ? atoi(argv[6]) : 50u;
+    unsigned int numThreads         = (argc > 2) ? atoi(argv[2]) : nelmt * nq0 * nq1 * nq2 / 2;
+    unsigned int threadsPerBlock    = (argc > 3) ? atoi(argv[3]) : nq0 * nq1 * nq2;
+    unsigned int ntests             = (argc > 4) ? atoi(argv[4]) : 50u;
 
     Kokkos::initialize(argc, argv);
 
     std::cout.precision(8);
-    run_test<float, nq0, nq1, nq2>(numThreads3D, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
+    run_test<float, nq0, nq1, nq2>(numThreads, threadsPerBlock, nelmt, ntests);
 
     Kokkos::finalize();
     return 0;

@@ -5,17 +5,16 @@
 #include <timer.hpp>
 #include <vector>
 
+namespace BK3{
 namespace Parallel{
 template <typename T>
-std::vector<T> KokkosKernel_3D_Block(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
+std::vector<T> KokkosKernel_1D_Block(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
     const T *__restrict__ basis0, const T *__restrict__ basis1, const T *__restrict__ basis2,
     const T *__restrict__ dbasis0, const T *__restrict__ dbasis1, const T *__restrict__ dbasis2,
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
-    const unsigned int numThreads3D, const unsigned int threadsPerBlockX, const unsigned int threadsPerBlockY, const unsigned int threadsPerBlockZ,
-    const unsigned int nelmt, const unsigned int ntests)
+    const unsigned int numThreads, const unsigned int threadsPerBlock, const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int threadsPerBlock = std::min(nq0 * nq1 * nq2, threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ);
-        const unsigned int numBlocks = numThreads3D / threadsPerBlock;
+        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -346,14 +345,14 @@ std::vector<T> KokkosKernel_3D_Block(const unsigned int nq0, const unsigned int 
 
 
 template <typename T>
-std::vector<T> KokkosKernel_3D_Block_SimpleMap(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
+std::vector<T> KokkosKernel_1D_Block_SimpleMap(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
     const T *__restrict__ basis0, const T *__restrict__ basis1, const T *__restrict__ basis2,
     const T *__restrict__ dbasis0, const T *__restrict__ dbasis1, const T *__restrict__ dbasis2,
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
-    const unsigned int numThreads3D, const unsigned int nelmt, const unsigned int ntests)
+    const unsigned int numThreads, const unsigned int nelmt, const unsigned int ntests)
     {   
         const unsigned int threadsPerBlock = nq0 * nq1 * nq2;
-        const unsigned int numBlocks = numThreads3D / threadsPerBlock;
+        const unsigned int numBlocks = numThreads / threadsPerBlock;
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -673,11 +672,10 @@ std::vector<T> KokkosKernel_2D_Block_pq(const unsigned int nq0, const unsigned i
     const T *__restrict__ basis0, const T *__restrict__ basis1, const T *__restrict__ basis2,
     const T *__restrict__ dbasis0, const T *__restrict__ dbasis1, const T *__restrict__ dbasis2,
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
-    const unsigned int numThreads3D, const unsigned int threadsPerBlockX, const unsigned int threadsPerBlockY,
+    const unsigned int numThreads, const unsigned int threadsPerBlock,
     const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int threadsPerBlock = std::min(nq0 * nq1, threadsPerBlockX * threadsPerBlockY);
-        const unsigned int numBlocks = (numThreads3D / nq2) / threadsPerBlock;
+        const unsigned int numBlocks = numThreads / nq2 / (std::min(nq0 * nq1, threadsPerBlock / nq2));
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -1055,10 +1053,10 @@ std::vector<T> KokkosKernel_2D_Block_pq_SimpleMap(const unsigned int nq0, const 
     const T *__restrict__ basis0, const T *__restrict__ basis1, const T *__restrict__ basis2,
     const T *__restrict__ dbasis0, const T *__restrict__ dbasis1, const T *__restrict__ dbasis2,
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
-    const unsigned int numThreads3D, const unsigned int nelmt, const unsigned int ntests)
+    const unsigned int numThreads, const unsigned int nelmt, const unsigned int ntests)
     {   
         const unsigned int threadsPerBlock = nq0 * nq1;
-        const unsigned int numBlocks = (numThreads3D / nq2) / threadsPerBlock;
+        const unsigned int numBlocks = (numThreads / nq2) / threadsPerBlock;
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -1410,5 +1408,6 @@ std::vector<T> KokkosKernel_2D_Block_pq_SimpleMap(const unsigned int nq0, const 
 
 
 } //namespace Parallel
+} //namespace BK3
 
 #endif //BK3_KOKKOS_KERNELS_HPP

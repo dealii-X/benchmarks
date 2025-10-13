@@ -43,12 +43,12 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         }
         
         {
-        std::vector<T> results = Parallel::KokkosKernel_3D_Block_SimpleMap<T>(nq0 ,nq1, nq2, dbasis0, dbasis1, dbasis2, G, in, out, numThreads, nelmt, 1);
+        std::vector<T> results = BK5::Parallel::KokkosKernel_3D_Block_SimpleMap<T>(nq0 ,nq1, nq2, dbasis0, dbasis1, dbasis2, G, in, out, numThreads, nelmt, 1);
         std::cout << "3D Block Simple Map norm = " << results[1] << std::endl;
         }
 
         {
-        std::vector<T> results = Parallel::KokkosKernel_2D_Block_jk_SimpleMap<T>(nq0 ,nq1, nq2, dbasis0, dbasis1, dbasis2, G, in, out, numThreads, nelmt, 1);
+        std::vector<T> results = BK5::Parallel::KokkosKernel_2D_Block_jk_SimpleMap<T>(nq0 ,nq1, nq2, dbasis0, dbasis1, dbasis2, G, in, out, numThreads, nelmt, 1);
         std::cout << "2D Block(jk) Simple Map norm = " << results[1] << std::endl;
         }
 

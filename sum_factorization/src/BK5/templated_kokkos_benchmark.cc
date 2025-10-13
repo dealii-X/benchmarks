@@ -1,7 +1,7 @@
 #include <iostream>
 #include <kernels/BK5/templated_kokkos_kernels.hpp>
 #include <timer.hpp>
-#include <iomanip>
+#include <benchmark_printer.hpp>
 
 template<typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
 void run_test(const unsigned int numThreads3D, const unsigned int nelmt, const unsigned int ntests)
@@ -42,47 +42,21 @@ void run_test(const unsigned int numThreads3D, const unsigned int nelmt, const u
         }
     }
 
-    std::cout << std::fixed << std::setprecision(3);
-
-    std::cout << std::left  << std::setw(15) << "Kernel"
-              << std::right << std::setw(4)  << "p0"
-              << std::right << std::setw(4)  << "p1"
-              << std::right << std::setw(4)  << "p2"
-              << std::right << std::setw(12)  << "nelmt"
-              << std::right << std::setw(16) << "numThreads"
-              << std::right << std::setw(16)  << "DOF"
-              << std::right << std::setw(10)  << "time"
-              << std::right << std::setw(8)  << "GDOF/s"
-              << std::endl;
+    BenchmarkPrinter printer;
+    printer.print_header();
 
     // ------------------------- 1D Block Simple Map Kernel ---------------------------------------------------
     {
-        std::vector<T> results = Parallel::KokkosKernel_3D_Block_SimpleMap<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads3D, nelmt, ntests);
-        std::cout << std::left  << std::setw(15) << "1DS" 
-                  << std::right << std::setw(4)  << nq0 - 1 
-                  << std::right << std::setw(4)  << nq1 - 1
-                  << std::right << std::setw(4)  << nq2 - 1
-                  << std::right << std::setw(12) << nelmt
-                  << std::right << std::setw(16) << numThreads3D
-                  << std::right << std::setw(16) << nq0 * nq1 * nq2 * nelmt
-                  << std::right << std::setw(10) << results[2]
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nq0 * nq1 * nq2 / results[2]
-                  << std::endl;
+        std::vector<T> results = BK5::Parallel::KokkosKernel_3D_Block_SimpleMap<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads3D, nelmt, ntests);
+
+        printer("1DS", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numThreads3D, nq0 * nq1 * nq2 * nelmt, results[2], 1.0e-9 * nelmt * nq0 * nq1 * nq2 / results[2]);
     }
 
     // ------------------------- 2D Block(jk) Simple Map Kernel ---------------------------------------------------
     {
-        std::vector<T> results = Parallel::KokkosKernel_2D_Block_jk_SimpleMap<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads3D, nelmt, ntests);
-        std::cout << std::left  << std::setw(15) << "2DS(jk)" 
-                  << std::right << std::setw(4)  << nq0 - 1 
-                  << std::right << std::setw(4)  << nq1 - 1
-                  << std::right << std::setw(4)  << nq2 - 1
-                  << std::right << std::setw(12) << nelmt
-                  << std::right << std::setw(16) << numThreads3D / nq0
-                  << std::right << std::setw(16) << nq0 * nq1 * nq2 * nelmt
-                  << std::right << std::setw(10) << results[2]
-                  << std::right << std::setw(8)  << 1.0e-9 * nelmt * nq0 * nq1 * nq2 / results[2]
-                  << std::endl;
+        std::vector<T> results = BK5::Parallel::KokkosKernel_2D_Block_jk_SimpleMap<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads3D, nelmt, ntests);
+        
+        printer("2DS(jk)", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numThreads3D / nq0, nq0 * nq1 * nq2 * nelmt, results[2], 1.0e-9 * nelmt * nq0 * nq1 * nq2 / results[2]);
     }
 
     
@@ -91,9 +65,9 @@ void run_test(const unsigned int numThreads3D, const unsigned int nelmt, const u
 
 int main(int argc, char **argv){
 
-    const unsigned int nq0 =  4;
-    const unsigned int nq1 =  4;
-    const unsigned int nq2 =  4;
+    constexpr unsigned int nq0 =  4;
+    constexpr unsigned int nq1 =  4;
+    constexpr unsigned int nq2 =  4;
 
     unsigned int nelmt              = (argc > 1) ? atoi(argv[1]) : 2 << 18;
     unsigned int numThreads3D       = (argc > 2) ? atoi(argv[2]) : nelmt * nq0 * nq1 * nq2 / 2;

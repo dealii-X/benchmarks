@@ -4,8 +4,7 @@
 
 template<typename T>
 void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2,
-    const unsigned int numThreads3D, const unsigned int threadsPerBlockX, const unsigned int threadsPerBlockY, 
-    const unsigned int threadsPerBlockZ, const unsigned int nelmt)
+    const unsigned int numThreads, const unsigned int threadsPerBlock, const unsigned int nelmt)
 {   
     const unsigned int nm0 = nq0 - 1;
     const unsigned int nm1 = nq1 - 1;
@@ -77,34 +76,35 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
     // ------------------------- 3D Block Kernel ---------------------------------------------------   
     {
-        std::vector<T> results = Parallel::KokkosKernel_3D_Block<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, 
+        std::vector<T> results = BK3::Parallel::KokkosKernel_1D_Block<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, 
                                             dbasis0, dbasis1, dbasis2, G, in, out,
-                                            numThreads3D, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, 1);
+                                            numThreads, threadsPerBlock, nelmt, 1);
 
         std::cout << "3D Block norm = " << results[1] << std::endl;
     }
 
     // ------------------------- 3D Block Kernel + Simple Map ---------------------------------------------
     {
-        std::vector<T> results = Parallel::KokkosKernel_3D_Block_SimpleMap<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, 
-                                            dbasis0, dbasis1, dbasis2, G, in, out, numThreads3D, nelmt, 1);
+        std::vector<T> results = BK3::Parallel::KokkosKernel_1D_Block_SimpleMap<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, 
+                                            dbasis0, dbasis1, dbasis2, G, in, out, numThreads, nelmt, 1);
+
         std::cout << "3D Block SimpleMap norm = " << results[1] << std::endl;
     }
 
     // ------------------------- 2D Block(pq) Kernel ---------------------------------------------------   
     {
-        std::vector<T> results = Parallel::KokkosKernel_2D_Block_pq<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, 
+        std::vector<T> results = BK3::Parallel::KokkosKernel_2D_Block_pq<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, 
                                             dbasis0, dbasis1, dbasis2, G, in, out,
-                                            numThreads3D, threadsPerBlockX, threadsPerBlockY, nelmt, 1);
+                                            numThreads, threadsPerBlock, nelmt, 1);
 
         std::cout << "2D Block(pq) norm = " << results[1] << std::endl;
     }
 
     // ------------------------- 2D Block(pq) SimpleMap Kernel ---------------------------------------------------   
     {
-        std::vector<T> results = Parallel::KokkosKernel_2D_Block_pq_SimpleMap<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, 
+        std::vector<T> results = BK3::Parallel::KokkosKernel_2D_Block_pq_SimpleMap<T>(nq0 ,nq1, nq2, basis0, basis1, basis2, 
                                             dbasis0, dbasis1, dbasis2, G, in, out,
-                                            numThreads3D, nelmt, 1);
+                                            numThreads, nelmt, 1);
 
         std::cout << "2D Block(pq) SimpleMap norm = " << results[1] << std::endl;
     }
@@ -118,15 +118,13 @@ int main(int argc, char **argv){
     unsigned int nq1                = (argc > 2) ? atoi(argv[2]) : 4u;
     unsigned int nq2                = (argc > 3) ? atoi(argv[3]) : 4u;
     unsigned int nelmt              = (argc > 4) ? atoi(argv[4]) : 2 << 17;
-    unsigned int numThreads3D       = (argc > 5) ? atoi(argv[5]) : nelmt * nq0 * nq1 * nq2 / 2;
-    unsigned int threadsPerBlockX   = (argc > 6) ? atoi(argv[6]) : nq0;
-    unsigned int threadsPerBlockY   = (argc > 7) ? atoi(argv[7]) : nq1;
-    unsigned int threadsPerBlockZ   = (argc > 8) ? atoi(argv[8]) : nq2;
+    unsigned int numThreads         = (argc > 5) ? atoi(argv[5]) : nelmt * nq0 * nq1 * nq2 / 2;
+    unsigned int threadsPerBlock    = (argc > 6) ? atoi(argv[6]) : nq0 * nq1 * nq2;
 
     Kokkos::initialize(argc, argv);
 
     std::cout.precision(8);
-    run_test<double>(nq0, nq1, nq2, numThreads3D, threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt);
+    run_test<double>(nq0, nq1, nq2, numThreads, threadsPerBlock, nelmt);
     
     Kokkos::finalize();
     return 0;

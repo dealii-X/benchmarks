@@ -5,17 +5,16 @@
 #include <timer.hpp>
 #include <vector>
 
+namespace BK3{
 namespace Parallel{
-template <typename T,const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
-std::vector<T> KokkosKernel_3D_Block(
+template <typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
+std::vector<T> KokkosKernel_1D_Block(
     const T *__restrict__ basis0, const T *__restrict__ basis1, const T *__restrict__ basis2,
     const T *__restrict__ dbasis0, const T *__restrict__ dbasis1, const T *__restrict__ dbasis2,
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
-    const unsigned int numThreads3D, const unsigned int threadsPerBlockX, const unsigned int threadsPerBlockY, const unsigned int threadsPerBlockZ,
-    const unsigned int nelmt, const unsigned int ntests)
+    const unsigned int numThreads, const unsigned int threadsPerBlock, const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int threadsPerBlock = std::min(nq0 * nq1 * nq2, threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ);
-        const unsigned int numBlocks = numThreads3D / threadsPerBlock;
+        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -74,6 +73,10 @@ std::vector<T> KokkosKernel_3D_Block(
                 kokkosTimer.start();
                 Kokkos::parallel_for(policy,
                 KOKKOS_LAMBDA (member_type team_member){
+
+                    T r_p[10];
+                    T r_q[10];
+                    T r_r[10];
 
                     //shared memory access
                     T* scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
@@ -333,8 +336,8 @@ std::vector<T> KokkosKernel_3D_Block(
 
         T gdofPerSeconds = 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time_kokkos;
         results[0] = gdofPerSeconds;
-        results[1] = result_kokkos;
-        results[2] = time_kokkos;
+         results[1] = result_kokkos;
+         results[2] = time_kokkos;
         }
 
         return results;
@@ -342,14 +345,14 @@ std::vector<T> KokkosKernel_3D_Block(
 
 
 template <typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
-std::vector<T> KokkosKernel_3D_Block_SimpleMap(
+std::vector<T> KokkosKernel_1D_Block_SimpleMap(
     const T *__restrict__ basis0, const T *__restrict__ basis1, const T *__restrict__ basis2,
     const T *__restrict__ dbasis0, const T *__restrict__ dbasis1, const T *__restrict__ dbasis2,
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
-    const unsigned int numThreads3D, const unsigned int nelmt, const unsigned int ntests)
+    const unsigned int numThreads, const unsigned int nelmt, const unsigned int ntests)
     {   
         const unsigned int threadsPerBlock = nq0 * nq1 * nq2;
-        const unsigned int numBlocks = numThreads3D / threadsPerBlock;
+        const unsigned int numBlocks = numThreads / threadsPerBlock;
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -408,6 +411,10 @@ std::vector<T> KokkosKernel_3D_Block_SimpleMap(
                 kokkosTimer.start();
                 Kokkos::parallel_for(policy,
                 KOKKOS_LAMBDA (member_type team_member){
+
+                    T r_p[10];
+                    T r_q[10];
+                    T r_r[10];
 
                     //shared memory access
                     T* scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
@@ -651,7 +658,7 @@ std::vector<T> KokkosKernel_3D_Block_SimpleMap(
         result_kokkos = std::sqrt(result_kokkos);
 
         T gdofPerSeconds = 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time_kokkos;
-        results[0] = gdofPerSeconds; 
+        results[0] = gdofPerSeconds;
         results[1] = result_kokkos;
         results[2] = time_kokkos;
 
@@ -665,11 +672,10 @@ std::vector<T> KokkosKernel_2D_Block_pq(
     const T *__restrict__ basis0, const T *__restrict__ basis1, const T *__restrict__ basis2,
     const T *__restrict__ dbasis0, const T *__restrict__ dbasis1, const T *__restrict__ dbasis2,
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
-    const unsigned int numThreads3D, const unsigned int threadsPerBlockX, const unsigned int threadsPerBlockY,
+    const unsigned int numThreads, const unsigned int threadsPerBlock,
     const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int threadsPerBlock = std::min(nq0 * nq1, threadsPerBlockX * threadsPerBlockY);
-        const unsigned int numBlocks = (numThreads3D / nq2) / threadsPerBlock;
+        const unsigned int numBlocks = numThreads / nq2 / (std::min(nq0 * nq1, threadsPerBlock / nq2));
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -729,9 +735,9 @@ std::vector<T> KokkosKernel_2D_Block_pq(
                 Kokkos::parallel_for(policy,
                 KOKKOS_LAMBDA (member_type team_member){
 
-                    T r_p[nq0];
-                    T r_q[nq1];
-                    T r_r[nq2];
+                    T r_p[10];
+                    T r_q[10];
+                    T r_r[10];
 
                     //shared memory access
                     T *scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
@@ -1042,15 +1048,15 @@ std::vector<T> KokkosKernel_2D_Block_pq(
     }
 
 
-    template <typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
+template <typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
 std::vector<T> KokkosKernel_2D_Block_pq_SimpleMap(
     const T *__restrict__ basis0, const T *__restrict__ basis1, const T *__restrict__ basis2,
     const T *__restrict__ dbasis0, const T *__restrict__ dbasis1, const T *__restrict__ dbasis2,
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
-    const unsigned int numThreads3D, const unsigned int nelmt, const unsigned int ntests)
+    const unsigned int numThreads, const unsigned int nelmt, const unsigned int ntests)
     {   
         const unsigned int threadsPerBlock = nq0 * nq1;
-        const unsigned int numBlocks = (numThreads3D / nq2) / threadsPerBlock;
+        const unsigned int numBlocks = (numThreads / nq2) / threadsPerBlock;
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -1110,9 +1116,9 @@ std::vector<T> KokkosKernel_2D_Block_pq_SimpleMap(
                 Kokkos::parallel_for(policy,
                 KOKKOS_LAMBDA (member_type team_member){
 
-                    T r_p[nq0];
-                    T r_q[nq1];
-                    T r_r[nq2];
+                    T r_p[10];
+                    T r_q[10];
+                    T r_r[10];
 
                     //shared memory access
                     T *scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
@@ -1391,7 +1397,7 @@ std::vector<T> KokkosKernel_2D_Block_pq_SimpleMap(
         result_kokkos = std::sqrt(result_kokkos);
 
         T gdofPerSeconds = 1.0e-9 * nelmt * nm0 * nm1 * nm2 / time_kokkos;
-        results[0] = gdofPerSeconds; 
+        results[0] = gdofPerSeconds;
         results[1] = result_kokkos;
         results[2] = time_kokkos;
 
@@ -1402,5 +1408,6 @@ std::vector<T> KokkosKernel_2D_Block_pq_SimpleMap(
 
 
 } //namespace Parallel
+} //namespace BK3
 
-#endif //BK3_KOKKOS_KERNELS_HPP
+#endif //BK3_TEMPLATED_KOKKOS_KERNELS_HPP
