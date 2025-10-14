@@ -1,0 +1,166 @@
+; Copyright (C) 2025 Intel Corporation
+; SPDX-License-Identifier: Apache-2.0
+
+;$Q = 4
+;$B = 16
+;$wgs = 128
+;$Q_pad = 4
+$BQ = !calc($B $Q *)
+$BQ2 = !calc($BQ $Q *)
+$BQ3 = !calc($BQ2 $Q *)
+
+func @bk5(%basis0: memref<f32x$Q x$Q,strided<1,$Q_pad>>,
+          %basis1: memref<f32x$Q x$Q,strided<1,$Q_pad>>,
+          %basis2: memref<f32x$Q x$Q,strided<1,$Q_pad>>,
+          %G:      memref<f32x$B x$Q x6x$Q x$Q x?>,
+          %in:     memref<f32x$B x$Q x$Q x$Q x?>,
+          %out:    memref<f32x$B x$Q x$Q x$Q x?>) 
+attributes{subgroup_size=16,work_group_size=[$wgs,1]}
+{
+    %gid = group_id.x : index
+
+    %c0 = constant 0 : index
+    %cB = constant $B : index
+    %cBQ = constant $BQ : index
+    %cBQ2 = constant $BQ2 : index
+    %cBQ3 = constant $BQ3 : index
+
+    %G_e = subview %G[0:$B,0:$Q,0:6,0:$Q,0:$Q,%gid] : memref<f32x$B x$Q x6x$Q x$Q>
+    %in_e = subview %in[0:$B,0:$Q,0:$Q,0:$Q,%gid] : memref<f32x$B x$Q x$Q x$Q>
+    %out_e = subview %out[0:$B,0:$Q,0:$Q,0:$Q,%gid] : memref<f32x$B x$Q x$Q x$Q>
+
+; Direction r: rqr_(bkj)i   := in_(bkj)n basis0_ni
+
+    %rqr = alloca : memref<f32x$B x$Q x$Q x$Q,local>
+    %in02 = fuse %in_e[0,2] : memref<f32x$BQ2 x$Q>
+    %rqr02 = fuse %rqr[0,2] : memref<f32x$BQ2 x$Q,local>
+    foreach_tile (%bkj)=(%c0),(%cBQ2) as (%t0)<=(16) {
+        %0 = constant 0.0 : coopmatrix<f32x16x$Q,matrix_acc>
+        %1 = cooperative_matrix_load.cols_checked %in02[%bkj,%c0] : coopmatrix<f32x16x$Q_pad,matrix_a>
+        %2 = cooperative_matrix_load %basis0[%c0,%c0] : coopmatrix<f32x$Q_pad x$Q,matrix_b>
+        %3 = cooperative_matrix_mul_add %1, %2, %0 : coopmatrix<f32x16x$Q,matrix_acc>
+        cooperative_matrix_store %3, %rqr02[%bkj,%c0]
+    }
+
+; Direction s: rqs_(bk)j[i] := in_(bk)n[i] basis1_nj
+
+    %rqs = alloca : memref<f32x$B x$Q x$Q x$Q,local>
+    %in01 = fuse %in_e[0,1] : memref<f32x$BQ x$Q x$Q>
+    %rqs01 = fuse %rqs[0,1] : memref<f32x$BQ x$Q x$Q,local>
+
+    foreach_tile (%bki)=(%c0),(%cBQ2) as (%t0)<=(16) {
+        %i = div %bki, %cBQ : index
+        %i_x_BQ = mul %i, %cBQ : index
+        %bk = sub %bki, %i_x_BQ : index
+        %in01_i = subview %in01[0:$BQ,0:$Q,%i] : memref<f32x$BQ x$Q>
+        %rqs01_i = subview %rqs01[0:$BQ,0:$Q,%i] : memref<f32x$BQ x$Q,local>
+
+        %0 = constant 0.0 : coopmatrix<f32x16x$Q,matrix_acc>
+        %1 = cooperative_matrix_load.cols_checked %in01_i[%bk,%c0] : coopmatrix<f32x16x$Q_pad,matrix_a>
+        %2 = cooperative_matrix_load %basis1[%c0,%c0] : coopmatrix<f32x$Q_pad x$Q,matrix_b>
+        %3 = cooperative_matrix_mul_add %1, %2, %0 : coopmatrix<f32x16x$Q,matrix_acc>
+        cooperative_matrix_store %3, %rqs01_i[%bk,%c0]
+    }
+
+    barrier.local
+
+; Direction t: rqt_bk[j][i] := in_bn[j][i] basis2_nk
+; rqr_bkji := G_k1ji * rqr_bkji + G_k2ji * rqs_bkji + G_k3ji * rqt_bkji
+; rqs_bkji := G_k2ji * rqr_bkji + G_k4ji * rqs_bkji + G_k5ji * rqt_bkji
+; rqt_bkji := G_k3ji * rqr_bkji + G_k5ji * rqs_bkji + G_k6ji * rqt_bkji
+; rqt_bkji := G_k3ji * rqr_bkji + G_k5ji * rqs_bkji + G_k6ji * rqt_bkji
+; out_bk[j][i] := rqt_bn[j][i] basis2_kn
+
+    foreach_tile (%bji)=(%c0),(%cBQ2) as (%t0)<=(16) {
+        %i = div %bji, %cBQ : index
+        %i_x_BQ = mul %i, %cBQ : index
+        %bj = sub %bji, %i_x_BQ : index
+        %j = div %bj, %cB : index
+        %j_x_B = mul %j, %cB : index
+        %b = sub %bj, %j_x_B : index
+
+        %rqr_ji = subview %rqr[0:$B,0:$Q,%j,%i] : memref<f32x$B x$Q,local>
+        %G_ji = subview %G_e[0:$B,0:$Q,0:6,%j,%i] : memref<f32x$B x$Q x6>
+
+        $mat_t = coopmatrix<f32x16x$Q_pad,matrix_acc>
+        %qr = cooperative_matrix_load.cols_checked %rqr_ji[%b,%c0] : $mat_t
+        %G_0ji = subview %G_ji[0:$B,0:$Q,0] : memref<f32x$B x$Q>
+        %G_1ji = subview %G_ji[0:$B,0:$Q,1] : memref<f32x$B x$Q>
+        %G_2ji = subview %G_ji[0:$B,0:$Q,2] : memref<f32x$B x$Q>
+        %Grr = cooperative_matrix_load.cols_checked %G_0ji[%b,%c0] : $mat_t
+        %Grs = cooperative_matrix_load.cols_checked %G_1ji[%b,%c0] : $mat_t
+        %Grt = cooperative_matrix_load.cols_checked %G_2ji[%b,%c0] : $mat_t
+        %qr_acc0 = mul %Grr, %qr : $mat_t
+        %qs_acc0 = mul %Grs, %qr : $mat_t
+        %qt_acc0 = mul %Grt, %qr : $mat_t
+
+        %rqs_ji = subview %rqs[0:$B,0:$Q,%j,%i] : memref<f32x$B x$Q,local>
+        %qs = cooperative_matrix_load.cols_checked %rqs_ji[%b,%c0] : $mat_t
+        %G_3ji = subview %G_ji[0:$B,0:$Q,3] : memref<f32x$B x$Q>
+        %G_4ji = subview %G_ji[0:$B,0:$Q,4] : memref<f32x$B x$Q>
+        %Gss = cooperative_matrix_load.cols_checked %G_3ji[%b,%c0] : $mat_t
+        %Gst = cooperative_matrix_load.cols_checked %G_4ji[%b,%c0] : $mat_t
+        %qr_acc1 = mul %Grs, %qs : $mat_t
+        %qr_acc2 = add %qr_acc0, %qr_acc1 : $mat_t
+        %qs_acc1 = mul %Gss, %qs : $mat_t
+        %qs_acc2 = add %qs_acc0, %qs_acc1 : $mat_t
+        %qt_acc1 = mul %Gst, %qs : $mat_t
+        %qt_acc2 = add %qt_acc0, %qt_acc1 : $mat_t
+
+        %in_ji = subview %in_e[0:$B,0:$Q,%j,%i] : memref<f32x$B x$Q>
+        %0 = constant 0.0 : $mat_t
+        %1 = cooperative_matrix_load.cols_checked %in_ji[%b,%c0] : coopmatrix<f32x16x$Q_pad,matrix_a>
+        %2 = cooperative_matrix_load %basis2[%c0,%c0] : coopmatrix<f32x$Q_pad x$Q_pad,matrix_b>
+        %qt = cooperative_matrix_mul_add %1, %2, %0 : $mat_t
+        %G_5ji = subview %G_ji[0:$B,0:$Q,5] : memref<f32x$B x$Q>
+        %Gtt = cooperative_matrix_load.cols_checked %G_5ji[%b,%c0] : $mat_t
+        %qr_acc3 = mul %Grt, %qt : $mat_t
+        %qr_acc4 = add %qr_acc2, %qr_acc3 : $mat_t
+        %qs_acc3 = mul %Gst, %qt : $mat_t
+        %qs_acc4 = add %qs_acc2, %qs_acc3 : $mat_t
+        %qt_acc3 = mul %Gtt, %qt : $mat_t
+        %qt_acc4 = add %qt_acc2, %qt_acc3 : $mat_t
+
+        cooperative_matrix_store.cols_checked %qr_acc4, %rqr_ji[%b,%c0]
+        cooperative_matrix_store.cols_checked %qs_acc4, %rqs_ji[%b,%c0]
+        
+        %out_ji = subview %out_e[0:$B,0:$Q,%j,%i] : memref<f32x$B x$Q>
+        %qt_acc5 = cast %qt_acc4 : coopmatrix<f32x16x$Q_pad,matrix_a>
+        %3 = cooperative_matrix_load.t %basis2[%c0,%c0] : coopmatrix<f32x$Q_pad x$Q_pad,matrix_b>
+        %4 = cooperative_matrix_mul_add %qt_acc5, %3, %0 : $mat_t
+        cooperative_matrix_store.cols_checked %4, %out_ji[%b,%c0]
+    }
+
+    barrier.local
+
+; Direction s: out(bk)j[i] += rqs_(bk)n[i] basis1_jn
+
+    %out01 = fuse %out_e[0,1] : memref<f32x$BQ x$Q x$Q>
+
+    foreach_tile (%bki)=(%c0),(%cBQ2) as (%t0)<=(16) {
+        %i = div %bki, %cBQ : index
+        %i_x_BQ = mul %i, %cBQ : index
+        %bk = sub %bki, %i_x_BQ : index
+        %rqs01_i = subview %rqs01[0:$BQ,0:$Q,%i] : memref<f32x$BQ x$Q,local>
+        %out01_i = subview %out01[0:$BQ,0:$Q,%i] : memref<f32x$BQ x$Q>
+
+        %0 = cooperative_matrix_load %out01_i[%bk,%c0] : coopmatrix<f32x16x$Q,matrix_acc>
+        %1 = cooperative_matrix_load.cols_checked %rqs01_i[%bk,%c0] : coopmatrix<f32x16x$Q_pad,matrix_a>
+        %2 = cooperative_matrix_load.t %basis1[%c0,%c0] : coopmatrix<f32x$Q_pad x$Q,matrix_b>
+        %3 = cooperative_matrix_mul_add %1, %2, %0 : coopmatrix<f32x16x$Q,matrix_acc>
+        cooperative_matrix_store %3, %out01_i[%bk,%c0]
+    }
+
+    barrier.local
+
+; Direction r: out_(bkj)i   += rqr_(bkj)n basis0_in
+
+    %out02 = fuse %out_e[0,2] : memref<f32x$BQ2 x$Q>
+    foreach_tile (%bkj)=(%c0),(%cBQ2) as (%t0)<=(16) {
+        %0 = cooperative_matrix_load %out02[%bkj,%c0] : coopmatrix<f32x16x$Q,matrix_acc>
+        %1 = cooperative_matrix_load.cols_checked %rqr02[%bkj,%c0] : coopmatrix<f32x16x$Q_pad,matrix_a>
+        %2 = cooperative_matrix_load.t %basis0[%c0,%c0] : coopmatrix<f32x$Q_pad x$Q,matrix_b>
+        %3 = cooperative_matrix_mul_add %1, %2, %0 : coopmatrix<f32x16x$Q,matrix_acc>
+        cooperative_matrix_store %3, %out02[%bkj,%c0]
+    }
+}

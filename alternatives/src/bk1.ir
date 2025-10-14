@@ -2,11 +2,11 @@
 ; Copyright (C) 2025 Intel Corporation
 ; SPDX-License-Identifier: Apache-2.0
 
-;$P = 3
+;$Q = 4
 ;$B = 16
 ;$wgs = 128
 ;$Q_pad = 4
-$Q = !calc($P 1 +)
+$P = !calc($Q 1 -)
 $P2 = !calc($P $P *)
 $P3 = !calc($P2 $P *)
 $Q2 = !calc($Q $Q *)
@@ -16,12 +16,12 @@ $BP2 = !calc($B $P2 *)
 $BQ = !calc($B $Q *)
 $BQ3 = !calc($B $Q3 *)
 
-func @sum_factorization_block_pre(%basis0: memref<f32x$P x$Q,strided<1,$Q_pad>>,
-                                  %basis1: memref<f32x$P x$Q,strided<1,$Q_pad>>,
-                                  %basis2: memref<f32x$P x$Q,strided<1,$Q_pad>>,
-                                  %JxW:    memref<f32x$B x$Q x$Q x$Q x?>,
-                                  %in:     memref<f32x$B x$P x$P x$P x?>,
-                                  %out:    memref<f32x$B x$P x$P x$P x?>) 
+func @bk1(%basis0: memref<f32x$P x$Q,strided<1,$Q_pad>>,
+          %basis1: memref<f32x$P x$Q,strided<1,$Q_pad>>,
+          %basis2: memref<f32x$P x$Q,strided<1,$Q_pad>>,
+          %JxW:    memref<f32x$B x$Q x$Q x$Q x?>,
+          %in:     memref<f32x$B x$P x$P x$P x?>,
+          %out:    memref<f32x$B x$P x$P x$P x?>) 
 attributes{subgroup_size=16,work_group_size=[$wgs,1]}
 {
     %gid = group_id.x : index                                ; Get our index e

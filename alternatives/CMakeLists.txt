@@ -40,8 +40,10 @@ if(BUILD_TINYTC)
 	message(STATUS "TinyTC benchmark is enabled")
 
 	find_package(tinytc REQUIRED)
-	find_package(tinytc_cl REQUIRED)
+	find_package(tinytc_sycl REQUIRED)
 
-	add_executable(BK1_tinytc drivers/BK1_tinytc.cc)
-	target_link_libraries(BK1_tinytc tinytc::tinytc tinytc::tinytc_cl)
+	add_executable(tinytc_driver drivers/tinytc.cc)
+        target_link_libraries(tinytc_driver PRIVATE tinytc::tinytc tinytc::tinytc_sycl)
+        target_compile_options(tinytc_driver PRIVATE "-fsycl")
+        target_link_options(tinytc_driver PRIVATE "-fsycl")
 endif()
