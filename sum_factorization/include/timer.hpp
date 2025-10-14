@@ -9,32 +9,20 @@ class Timer
 public:
     void start()
     {
-        m_StartTime = std::chrono::high_resolution_clock::now();
+        m_StartTime = m_clock::now();
         m_bRunning  = true;
     }
 
     void stop()
     {
-        m_EndTime  = std::chrono::high_resolution_clock::now();
+        m_EndTime  = m_clock::now();
         m_bRunning = false;
     }
 
     double elapsedNanoseconds()
     {
-        std::chrono::time_point<std::chrono::high_resolution_clock> endTime;
-
-        if (m_bRunning)
-        {
-            endTime = std::chrono::high_resolution_clock::now();
-        }
-        else
-        {
-            endTime = m_EndTime;
-        }
-
-        return std::chrono::duration_cast<std::chrono::nanoseconds>(endTime -
-                                                                    m_StartTime)
-            .count();
+        auto endTime = m_bRunning ? m_clock::now() : m_EndTime;
+        return std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - m_StartTime).count();
     }
 
     double elapsedSeconds()
@@ -43,8 +31,9 @@ public:
     }
 
 private:
-    std::chrono::time_point<std::chrono::system_clock> m_StartTime;
-    std::chrono::time_point<std::chrono::system_clock> m_EndTime;
+    using m_clock = std::chrono::high_resolution_clock;
+    std::chrono::time_point<m_clock> m_StartTime{};
+    std::chrono::time_point<m_clock> m_EndTime{};
     bool m_bRunning = false;
 };
 
