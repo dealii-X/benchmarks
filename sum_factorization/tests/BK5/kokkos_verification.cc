@@ -3,7 +3,8 @@
 #include <cmath>
 
 template<typename T>
-void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2, const unsigned int numThreads, const unsigned int nelmt){
+void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int nq2, const unsigned int numThreads,
+              const unsigned int threadsPerBlock, const unsigned int nelmt){
 
         //Allocation of arrays
         T* dbasis0 = new T[nq0 * nq0];
@@ -43,8 +44,18 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         }
         
         {
+        std::vector<T> results = BK5::Parallel::KokkosKernel_3D_Block<T>(nq0 ,nq1, nq2, dbasis0, dbasis1, dbasis2, G, in, out, numThreads, threadsPerBlock, nelmt, 1);
+        std::cout << "3D Block norm = " << results[1] << std::endl;
+        }
+
+        {
         std::vector<T> results = BK5::Parallel::KokkosKernel_3D_Block_SimpleMap<T>(nq0 ,nq1, nq2, dbasis0, dbasis1, dbasis2, G, in, out, numThreads, nelmt, 1);
         std::cout << "3D Block Simple Map norm = " << results[1] << std::endl;
+        }
+
+        {
+        std::vector<T> results = BK5::Parallel::KokkosKernel_2D_Block_jk<T>(nq0 ,nq1, nq2, dbasis0, dbasis1, dbasis2, G, in, out, numThreads, threadsPerBlock, nelmt, 1);
+        std::cout << "2D Block(jk) norm = " << results[1] << std::endl;
         }
 
         {
@@ -63,11 +74,12 @@ int main(int argc, char **argv){
     unsigned int nq2                = (argc > 3) ? atoi(argv[3]) : 4u;
     unsigned int nelmt              = (argc > 4) ? atoi(argv[4]) : 2 << 17;
     unsigned int numThreads         = (argc > 5) ? atoi(argv[5]) : nelmt * nq0 * nq1 * nq2 / 2;
+    unsigned int threadsPerBlock    = (argc > 6) ? atoi(argv[6]) : nq0 * nq1 * nq2;
 
     Kokkos::initialize(argc, argv);
 
     std::cout.precision(8);
-    run_test<double>(nq0, nq1, nq2, numThreads, nelmt);
+    run_test<double>(nq0, nq1, nq2, numThreads, threadsPerBlock, nelmt);
     
     Kokkos::finalize();
     return 0;

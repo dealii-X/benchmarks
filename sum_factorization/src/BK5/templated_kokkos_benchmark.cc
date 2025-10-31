@@ -4,7 +4,9 @@
 #include <benchmark_printer.hpp>
 
 template<typename T, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
-void run_test(const unsigned int numThreads3D, const unsigned int nelmt, const unsigned int ntests)
+void run_test(
+    const unsigned int numThreads, const unsigned int threadsPerBlock,
+    const unsigned int nelmt, const unsigned int ntests)
 {
     //Allocation of arrays
     T* dbasis0 = new T[nq0 * nq0];
@@ -14,10 +16,12 @@ void run_test(const unsigned int numThreads3D, const unsigned int nelmt, const u
     T* in = new T[nelmt * nq0 * nq1 * nq2];
     T* out = new T[nelmt * nq0 * nq1 * nq2];
 
+
     //Initialize the input and output arrays
     std::fill(G, G + nelmt * 6 * nq0 * nq1 * nq2, (T)2.0f);
     std::fill(in, in + nelmt * nq0 * nq1 * nq2, (T)3.0f);
     std::fill(out, out + nelmt * nq0 * nq1 * nq2, (T)0.0f);
+
 
     //Initialization of basis functions
     for(unsigned int i = 0u; i < nq0; i++)
@@ -45,18 +49,33 @@ void run_test(const unsigned int numThreads3D, const unsigned int nelmt, const u
     BenchmarkPrinter printer;
     printer.print_header();
 
+
+    // ------------------------- 1D Block Kernel ---------------------------------------------------
+    {
+        std::vector<T> results = BK5::Parallel::KokkosKernel_3D_Block<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads, threadsPerBlock, nelmt, ntests);
+
+        printer("1D", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numThreads, nq0 * nq1 * nq2 * nelmt, results[2], 1.0e-9 * nelmt * nq0 * nq1 * nq2 / results[2]);
+    }
+
     // ------------------------- 1D Block Simple Map Kernel ---------------------------------------------------
     {
-        std::vector<T> results = BK5::Parallel::KokkosKernel_3D_Block_SimpleMap<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads3D, nelmt, ntests);
+        std::vector<T> results = BK5::Parallel::KokkosKernel_3D_Block_SimpleMap<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads, nelmt, ntests);
 
-        printer("1DS", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numThreads3D, nq0 * nq1 * nq2 * nelmt, results[2], 1.0e-9 * nelmt * nq0 * nq1 * nq2 / results[2]);
+        printer("1DS", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numThreads, nq0 * nq1 * nq2 * nelmt, results[2], 1.0e-9 * nelmt * nq0 * nq1 * nq2 / results[2]);
+    }
+
+    // ------------------------- 2D Block(jk) Kernel ---------------------------------------------------
+    {
+        std::vector<T> results = BK5::Parallel::KokkosKernel_2D_Block_jk<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads, threadsPerBlock, nelmt, ntests);
+
+        printer("2D(jk)", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numThreads / nq0, nq0 * nq1 * nq2 * nelmt, results[2], 1.0e-9 * nelmt * nq0 * nq1 * nq2 / results[2]);
     }
 
     // ------------------------- 2D Block(jk) Simple Map Kernel ---------------------------------------------------
     {
-        std::vector<T> results = BK5::Parallel::KokkosKernel_2D_Block_jk_SimpleMap<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads3D, nelmt, ntests);
-        
-        printer("2DS(jk)", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numThreads3D / nq0, nq0 * nq1 * nq2 * nelmt, results[2], 1.0e-9 * nelmt * nq0 * nq1 * nq2 / results[2]);
+        std::vector<T> results = BK5::Parallel::KokkosKernel_2D_Block_jk_SimpleMap<T, nq0 ,nq1, nq2>(dbasis0, dbasis1, dbasis2, G, in, out, numThreads, nelmt, ntests);
+
+        printer("2DS(jk)", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numThreads / nq0, nq0 * nq1 * nq2 * nelmt, results[2], 1.0e-9 * nelmt * nq0 * nq1 * nq2 / results[2]);
     }
 
     
@@ -64,19 +83,18 @@ void run_test(const unsigned int numThreads3D, const unsigned int nelmt, const u
 }
 
 int main(int argc, char **argv){
-
-    constexpr unsigned int nq0 =  4;
-    constexpr unsigned int nq1 =  4;
-    constexpr unsigned int nq2 =  4;
-
+    constexpr unsigned int nq0      = 4u;
+    constexpr unsigned int nq1      = 4u;
+    constexpr unsigned int nq2      = 4u;
     unsigned int nelmt              = (argc > 1) ? atoi(argv[1]) : 2 << 18;
-    unsigned int numThreads3D       = (argc > 2) ? atoi(argv[2]) : nelmt * nq0 * nq1 * nq2 / 2;
-    unsigned int ntests             = (argc > 3) ? atoi(argv[3]) : 50u;
+    unsigned int numThreads         = (argc > 2) ? atoi(argv[2]) : nelmt * nq0 * nq1 * nq2 / 2;
+    unsigned int threadsPerBlock    = (argc > 3) ? atoi(argv[3]) : nq0 * nq1 * nq2;
+    unsigned int ntests             = (argc > 4) ? atoi(argv[4]) : 50u;
 
     Kokkos::initialize(argc, argv);
 
     std::cout.precision(8);
-    run_test<float,nq0, nq1, nq2>(numThreads3D, nelmt, ntests);
+    run_test<float, nq0, nq1, nq2>(numThreads, threadsPerBlock, nelmt, ntests);
 
     Kokkos::finalize();
     return 0;
