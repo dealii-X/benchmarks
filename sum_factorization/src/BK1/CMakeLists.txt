@@ -5,13 +5,13 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/BK1)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/BK1)
 
 if(Kokkos_ENABLE_CUDA)
-
     add_executable(cuda_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/cuda_benchmark.cc)
     add_executable(templated_cuda_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/templated_cuda_benchmark.cc)
+    add_executable(cuda_mma_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/cuda_mma_benchmark.cc)
 
     TARGET_LINK_LIBRARIES(cuda_benchmark Kokkos::kokkos)
     TARGET_LINK_LIBRARIES(templated_cuda_benchmark Kokkos::kokkos)
-
+    TARGET_LINK_LIBRARIES(cuda_mma_benchmark Kokkos::kokkos)
 endif()
 
 

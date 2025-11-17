@@ -1,5 +1,6 @@
 #include <iostream>
 #include <kernels/BK1/cuda_kernels.cuh>
+#include <kernels/BK1/cuda_mma_kernels.cuh>
 #include <thrust/execution_policy.h>
 #include <thrust/transform_reduce.h>
 #include <cmath>
@@ -264,6 +265,30 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         );
             
         std::cout << "Cuda 2D blocks(pq) SimpleMap norm = " << std::sqrt(result) << std::endl;
+    }
+
+    
+    // ------------------------- mma Kernel with Single Warp per Element-----------------------------------
+    {
+        cudaDeviceProp deviceProp;
+        cudaGetDeviceProperties(&deviceProp, 0);
+        int warpSize = deviceProp.warpSize;
+
+        const unsigned int numBlocks = numThreads / warpSize;
+
+        BK1::Parallel::BwdTransHexKernel_mma<double, 8, 8, 4><<<numBlocks, warpSize, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
+                                                        d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
+
+        CUDA_LAST_ERROR_CHECK();
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        T result = thrust::transform_reduce(
+            thrust::device, d_out, d_out + nelmt * nm0 * nm1 * nm2,
+            thrust::square<T>(), (T)0.0,
+            thrust::plus<T>()
+        );
+            
+        std::cout << "Cuda mma kernel norm = " << std::sqrt(result) << std::endl;
     }
 
     cudaFree(d_basis0); cudaFree(d_basis1); cudaFree(d_basis2); cudaFree(d_JxW); cudaFree(d_in); cudaFree(d_out);
