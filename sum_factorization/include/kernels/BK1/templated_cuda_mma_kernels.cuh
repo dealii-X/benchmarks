@@ -19,12 +19,6 @@ __device__ auto matrixView(T* data) {
 }
 
 
-
-// MAX_TILES for register size
-constexpr int MAX_TILES_M = 4;
-constexpr int MAX_TILES_N = 4;
-constexpr int MAX_TILES_K = 4;
-
 template<int m, int n, int k, Layout Layout_A, Layout Layout_B, Layout Layout_C, const int num_batch, const int M, const int N, const int K>
 __device__ void batched_tiled_gemm(double *s_batched_A, double *s_B, double *s_batched_C)
 {
@@ -35,7 +29,7 @@ __device__ void batched_tiled_gemm(double *s_batched_A, double *s_B, double *s_b
     const int num_tiles_n = (N + n - 1) / n;
     const int num_tiles_k = (K + k - 1) / k;
 
-    double r_b[MAX_TILES_K][MAX_TILES_N] = {0};
+    double r_b[K][N] = {0};
 
     auto s_B_view = matrixView<double, Layout_B, K, N>(s_B);
 
@@ -63,8 +57,8 @@ __device__ void batched_tiled_gemm(double *s_batched_A, double *s_B, double *s_b
 
         auto current_s_A_view = matrixView<double, Layout_A, M, K>(s_batched_A + batch_id * (M * K));
 
-        double r_a[MAX_TILES_M][MAX_TILES_K] = {0};
-        double r_c[MAX_TILES_M][MAX_TILES_N][2] = {0};
+        double r_a[M][K] = {0};
+        double r_c[M][N][2] = {0};
         
         //copy s_A from shared memory to register
         {
