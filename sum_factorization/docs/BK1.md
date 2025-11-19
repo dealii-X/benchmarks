@@ -55,7 +55,24 @@ This benchmark also compares same CUDA kernels but number of quadrature points (
 - **threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ**: Number of threads per block in each dimension
 - **ntests**: Number of benchmark repetitions (minimum across all tests, used as a reference for comparison)
 
+### 5. **./cuda_mma_benchmark**
 
+This benchmark leverages Matrix-Multiply Accumulate (MMA) instructions via inline PTX to utilize the Tensor Cores.
+
+**Input Parameters**
+- **nq0**, **nq1**, **nq2**: Quadrature points in each dimension (element dof per direction + 1)
+- **nelmt**: Number of elements
+- **numThreads**: Number of total threads
+- **ntests**: Number of benchmark repetitions (minimum across all tests, used as a reference for comparison)
+
+### 6. **./templated_cuda_mma_benchmark**
+
+This benchmark also leverages Matrix-Multiply Accumulate (MMA) instructions via inline PTX to utilize the Tensor Cores but number of quadrature points (nq) are templated.
+
+**Input Parameters**
+- **nelmt**: Number of elements
+- **numThreads**: Number of total threads
+- **ntests**: Number of benchmark repetitions (minimum across all tests, used as a reference for comparison)
 ## GPU profiling (CUDA only)
 To gain better insight and obtain detailed performance metrics, reports from **Nsight Systems** and **Nsight Compute** can be automatically generated — provided that the appropriate `nsys` and `ncu` environment variables are set. Run the following to generate reports:
 
