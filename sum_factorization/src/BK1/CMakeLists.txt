@@ -4,26 +4,21 @@ cmake_minimum_required(VERSION 3.0)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/BK1)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/BK1)
 
+set(BK1_CUDA_BENCHMARKS cuda_benchmark templated_cuda_benchmark cuda_mma_benchmark templated_cuda_mma_benchmark)
+set(BK1_KOKKOS_BENCHMARKS kokkos_benchmark templated_kokkos_benchmark)
+
 if(Kokkos_ENABLE_CUDA)
-    add_executable(cuda_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/cuda_benchmark.cc)
-    add_executable(templated_cuda_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/templated_cuda_benchmark.cc)
-    add_executable(cuda_mma_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/cuda_mma_benchmark.cc)
-    add_executable(templated_cuda_mma_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/templated_cuda_mma_benchmark.cc)
-
-
-    TARGET_LINK_LIBRARIES(cuda_benchmark Kokkos::kokkos)
-    TARGET_LINK_LIBRARIES(templated_cuda_benchmark Kokkos::kokkos)
-    TARGET_LINK_LIBRARIES(cuda_mma_benchmark Kokkos::kokkos)
-    TARGET_LINK_LIBRARIES(templated_cuda_mma_benchmark Kokkos::kokkos)
-
+    foreach(benchmark IN LISTS BK1_CUDA_BENCHMARKS)
+        add_executable(${benchmark} "${CMAKE_CURRENT_SOURCE_DIR}/${benchmark}.cc")
+        TARGET_LINK_LIBRARIES(${benchmark} Kokkos::kokkos)
+    endforeach()
 endif()
 
-
-add_executable(kokkos_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/kokkos_benchmark.cc)
-add_executable(templated_kokkos_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/templated_kokkos_benchmark.cc)
-
-TARGET_LINK_LIBRARIES(kokkos_benchmark Kokkos::kokkos)
-TARGET_LINK_LIBRARIES(templated_kokkos_benchmark Kokkos::kokkos)
+foreach(benchmark IN LISTS BK1_KOKKOS_BENCHMARKS)
+    add_executable(${benchmark} "${CMAKE_CURRENT_SOURCE_DIR}/${benchmark}.cc")
+    TARGET_LINK_LIBRARIES(${benchmark} Kokkos::kokkos)
+endforeach()
+    
 
 #Tests
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/BK1/tests)
