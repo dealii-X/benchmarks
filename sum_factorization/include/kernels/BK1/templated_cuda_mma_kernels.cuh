@@ -7,7 +7,7 @@ namespace Parallel{
 
 enum class Layout{RowMajor, ColMajor};
 
-template<typename T, Layout L, const size_t rows, const size_t cols>
+template<typename T, Layout L, size_t rows, size_t cols>
 __device__ auto matrixView(T* data) {
     return [=](const size_t i, const size_t j) -> T& {
         if (L == Layout::RowMajor) {
@@ -19,15 +19,15 @@ __device__ auto matrixView(T* data) {
 }
 
 
-template<int m, int n, int k, Layout Layout_A, Layout Layout_B, Layout Layout_C, const int num_batch, const int M, const int N, const int K>
+template<int m, int n, int k, Layout Layout_A, Layout Layout_B, Layout Layout_C, int num_batch, int M, int N, int K>
 __device__ void batched_tiled_gemm(double *s_batched_A, double *s_B, double *s_batched_C)
 {
     const int tid = threadIdx.x;
     const int laneid = tid % warpSize;
 
-    const int num_tiles_m = (M + m - 1) / m;
-    const int num_tiles_n = (N + n - 1) / n;
-    const int num_tiles_k = (K + k - 1) / k;
+    constexpr int num_tiles_m = (M + m - 1) / m;
+    constexpr int num_tiles_n = (N + n - 1) / n;
+    constexpr int num_tiles_k = (K + k - 1) / k;
 
     double r_b[K][N] = {0};
 
@@ -120,14 +120,14 @@ __device__ void batched_tiled_gemm(double *s_batched_A, double *s_B, double *s_b
     }
 }
 
-template<typename T, int m, int n, int t, const unsigned int nq0, const unsigned int nq1, const unsigned int nq2>
+template<typename T, int m, int n, int t, unsigned int nq0, unsigned int nq1, unsigned int nq2>
 void __global__ BwdTransHexKernel_mma(
     const unsigned int nelmt, const T *__restrict__ d_basis0, const T *__restrict__ d_basis1,
     const T *__restrict__ d_basis2, const T *__restrict__ d_JxW, const T *__restrict__ d_in, T *__restrict__ d_out) 
 {
-    const unsigned int nm0 = nq0 - 1;
-    const unsigned int nm1 = nq1 - 1;
-    const unsigned int nm2 = nq2 - 1;
+    constexpr unsigned int nm0 = nq0 - 1;
+    constexpr unsigned int nm1 = nq1 - 1;
+    constexpr unsigned int nm2 = nq2 - 1;
 
     int laneId = threadIdx.x % warpSize;      // position of thread in warp
 
