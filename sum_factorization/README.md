@@ -47,10 +47,5 @@ cd <build_dir>/roofline
 # Modifying the "Input Parameters" in rooflineBK?.py
 python3 rooflineBK?.py
 ```
-The theoretical bandwidth of NVIDIA devices can be calculated using simple formulas.
-
-<strong>Global Memory Bandwidth (GB/s)</strong> = Memory Clock (GHz) x Bus Width (bits) / 8
-
-<strong>Shared Memory Bandwidth (GB/s)</strong> = SM Clock (GHz) x #SM x word length x #Banks
 
 
