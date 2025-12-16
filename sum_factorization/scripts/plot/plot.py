@@ -86,8 +86,8 @@ def plot_and_export(df: pd.DataFrame):
         plt.legend(loc="upper left")
         plt.grid(True, alpha=0.5)
 
-        pdf_name = f"{kernel}.pdf"
-        plt.savefig(pdf_name, bbox_inches="tight")
+        file_name = f"{kernel}.png"
+        plt.savefig(file_name, dpi=600, bbox_inches="tight")
         plt.close()
 
         # Export data subset
