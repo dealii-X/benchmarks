@@ -54,8 +54,6 @@ std::vector<T> KokkosKernel_1D_Block(
             Kokkos::View<const T*, Kokkos::HostSpace> out_view(out, nelmt * nm0 * nm1 * nm2);
             Kokkos::View<T*> d_out("d_out", nelmt * nm0 * nm1 * nm2);
 
-            Kokkos::fence();   //deep copies in Kokkos are async
-
             Timer kokkosTimer;
             double time_kokkos = std::numeric_limits<T>::max();
 
