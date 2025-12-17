@@ -173,7 +173,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 1D block size -------------------------------
     {   
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
-        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
 
         double time = std::numeric_limits<double>::max();
         Timer Timer;
@@ -195,7 +196,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 1D block size + SimpleMap -------------------------------
     {   
         unsigned int threadsPerBlock = nq0 * nq1 * nq2;
-        const unsigned int numBlocks = numThreads / threadsPerBlock;
+        unsigned int numBlocks = numThreads / threadsPerBlock;
+        if (numBlocks == 0) numBlocks = 1;
 
         double time = std::numeric_limits<double>::max();
         Timer Timer;
@@ -217,7 +219,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 3D block size -------------------------------
     {
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
-        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
 
         double time = std::numeric_limits<double>::max();
         Timer Timer;
@@ -240,7 +243,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 3D block size + SimpleMap -------------------------------
     {
         const unsigned int threadsPerBlock = nq0 * nq1 * nq2;
-        const unsigned int numBlocks = numThreads / threadsPerBlock;
+        unsigned int numBlocks = numThreads / threadsPerBlock;
+        if (numBlocks == 0) numBlocks = 1;
 
         double time = std::numeric_limits<double>::max();
         Timer Timer;
@@ -263,7 +267,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 2D block size (pq)-------------------------------
     {   
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY;
-        const unsigned int numBlocks = (numThreads / nq2) / (std::min(nq0 * nq1, threadsPerBlock));
+        unsigned int numBlocks = (numThreads / nq2) / (std::min(nq0 * nq1, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
+
         unsigned int ssize = nm0 * nq0 + nm1 * nq1 + nm2 * nq2 + 2 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         double time = std::numeric_limits<double>::max();
@@ -285,7 +291,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
     // ------------------------- Kernel with 2D block size (pq) + SimpleMap-------------------------------
     {   
-        const unsigned int numBlocks = (numThreads / nq2) / (nq0 * nq1);
+        unsigned int numBlocks = (numThreads / nq2) / (nq0 * nq1);
+        if (numBlocks == 0) numBlocks = 1;
+        
         unsigned int ssize = nm0 * nq0 + nm1 * nq1 + nm2 * nq2 + 2 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         double time = std::numeric_limits<double>::max();

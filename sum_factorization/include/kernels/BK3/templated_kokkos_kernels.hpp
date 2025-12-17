@@ -14,7 +14,8 @@ std::vector<T> KokkosKernel_1D_Block(
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
     const unsigned int numThreads, const unsigned int threadsPerBlock, const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -350,7 +351,8 @@ std::vector<T> KokkosKernel_1D_Block_SimpleMap(
     const unsigned int numThreads, const unsigned int nelmt, const unsigned int ntests)
     {   
         const unsigned int threadsPerBlock = nq0 * nq1 * nq2;
-        const unsigned int numBlocks = numThreads / threadsPerBlock;
+        unsigned int numBlocks = numThreads / threadsPerBlock;
+        if (numBlocks == 0) numBlocks = 1;
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -673,7 +675,8 @@ std::vector<T> KokkosKernel_2D_Block_pq(
     const unsigned int numThreads, const unsigned int threadsPerBlock,
     const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int numBlocks = numThreads / nq2 / (std::min(nq0 * nq1, threadsPerBlock / nq2));
+        unsigned int numBlocks = numThreads / nq2 / (std::min(nq0 * nq1, threadsPerBlock / nq2));
+        if (numBlocks == 0) numBlocks = 1;
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -1054,7 +1057,8 @@ std::vector<T> KokkosKernel_2D_Block_pq_SimpleMap(
     const unsigned int numThreads, const unsigned int nelmt, const unsigned int ntests)
     {   
         const unsigned int threadsPerBlock = nq0 * nq1;
-        const unsigned int numBlocks = (numThreads / nq2) / threadsPerBlock;
+        unsigned int numBlocks = (numThreads / nq2) / threadsPerBlock;
+        if (numBlocks == 0) numBlocks = 1;
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;

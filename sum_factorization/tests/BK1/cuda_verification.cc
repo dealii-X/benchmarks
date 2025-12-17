@@ -153,7 +153,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Cuda kernel with 1D block size --------------------------------------
     {
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
-        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
 
         BK1::Parallel::BwdTransHexKernel_QP_1D<T><<<numBlocks, std::min(nq0 * nq1 * nq2, threadsPerBlock), ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
                                                     d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
@@ -171,7 +172,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Cuda kernel with 1D block size + SimpleMap --------------------------------------
     {
         unsigned int threadsPerBlock = nq0 * nq1 * nq2;
-        const unsigned int numBlocks = numThreads / threadsPerBlock;
+        unsigned int numBlocks = numThreads / threadsPerBlock;
+        if (numBlocks == 0) numBlocks = 1;
 
         BK1::Parallel::BwdTransHexKernel_QP_1D_SimpleMap<T><<<numBlocks, threadsPerBlock, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
                                                     d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);
@@ -189,7 +191,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------ Cuda kernel with 3D block size --------------------------------------
     {
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
-        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
 
         dim3 gridDim(numBlocks);
         dim3 blockDim(std::min(nq0,threadsPerBlockX), std::min(nq1,threadsPerBlockY), std::min(nq2, threadsPerBlockZ));
@@ -210,7 +213,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Cuda kernel with 3D block size + Simple Map --------------------------------------
     {
         const unsigned int threadsPerBlock = nq0 * nq1 * nq2;
-        const unsigned int numBlocks = numThreads / threadsPerBlock;
+        unsigned int numBlocks = numThreads / threadsPerBlock;
+        if (numBlocks == 0) numBlocks = 1;
 
         dim3 blockDim(nq0, nq1, nq2);
 
@@ -230,7 +234,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 2D block size (pq)-------------------------------
     {   
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY;
-        const unsigned int numBlocks = (numThreads / nq2) / (std::min(nq0 * nq1, threadsPerBlock));
+        unsigned int numBlocks = (numThreads / nq2) / (std::min(nq0 * nq1, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
 
         unsigned int ssize = nm0 * nq0 + nm1 * nq1 + nm2 * nq2 + 2 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
@@ -250,7 +255,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
     // ------------------------- Kernel with 2D block size (pq) + SimpleMap-------------------------------
     {   
-        const unsigned int numBlocks = (numThreads / nq2) / (nq0 * nq1);
+        unsigned int numBlocks = (numThreads / nq2) / (nq0 * nq1);
+        if (numBlocks == 0) numBlocks = 1;
+
         unsigned int ssize = nm0 * nq0 + nm1 * nq1 + nm2 * nq2 + 2 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         BK1::Parallel::BwdTransHexKernel_QP_1D_2D_BLOCKS_pq_SimpleMap<T><<<numBlocks, nq0 * nq1, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
@@ -274,7 +281,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         cudaGetDeviceProperties(&deviceProp, 0);
         int warpSize = deviceProp.warpSize;
 
-        const unsigned int numBlocks = numThreads / warpSize;
+        unsigned int numBlocks = numThreads / warpSize;
+        if (numBlocks == 0) numBlocks = 1;
 
         BK1::Parallel::BwdTransHexKernel_mma<double, 8, 8, 4><<<numBlocks, warpSize, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
                                                         d_basis0, d_basis1, d_basis2, d_JxW, d_in, d_out);

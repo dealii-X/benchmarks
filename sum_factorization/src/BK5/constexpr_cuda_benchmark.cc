@@ -94,7 +94,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 1D block size + Simple Map -------------------------------
     if(nq0 * nq1 * nq2 < prop.maxThreadsPerBlock)
     {   
-        const unsigned int numBlocks = numThreads3D / (nq0 * nq1 * nq2);
+        unsigned int numBlocks = numThreads3D / (nq0 * nq1 * nq2);
+        if (numBlocks == 0) numBlocks = 1;
+
         unsigned int ssize = nq0 * nq0 + nq1 * nq1 + nq2 * nq2 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         double time = std::numeric_limits<double>::max();
@@ -116,7 +118,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 1D block size -------------------------------
     {   
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
-        const unsigned int numBlocks = numThreads3D / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        unsigned int numBlocks = numThreads3D / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
+
         unsigned int ssize = nq0 * nq0 + nq1 * nq1 + nq2 * nq2 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         double time = std::numeric_limits<double>::max();
@@ -138,7 +142,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 2D block size (ij)-------------------------------
     {   
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY;
-        const unsigned int numBlocks = (numThreads3D / nq2) / (std::min(nq0 * nq1, threadsPerBlock));
+        unsigned int numBlocks = (numThreads3D / nq2) / (std::min(nq0 * nq1, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
+
         unsigned int ssize = nq2 * nq2 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
     
         double time = std::numeric_limits<double>::max();
@@ -161,7 +167,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 2D block size (jk)-------------------------------
     {   
         unsigned int threadsPerBlock = threadsPerBlockY * threadsPerBlockZ;
-        const unsigned int numBlocks = (numThreads3D / nq0) / (std::min(nq1 * nq2, threadsPerBlock));
+        unsigned int numBlocks = (numThreads3D / nq0) / (std::min(nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
+
         unsigned int ssize = nq0 * nq0 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
     
         double time = std::numeric_limits<double>::max();
@@ -184,7 +192,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Kernel with 2D block size (jk) Simple Map-------------------------------
     if(nq1 * nq2 < prop.maxThreadsPerBlock)
     {   
-        const unsigned int numBlocks = (numThreads3D / nq0) / (nq1 * nq2);
+        unsigned int numBlocks = (numThreads3D / nq0) / (nq1 * nq2);
+        if (numBlocks == 0) numBlocks = 1;
+        
         unsigned int ssize = nq0 * nq0 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
     
         double time = std::numeric_limits<double>::max();

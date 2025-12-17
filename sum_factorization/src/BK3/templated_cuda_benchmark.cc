@@ -127,7 +127,9 @@ void run_test(
     // ------------------------- Kernel with 1D block size -------------------------------
     {   
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
-        const unsigned int numBlocks = numThreads3D / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        unsigned int numBlocks = numThreads3D / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
+
         unsigned int ssize = nm0 * nq0 + nm1 * nq1 + nm2 * nq2 + nq0 * nq0 + nq1 * nq1 + nq2 * nq2 + 5 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         double time = std::numeric_limits<double>::max();
@@ -150,7 +152,9 @@ void run_test(
     // ------------------------- Kernel with 1D block size + SimpleMap -------------------------------
     {   
         unsigned int threadsPerBlock = nq0 * nq1 * nq2;
-        const unsigned int numBlocks = numThreads3D / threadsPerBlock;
+        unsigned int numBlocks = numThreads3D / threadsPerBlock;
+        if (numBlocks == 0) numBlocks = 1;
+
         unsigned int ssize = nm0 * nq0 + nm1 * nq1 + nm2 * nq2 + nq0 * nq0 + nq1 * nq1 + nq2 * nq2 + 5 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         double time = std::numeric_limits<double>::max();
@@ -174,7 +178,9 @@ void run_test(
     // ------------------------- Kernel with 2D block size (pq)-------------------------------
     {   
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY;
-        const unsigned int numBlocks = (numThreads3D / nq2) / (std::min(nq0 * nq1, threadsPerBlock));
+        unsigned int numBlocks = (numThreads3D / nq2) / (std::min(nq0 * nq1, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
+
         unsigned int ssize = nm0 * nq0 + nm1 * nq1 + nm2 * nq2 + nq0 * nq0 + nq1 * nq1 + nq2 * nq2 + 5 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
     
@@ -197,7 +203,9 @@ void run_test(
 
         // ------------------------- Kernel with 2D block size (pq) + SimpleMap-------------------------------
     {   
-        const unsigned int numBlocks = (numThreads3D / nq2) / (nq0 * nq1);
+        unsigned int numBlocks = (numThreads3D / nq2) / (nq0 * nq1);
+        if (numBlocks == 0) numBlocks = 1;
+        
         unsigned int ssize = nm0 * nq0 + nm1 * nq1 + nm2 * nq2 + nq0 * nq0 + nq1 * nq1 + nq2 * nq2 + 5 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         double time = std::numeric_limits<double>::max();

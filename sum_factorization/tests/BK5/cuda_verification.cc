@@ -87,7 +87,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Cuda kernel with 3D block size --------------------------------------
     {   
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
-        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
+
         unsigned int ssize = nq0 * nq0 + nq1 * nq1 + nq2 * nq2 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         BK5::Parallel::TransHexKernel_QP_3D_Block<T><<<numBlocks, std::min(nq0 * nq1 * nq2, threadsPerBlock), ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
@@ -104,7 +106,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
     // ------------------------- Cuda kernel with 3D block size + Simple Map --------------------------------------
     {
-        const unsigned int numBlocks = numThreads / (nq0 * nq1 * nq2);
+        unsigned int numBlocks = numThreads / (nq0 * nq1 * nq2);
+        if (numBlocks == 0) numBlocks = 1;
+
         unsigned int ssize = nq0 * nq0 + nq1 * nq1 + nq2 * nq2 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         BK5::Parallel::TransHexKernel_QP_3D_Block_SimpleMap<T><<<numBlocks, nq0 * nq1 * nq2, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
@@ -122,7 +126,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Cuda kernel with 2D block size (ij) --------------------------------------
     {
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY;
-        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1, threadsPerBlock));
+        unsigned int numBlocks = numThreads / (std::min(nq0 * nq1, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
+
         unsigned int ssize = nq2 * nq2 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         BK5::Parallel::TransHexKernel_QP_2D_Block_ij<T><<<numBlocks, std::min(nq0 * nq1, threadsPerBlock), ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
@@ -140,7 +146,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Cuda kernel with 2D block size (jk) --------------------------------------
     {
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY;
-        const unsigned int numBlocks = numThreads / (std::min(nq1 * nq2, threadsPerBlock));
+        unsigned int numBlocks = numThreads / (std::min(nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
+
         unsigned int ssize = nq0 * nq0 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         BK5::Parallel::TransHexKernel_QP_2D_Block_jk<T><<<numBlocks, std::min(nq1 * nq2, threadsPerBlock), ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,
@@ -158,7 +166,9 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     // ------------------------- Cuda kernel with 2D block size (jk) Simple Map--------------------------------------
     {
         unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY;
-        const unsigned int numBlocks = numThreads / (std::min(nq1 * nq2, threadsPerBlock));
+        unsigned int numBlocks = numThreads / (std::min(nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
+
         unsigned int ssize = nq0 * nq0 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
 
         BK5::Parallel::TransHexKernel_QP_2D_Block_jk_SimpleMap<T><<<numBlocks, nq1 * nq2, ssize * sizeof(T)>>>(nq0, nq1, nq2, nelmt,

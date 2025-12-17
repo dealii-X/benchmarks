@@ -14,7 +14,8 @@ std::vector<T> KokkosKernel_3D_Block(const unsigned int nq0, const unsigned int 
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
     const unsigned int numThreads, const unsigned int threadsPerBlock, const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
 
         T result_kokkos = 0.0;
         std::vector<T> results(3);
@@ -181,7 +182,8 @@ std::vector<T> KokkosKernel_3D_Block_SimpleMap(const unsigned int nq0, const uns
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
     const unsigned int numThreads, const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int numBlocks = numThreads / (nq0 * nq1 * nq2);
+        unsigned int numBlocks = numThreads / (nq0 * nq1 * nq2);
+        if (numBlocks == 0) numBlocks = 1;
 
         T result_kokkos = 0.0;
         std::vector<T> results(3);
@@ -343,7 +345,8 @@ std::vector<T> KokkosKernel_2D_Block_jk(const unsigned int nq0, const unsigned i
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
     const unsigned int numThreads, const unsigned int threadsPerBlock, const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int numBlocks = numThreads / nq0 / (std::min(nq1 * nq2, threadsPerBlock / nq0));
+        unsigned int numBlocks = numThreads / nq0 / (std::min(nq1 * nq2, threadsPerBlock / nq0));
+        if (numBlocks == 0) numBlocks = 1;
 
         T result_kokkos = 0.0;
         std::vector<T> results(3);
@@ -538,7 +541,8 @@ std::vector<T> KokkosKernel_2D_Block_jk_SimpleMap(const unsigned int nq0, const 
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out,
     const unsigned int numThreads, const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int numBlocks = (numThreads / nq0) / (nq1 * nq2);
+        unsigned int numBlocks = (numThreads / nq0) / (nq1 * nq2);
+        if (numBlocks == 0) numBlocks = 1;
 
         T result_kokkos = 0.0;
         std::vector<T> results(3);

@@ -97,7 +97,8 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
     cudaGetDeviceProperties(&deviceProp, 0);
     int warpSize = deviceProp.warpSize;
 
-    const unsigned int numBlocks = numThreads / warpSize;
+    unsigned int numBlocks = numThreads / warpSize;
+    if (numBlocks == 0) numBlocks = 1;
 
     const unsigned int ssize = 2 * nq0 * nq1 * nq2 + nm0 * nq0 + nm1 * nq1 + nm2 * nq2;          //shared memory dynamic size
 

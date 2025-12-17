@@ -12,7 +12,8 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_1D(
     const T* __restrict__ JxW, const T* __restrict__ in, T* __restrict__ out,
     const unsigned int numThreads, const unsigned int threadsPerBlock, const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        unsigned int numBlocks = numThreads / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -231,7 +232,8 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_1D_SimpleMap(
     const T* __restrict__ JxW, const T* __restrict__ in, T* __restrict__ out,
     const unsigned int numThreads, const unsigned int threadsPerBlock, const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int numBlocks = numThreads / (nq0 * nq1 * nq2);
+        unsigned int numBlocks = numThreads / (nq0 * nq1 * nq2);
+        if (numBlocks == 0) numBlocks = 1;
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -449,7 +451,8 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq(
     const T* __restrict__ JxW, const T* __restrict__ in, T* __restrict__ out,
     const unsigned int numThreads, const unsigned int threadsPerBlock, const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int numBlocks = numThreads / nq2 / (std::min(nq0 * nq1, threadsPerBlock / nq2));
+        unsigned int numBlocks = numThreads / nq2 / (std::min(nq0 * nq1, threadsPerBlock / nq2));
+        if (numBlocks == 0) numBlocks = 1;
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
@@ -716,7 +719,8 @@ std::vector<T> Kokkos_BwdTransHexKernel_QP_2D_BLOCKS_pq_SimpleMap(
     const T* __restrict__ JxW, const T* __restrict__ in, T* __restrict__ out,
     const unsigned int numThreads, const unsigned int threadsPerBlock, const unsigned int nelmt, const unsigned int ntests)
     {   
-        const unsigned int numBlocks = numThreads / nq2 / (nq0 * nq1);
+        unsigned int numBlocks = numThreads / nq2 / (nq0 * nq1);
+        if (numBlocks == 0) numBlocks = 1;
 
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
