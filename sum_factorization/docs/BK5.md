@@ -21,12 +21,17 @@ This benchmark compares different CUDA kernels implementing the sum factorizatio
 
 This benchmark also compares CUDA kernels but number of quadrature points (nq) are templated.
 
-- **First kernel**: Uses a 1D grid and 3D block layout but simple map approach is used (no-stride).
-- **Second kernel**: Uses a 1D grid and 2D block layout and threads are also assigned to j and k directions but simple map approach is used (no-stride).
+- **First kernel**: Uses a 1D grid and 3D block layout, where each block computes each element in strided fashion.
+- **Second kernel**: Uses a 1D grid and 3D block layout but simple map approach is used (no-stride).
+- **Third kernel**: Uses a 1D grid and 2D block layout and threads are assigned to i and j directions in strided fashion. 
+- **Fourth kernel**: Uses a 1D grid and 2D block layout and threads are assigned to j and k directions in strided fashion. 
+- **Fifth kernel**: Uses a 1D grid and 2D block layout and threads are also assigned to j and k directions but simple map approach is used (no-stride).
 
 **Input parameters:**
+- **nq0**, **nq1**, **nq2**: Quadrature points in each dimension (element dof per direction + 1)
 - **nelmt**: Number of elements
 - **numThreads3D**: Number of total threads for 3D block kernels
+- **threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ**: Number of threads per block in each dimension
 - **ntests**: Number of benchmark repetitions (minimum across all tests, used as a reference for comparison)
 
 ### 3. **./kokkos_benchmark**

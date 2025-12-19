@@ -1,8 +1,6 @@
 #include <iostream>
 #include <kernels/BK5/templated_cuda_kernels.cuh>
 #include <timer.hpp>
-#include <array>
-#include <vector>
 #include <benchmark_printer.hpp>
 
 #define CUDA_CHECK(call)                                                          \
@@ -27,16 +25,17 @@
 
 template<typename T, unsigned int nq0, unsigned int nq1, unsigned int nq2>
 void run_test(
-    unsigned int nelmt, const unsigned int numThreads3D, const unsigned int ntests)
+    const unsigned int numThreads3D, const unsigned int threadsPerBlockX, 
+    const unsigned int threadsPerBlockY, const unsigned int threadsPerBlockZ,
+    const unsigned int nelmt, const unsigned int ntests)
 {
     //Allocation of arrays
-    std::array<T, nq0 * nq0> dbasis0;
-    std::array<T, nq1 * nq1> dbasis1;
-    std::array<T, nq2 * nq2> dbasis2;
-
-    std::vector<T> G  (nelmt * 6 * nq0 * nq1 * nq2, 2);
-    std::vector<T> in (nelmt * nq0 * nq1 * nq2, 3);
-    std::vector<T> out(nelmt * nq0 * nq1 * nq2, 0);
+    T* dbasis0 = new T[nq0 * nq0];
+    T* dbasis1 = new T[nq1 * nq1];
+    T* dbasis2 = new T[nq2 * nq2];
+    T* G = new T[nelmt * nq0 * nq1 * nq2 * 6];
+    T* in = new T[nelmt * nq0 * nq1 * nq2];
+    T* out = new T[nelmt * nq0 * nq1 * nq2];
 
     //Initialization of basis functions
     for(unsigned int i = 0u; i < nq0; i++)
@@ -63,32 +62,29 @@ void run_test(
 
     T *d_dbasis0, *d_dbasis1, *d_dbasis2, *d_G, *d_in, *d_out;
                               
-    CUDA_CHECK(cudaMalloc(&d_dbasis0, dbasis0.size() * sizeof(T)));
-    CUDA_CHECK(cudaMalloc(&d_dbasis1, dbasis1.size() * sizeof(T)));
-    CUDA_CHECK(cudaMalloc(&d_dbasis2, dbasis2.size() * sizeof(T)));
-    CUDA_CHECK(cudaMalloc(&d_G, G.size() * sizeof(T)));
-    CUDA_CHECK(cudaMalloc(&d_in,  in.size() * sizeof(T)));
-    CUDA_CHECK(cudaMalloc(&d_out, out.size() * sizeof(T)));
+    CUDA_CHECK(cudaMalloc(&d_dbasis0, nq0 * nq0 * sizeof(T)));
+    CUDA_CHECK(cudaMalloc(&d_dbasis1, nq1 * nq1 * sizeof(T)));
+    CUDA_CHECK(cudaMalloc(&d_dbasis2, nq2 * nq2 * sizeof(T)));
+    CUDA_CHECK(cudaMalloc(&d_G, nelmt * nq0 * nq1 * nq2 * 6 * sizeof(T)));
+    CUDA_CHECK(cudaMalloc(&d_in, nelmt * nq0 * nq1 * nq2 * sizeof(T)));
+    CUDA_CHECK(cudaMalloc(&d_out, nelmt * nq0 * nq1 * nq2 * sizeof(T)));
 
-    CUDA_CHECK(cudaMemcpy(d_dbasis0, dbasis0.data(), dbasis0.size() * sizeof(T), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_dbasis1, dbasis1.data(), dbasis1.size() * sizeof(T), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_dbasis2, dbasis2.data(), dbasis2.size() * sizeof(T), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_G, G.data(), G.size() * sizeof(T), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_in,  in.data(),   in.size() * sizeof(T), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_out, out.data(), out.size() * sizeof(T), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_dbasis0, dbasis0, nq0 * nq0 * sizeof(T), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_dbasis1, dbasis1, nq1 * nq1 * sizeof(T), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_dbasis2, dbasis2, nq2 * nq2 * sizeof(T), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_G, G, nelmt * nq0 * nq1 * nq2 * 6 * sizeof(T), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_in, in, nelmt * nq0 * nq1 * nq2 * sizeof(T), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_out, out, nelmt * nq0 * nq1 * nq2 * sizeof(T), cudaMemcpyHostToDevice));
     
-
-
-    cudaDeviceProp deviceProp;
-    cudaGetDeviceProperties(&deviceProp, 0);
-    int maxThreadsPerBlock = deviceProp.maxThreadsPerBlock;
+    int device;   cudaGetDevice(&device);   cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, device);
 
     BenchmarkPrinter printer;
     printer.print_header();
 
 
     // ------------------------- Kernel with 1D block size + Simple Map -------------------------------
-    if(nq0 * nq1 * nq2 < maxThreadsPerBlock)
+    if(nq0 * nq1 * nq2 < prop.maxThreadsPerBlock)
     {   
         unsigned int numBlocks = numThreads3D / (nq0 * nq1 * nq2);
         if (numBlocks == 0) numBlocks = 1;
@@ -109,15 +105,90 @@ void run_test(
         }
 
         printer("1DS", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numBlocks * nq0 * nq1 * nq2, nq0 * nq1 * nq2 * nelmt, time, 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time);
-
     }
 
+
+    // ------------------------- Kernel with 1D block size -------------------------------
+    {   
+        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY * threadsPerBlockZ;
+        unsigned int numBlocks = numThreads3D / (std::min(nq0 * nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
+
+        unsigned int ssize = nq0 * nq0 + nq1 * nq1 + nq2 * nq2 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
+
+        double time = std::numeric_limits<double>::max();
+        Timer Timer;
+        for (unsigned int t = 0u; t < ntests; ++t)
+        {   
+            Timer.start();
+            BK5::Parallel::TransHexKernel_QP_3D_Block<T, nq0, nq1, nq2><<<numBlocks, std::min(nq0 * nq1 * nq2, threadsPerBlock), ssize * sizeof(T)>>>(nelmt,
+                                                            d_dbasis0, d_dbasis1, d_dbasis2, d_G, d_in, d_out);
+            CUDA_LAST_ERROR_CHECK();
+            CUDA_CHECK(cudaDeviceSynchronize());
+            Timer.stop();
+            time = std::min(time, Timer.elapsedSeconds());
+        }
+
+        printer("1D", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numBlocks * (std::min(nq0 * nq1 * nq2, threadsPerBlock)), nq0 * nq1 * nq2 * nelmt, time, 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time);
+    }
+
+
+    // ------------------------- Kernel with 2D block size (ij)-------------------------------
+    {   
+        unsigned int threadsPerBlock = threadsPerBlockX * threadsPerBlockY;
+        unsigned int numBlocks = (numThreads3D / nq2) / (std::min(nq0 * nq1, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
+
+        unsigned int ssize = nq2 * nq2 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
+    
+        double time = std::numeric_limits<double>::max();
+        Timer Timer;
+        for (unsigned int t = 0u; t < ntests; ++t)
+        {   
+            Timer.start();
+            BK5::Parallel::TransHexKernel_QP_2D_Block_ij<T, nq0, nq1, nq2><<<numBlocks, std::min(nq0 * nq1, threadsPerBlock), ssize * sizeof(T)>>>(nelmt,
+                                                            d_dbasis0, d_dbasis1, d_dbasis2, d_G, d_in, d_out);
+            CUDA_LAST_ERROR_CHECK();
+            CUDA_CHECK(cudaDeviceSynchronize());
+            Timer.stop();
+            time = std::min(time, Timer.elapsedSeconds());
+        }
+
+        printer("2D(ij)", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numBlocks * (std::min(nq0 * nq1, threadsPerBlock)), nq0 * nq1 * nq2 * nelmt, time, 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time);
+    }
+
+
+    // ------------------------- Kernel with 2D block size (jk)-------------------------------
+    {   
+        unsigned int threadsPerBlock = threadsPerBlockY * threadsPerBlockZ;
+        unsigned int numBlocks = (numThreads3D / nq0) / (std::min(nq1 * nq2, threadsPerBlock));
+        if (numBlocks == 0) numBlocks = 1;
+
+        unsigned int ssize = nq0 * nq0 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
+    
+        double time = std::numeric_limits<double>::max();
+        Timer Timer;
+        for (unsigned int t = 0u; t < ntests; ++t)
+        {   
+            Timer.start();
+            BK5::Parallel::TransHexKernel_QP_2D_Block_jk<T, nq0, nq1, nq2><<<numBlocks, std::min(nq1 * nq2, threadsPerBlock), ssize * sizeof(T)>>>(nelmt,
+                                                            d_dbasis0, d_dbasis1, d_dbasis2, d_G, d_in, d_out);
+            CUDA_LAST_ERROR_CHECK();
+            CUDA_CHECK(cudaDeviceSynchronize());
+            Timer.stop();
+            time = std::min(time, Timer.elapsedSeconds());
+        }
+
+        printer("2D(jk)", nq0 - 1, nq1 - 1, nq2 - 1, nelmt, numBlocks * (std::min(nq1 * nq2, threadsPerBlock)), nq0 * nq1 * nq2 * nelmt, time, 1.0e-9 * nelmt * nq0 * nq1 * nq2 / time);
+    }
+
+
     // ------------------------- Kernel with 2D block size (jk) Simple Map-------------------------------
-    if(nq1 * nq2 < maxThreadsPerBlock)
+    if(nq1 * nq2 < prop.maxThreadsPerBlock)
     {   
         unsigned int numBlocks = (numThreads3D / nq0) / (nq1 * nq2);
         if (numBlocks == 0) numBlocks = 1;
-
+        
         unsigned int ssize = nq0 * nq0 + 3 * nq0 * nq1 * nq2;          //shared memory dynamic size
     
         double time = std::numeric_limits<double>::max();
@@ -137,20 +208,27 @@ void run_test(
     }
 
     cudaFree(d_dbasis0); cudaFree(d_dbasis1); cudaFree(d_dbasis2); cudaFree(d_G); cudaFree(d_in); cudaFree(d_out);
+    delete[] dbasis0; delete[] dbasis1; delete[] dbasis2; delete[] G; delete[] in; delete[] out;
 }
 
 
 int main(int argc, char **argv){
-    constexpr unsigned int nq0 =  4;
-    constexpr unsigned int nq1 =  4;
-    constexpr unsigned int nq2 =  4;
 
-    unsigned int nelmt              = (argc > 1) ? atoi(argv[1]) : 2<<18;
-    unsigned int numThreads3D       = (argc > 2) ? atoi(argv[2]) : nelmt * nq0 * nq1 * nq2 / 2;
-    unsigned int ntests             = (argc > 3) ? atoi(argv[3]) : 50u;
-    
+    constexpr unsigned int nq0                = 4u;
+    constexpr unsigned int nq1                = 4u;
+    constexpr unsigned int nq2                = 4u;
+    unsigned int nelmt                        = (argc > 1) ? atoi(argv[1]) : 2 << 18;
+    unsigned int numThreads3D                 = (argc > 2) ? atoi(argv[2]) : nelmt * nq0 * nq1 * nq2 / 2;
+    unsigned int threadsPerBlockX             = (argc > 3) ? atoi(argv[3]) : nq0;
+    unsigned int threadsPerBlockY             = (argc > 4) ? atoi(argv[4]) : nq1;
+    unsigned int threadsPerBlockZ             = (argc > 5) ? atoi(argv[5]) : nq2;
+    unsigned int ntests                       = (argc > 6) ? atoi(argv[6]) : 50u;
+
+
     std::cout.precision(8);
-    run_test<float, nq0, nq1, nq2>(nelmt, numThreads3D, ntests);
+    run_test<float, nq0, nq1, nq2>(numThreads3D,
+                    threadsPerBlockX, threadsPerBlockY, threadsPerBlockZ, nelmt, ntests);
+    
 
     return 0;
 }
