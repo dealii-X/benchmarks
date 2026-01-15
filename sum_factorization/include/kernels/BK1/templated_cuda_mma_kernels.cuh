@@ -1,5 +1,5 @@
-#ifndef BK1_CUDA_MMA_KERNELS_CUH
-#define BK1_CUDA_MMA_KERNELS_CUH
+#ifndef BK1_TEMPLATED_CUDA_MMA_KERNELS_CUH
+#define BK1_TEMPLATED_CUDA_MMA_KERNELS_CUH
 
 
 namespace BK1{
@@ -234,7 +234,7 @@ void __global__ BwdTransHexKernel_mma(
 } //namespace Parallel
 } //namespace BK1
 
-#endif   //BK1_CUDA_MMA_KERNELS_CUH
+#endif   //BK1_TEMPLATED_CUDA_MMA_KERNELS_CUH
 
 
 
