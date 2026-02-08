@@ -1,0 +1,8 @@
+[Bb]uild/
+[Oo]ut/
+
+.vs/
+.idea/
+.vscode/
+*.swp
+*.swo
