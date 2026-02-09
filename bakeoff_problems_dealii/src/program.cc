@@ -32,6 +32,7 @@
 #include <iostream>
 #include <memory>
 
+#include "bk3_kokkos_kernel.h"
 #include "portable_laplace_operator.h"
 
 using namespace dealii;
@@ -138,9 +139,9 @@ LaplaceProblem<dim, fe_degree>::setup_dofs()
   dof_handler.reinit(triangulation);
   dof_handler.distribute_dofs(fe);
 
-  pcout << "  Number of cells: " << triangulation.n_global_active_cells() << " | "
-        << "  Number of DoFs: " << dof_handler.n_dofs()
-        << std::endl;
+  pcout << "  Number of cells: " << triangulation.n_global_active_cells()
+        << " | "
+        << "  Number of DoFs: " << dof_handler.n_dofs() << std::endl;
 
   locally_owned_dofs    = dof_handler.locally_owned_dofs();
   locally_relevant_dofs = DoFTools::extract_locally_relevant_dofs(dof_handler);
@@ -220,8 +221,7 @@ template <int dim, int fe_degree>
 void
 LaplaceProblem<dim, fe_degree>::solve()
 {
-  SolverControl solver_control(system_rhs_device.size(),
-                               1e-12 * system_rhs_device.l2_norm());
+  ReductionControl solver_control(system_rhs_device.size(), 1e-12, 1e-6);
 
   SolverCG<LinearAlgebra::distributed::Vector<double, MemorySpace::Default>> cg(
     solver_control);
@@ -279,6 +279,7 @@ LaplaceProblem<dim, fe_degree>::run()
       solve();
 
       postprocess_solution();
+
     }
 }
 
