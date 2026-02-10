@@ -16,7 +16,7 @@ To target multiple architectures (CPU and GPU), **Kokkos** is used for portabili
 export OMPI_CXX=nvcc_wrapper
 
 mkdir build && cd build
-cmake .. -DCMAKE_CXX_COMPILER=mpicxx
+cmake .. -DCMAKE_CXX_COMPILER=mpicxx -DKokkos_DIR=<KokkosConfig_cmake_dir>
 make
 ```
 
@@ -25,7 +25,7 @@ make
 export OMPI_CXX=hipcc
 
 mkdir build && cd build
-cmake .. -DCMAKE_CXX_COMPILER=mpicxx
+cmake .. -DCMAKE_CXX_COMPILER=mpicxx -DKokkos_DIR=<KokkosConfig_cmake_dir>
 make
 ```
 
@@ -35,7 +35,7 @@ source /opt/intel/oneapi/setvars.sh
 export OMPI_CXX=icpx
 
 mkdir build && cd build
-cmake .. -DCMAKE_CXX_COMPILER=mpicxx
+cmake .. -DCMAKE_CXX_COMPILER=mpicxx -DKokkos_DIR=<KokkosConfig_cmake_dir>
 make
 ```
 
