@@ -49,6 +49,17 @@ make
 - **print_topo** = Set to 1 to print topology information for the neighborhood relation, 0 otherwise
 
 ### Running the Application
+```
 mpirun -np 4 ./p-halox 2 128 10 1 5 0
+```
 
 **Note:** p-halox requires one GPU per MPI process (e.g. `srun --gpus-per-task=1`).
+
+## Post-processing
+The transferred data and time bounds can be generated using the provided Gnuplot script, as shown in the example below.
+
+```
+mpirun -np 4 ./p-halox 2 128 10 1 5 0 > 4P.txt
+awk 'BEGIN {RS="P"; FS="[ =\n]"} $6!=""{print $6 " " $16 " " $20 " " $24 " " $26}' 4P.txt > 4P
+gnuplot scripts/plot.gp 4P
+```
