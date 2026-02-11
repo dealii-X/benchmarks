@@ -213,6 +213,30 @@ namespace Portable
       data->team_member.team_barrier();
     }
 
+    // Kokkos::parallel_for(Kokkos::TeamThreadRange(data->team_member,
+    //                                              n_local_dofs),
+    //                      [&](const int &i) {
+    //                        std::cout << values[i] << " , ";
+    //                      });
+    // team_member.team_barrier();
+    // std::cout << std::endl;
+
+    // Kokkos::parallel_for(
+    //   Kokkos::TeamThreadRange(data->team_member,
+    //                           (fe_degree + 1) * ((fe_degree + 1))),
+    //   [&](const int &i) {
+    //     Kokkos::printf("%f, ", precomputed_data.co_shape_gradients[i]);
+    //   });
+    // team_member.team_barrier();
+    // std::cout << std::endl;
+
+    // Kokkos::parallel_for(
+    //   Kokkos::TeamThreadRange(data->team_member, n_local_dofs),
+    //   [&](const int &i) { Kokkos::printf("%f, ", values[i]); });
+    // team_member.team_barrier();
+    // std::cout << std::endl;
+
+
     // 2. define scratch pad for the evaluation
     constexpr int scratch_size = Utilities::pow(fe_degree + 1, dim);
     auto          scratch_for_eval =
@@ -242,54 +266,105 @@ namespace Portable
         eval.template values<2, true, false, true>(values, values);
 
 
+      // Kokkos::parallel_for(
+      //   Kokkos::TeamThreadRange(data->team_member, n_local_dofs),
+      //   [&](const int &i) { std::cout << values[i] << " , "; });
+      // team_member.team_barrier();
+      // std::cout << std::endl;
+
+      // constexpr unsigned int nq0 = fe_degree + 1;
+      // constexpr unsigned int nq1 = fe_degree + 1;
+      // constexpr unsigned int nq2 = fe_degree + 1;
+
+      // for (unsigned int i = 0; i < nq0; ++i)
+      //   {
+      //     for (unsigned int j = 0; j < nq1; ++j)
+      //       {
+      //         for (unsigned int k = 0; k < nq2; ++k)
+      //           {
+      //             number qr = 0.0;
+      //             number qs = 0.0;
+      //             number qt = 0.0;
+
+      //             for (unsigned int n = 0; n < nq0; ++n)
+      //               {
+      //                 qr += values[n * nq1 * nq2 + j * nq2 + k] *
+      //                       precomputed_data.co_shape_gradients[n * nq0 + i];
+      //               }
+
+      //             for (unsigned int n = 0; n < nq1; ++n)
+      //               {
+      //                 qs += values[i * nq1 * nq2 + n * nq2 + k] *
+      //                       precomputed_data.co_shape_gradients[n * nq1 + j];
+      //               }
+
+      //             for (unsigned int n = 0; n < nq2; ++n)
+      //               {
+      //                 qt += values[i * nq1 * nq2 + j * nq2 + n] *
+      //                       precomputed_data.co_shape_gradients[n * nq2 + k];
+      //               }
+
+      //             std::cout << qr << " , " << qs << " , " << qt << " , ";
+      //             std::cout << std::endl;
+      //           }
+      //       }
+      //   }
+      // std::cout << std::endl;
+
 
       // 4b. evaluate gradients in the colloction space
       eval.template co_gradients<0, true, false, false>(
         values, Kokkos::subview(gradients, Kokkos::ALL, 0));
+      data->team_member.team_barrier();
 
-      // Kokkos::parallel_for(Kokkos::TeamThreadRange(data->team_member,
-      //                                              n_local_dofs),
-      //                      [&](const int &i) {
-      //                        Kokkos::printf("%f, ", gradients(i, 0));
-      //                        // gradients(i, 1),
-      //                        // gradients(i, 2));
-      //                      });
-
+      // for (unsigned int p = 0; p < nq0 * nq1 * nq2; ++p)
+      //   {
+      //     std::cout << gradients(p, 0) << " , ";
+      //   }
+      // std::cout << std::endl;
 
 
       if constexpr (dim > 1)
         eval.template co_gradients<1, true, false, false>(
           values, Kokkos::subview(gradients, Kokkos::ALL, 1));
+      data->team_member.team_barrier();
 
-      // Kokkos::parallel_for(
-      //   Kokkos::TeamThreadRange(data->team_member, n_local_dofs),
-      //   [&](const int &i) { Kokkos::printf("%f, ", gradients(i, 1)); });
-      // team_member.team_barrier();
+      // for (unsigned int p = 0; p < nq0 * nq1 * nq2; ++p)
+      //   {
+      //     std::cout << gradients(p, 1) << " , ";
+      //   }
+      // std::cout << std::endl;
 
       if constexpr (dim > 2)
         eval.template co_gradients<2, true, false, false>(
           values, Kokkos::subview(gradients, Kokkos::ALL, 2));
       data->team_member.team_barrier();
 
-      // Kokkos::parallel_for(
-      //   Kokkos::TeamThreadRange(data->team_member, n_local_dofs),
-      //   [&](const int &i) { Kokkos::printf("%f, ", gradients(i, 2)); });
-      // team_member.team_barrier();
-
-      // Kokkos::parallel_for(Kokkos::TeamThreadRange(data->team_member,
-      //                                              n_local_dofs),
-      //                      [&](const int &i) {
-      //                        Kokkos::printf("%f, %f, %f,  \n",
-      //                                       gradients(i, 0),
-      //                                       gradients(i, 1),
-      //                                       gradients(i, 2));
-      //                      });
-      // team_member.team_barrier();
+      // for (unsigned int p = 0; p < nq0 * nq1 * nq2; ++p)
+      //   {
+      //     std::cout << gradients(p, 2) << " , ";
+      //   }
+      // std::cout << std::endl;
       // std::cout << std::endl;
 
-      // data->team_member.team_barrier();
 
-      std::cout << std::endl;
+      data->team_member.team_barrier();
+
+
+      // for (unsigned int p = 0; p < n_local_dofs; ++p)
+      //   {
+      //     std::cout << gradients(p, 0) << " , " << gradients(p, 1) << " , "
+      //               << gradients(p, 2) << " , \n";
+      //   }
+      // std::cout << std::endl;
+      // std::cout << std::endl;
+
+
+      // Kokkos::parallel_for(
+      //   Kokkos::TeamThreadRange(data->team_member, n_local_dofs),
+      //   [&](const int &i) { Kokkos::printf("%f,  ", gradients(i, 0));
+      //   });
+      // team_member.team_barrier();
     }
 
     // 5.compute Laplace kernel at each quadrature point
@@ -325,6 +400,13 @@ namespace Portable
       team_member.team_barrier();
     }
 
+    // for (unsigned int p = 0; p < n_local_dofs; ++p)
+    //   {
+    //     std::cout << gradients(p, 0) << " , " << gradients(p, 1) << " , "
+    //               << gradients(p, 2) << " , \n";
+    //   }
+    // std::cout << std::endl;
+
     // 6. integrate using time factorization
     {
       // 6a. apply derivatives in collocation space
@@ -350,12 +432,30 @@ namespace Portable
 
       data->team_member.team_barrier();
 
+      // for (unsigned int p = 0; p < n_local_dofs; ++p)
+      //   {
+      //     std::cout << values[p] << " , ";
+      //   }
+      // std::cout << std::endl;
+
+      // Kokkos::parallel_for(
+      //   Kokkos::TeamThreadRange(data->team_member, n_local_dofs),
+      //   [&](const int &i) { Kokkos::printf("%f, ", values[i]); });
+      // team_member.team_barrier();
+      // std::cout << std::endl;
+
       // Kokkos::parallel_for(
       //   Kokkos::TeamThreadRange(data->team_member, n_local_dofs),
       //   [&](const int &i) { Kokkos::printf("%f,  ", values[i]); });
       // team_member.team_barrier();
 
       // std::cout << std::endl << std::endl;
+
+      // Kokkos::parallel_for(
+      //   Kokkos::TeamThreadRange(data->team_member, n_local_dofs),
+      //   [&](const int &i) { std::cout << values[i] << " , "; });
+      // team_member.team_barrier();
+      // std::cout << std::endl;
 
       // 6b. transform back to the original space
       if constexpr (dim > 2)
@@ -365,6 +465,12 @@ namespace Portable
       eval.template values<0, false, false, true>(values, values);
 
       team_member.team_barrier();
+
+      for (unsigned int p = 0; p < n_local_dofs; ++p)
+        {
+          std::cout << values[p] << " , ";
+        }
+      std::cout << std::endl;
     }
 
     // 7.distribute dofs
@@ -524,9 +630,16 @@ namespace Portable
 
     src.update_ghost_values();
 
-    DeviceVector<number> src_device(src.get_values(), src.locally_owned_size()),
-      dst_device(dst.get_values(), dst.locally_owned_size());
+    LocalLaplaceOperator<dim, fe_degree, number> cell_operator;
+    this->cell_loop(cell_operator, src, dst);
 
+    std::cout << "\n\n";
+
+    LinearAlgebra::distributed::Vector<number, MemorySpace::Default> dst_kernel;
+    matrix_free.initialize_dof_vector(dst_kernel);
+
+    DeviceVector<number> src_device(src.get_values(), src.locally_owned_size()),
+      dst_device(dst_kernel.get_values(), dst_kernel.locally_owned_size());
 
     const auto        &colored_graph = matrix_free.get_colored_graph();
     const unsigned int n_colors      = colored_graph.size();
@@ -561,11 +674,8 @@ namespace Portable
                   }
               });
 
-
             DeviceVector<number> dst_e_vector("dst_e_vector",
                                               n_cells * n_local_dofs);
-
-
             BK3::Parallel::
               KokkosKernel_1D_Block<dim, fe_degree + 1, fe_degree + 1, number>(
                 precomputed_data.shape_values,
@@ -577,7 +687,9 @@ namespace Portable
                 1,
                 n_cells);
 
-            std::cout << std::endl;
+            Kokkos::fence();
+
+            std::cout << "\n\n";
 
 
             Kokkos::parallel_for(
@@ -598,15 +710,21 @@ namespace Portable
                       }
                   }
               });
+            Kokkos::fence();
           }
       }
 
+    dst_kernel.compress(VectorOperation::add);
+
     dst.compress(VectorOperation::add);
-    
     src.zero_out_ghost_values();
-    
     matrix_free.copy_constrained_values(src, dst);
 
+    auto dst_error = dst_kernel;
+    dst_error -= dst;
+    std::cout << "dst        = " << dst.l2_norm() << std::endl;
+    std::cout << "dst_kernel = " << dst_kernel.l2_norm() << std::endl;
+    std::cout << "dst_error  = " << dst_error.l2_norm() << std::endl;
   }
 
   template <int dim, int fe_degree, typename number>
@@ -667,16 +785,9 @@ namespace Portable
                       {
                         G[cell_id * symmetric_tensor_dim * n_q_points +
                           c * n_q_points + q_point] = components[c];
-                        Kokkos::printf(
-                          "%f, ",
-                          G[cell_id * symmetric_tensor_dim * n_q_points +
-                            c * n_q_points + q_point]);
                       }
-                    std::cout << std::endl;
                   }
               });
-
-            std::cout << std::endl;
           }
       }
   }
@@ -827,7 +938,7 @@ namespace Portable
       }
     else
       {
-        src.update_ghost_values();
+        // src.update_ghost_values();
 
         // Execute the loop on the cells
         for (unsigned int color = 0; color < n_colors; ++color)
@@ -855,10 +966,10 @@ namespace Portable
                   apply_kernel);
               }
           }
-        dst.compress(VectorOperation::add);
+        // dst.compress(VectorOperation::add);
       }
 
-    src.zero_out_ghost_values();
+    // src.zero_out_ghost_values();
   }
 
 

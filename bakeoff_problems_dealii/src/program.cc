@@ -255,13 +255,13 @@ template <int dim, int fe_degree>
 void
 LaplaceProblem<dim, fe_degree>::run()
 {
-  // const unsigned int sizes[] = {1,   2,   3,   4,    5,    6,   7,   8,
-  //                               10,  12,  14,  16,   20,   24,  28,  32,
-  //                               40,  48,  56,  64,   80,   96,  112, 128,
-  //                               160, 192, 224, 256,  320,  384, 448, 512,
-  //                               640, 768, 896, 1024, 1280, 1536};
+  //   const unsigned int sizes[] = {1,   2,   3,   4,    5,    6,   7,   8,
+  //                                 10,  12,  14,  16,   20,   24,  28,  32,
+  //                                 40,  48,  56,  64,   80,   96,  112, 128,
+  //                                 160, 192, 224, 256,  320,  384, 448, 512,
+  //                                 640, 768, 896, 1024, 1280, 1536};
 
-  const unsigned int sizes[] = {1, 2, 3, 4};
+  const unsigned int sizes[] = {1, 2, 3, 4};// 5, 6, 7, 8};
 
   for (unsigned int cycle = 0; cycle < sizeof(sizes) / sizeof(unsigned int);
        ++cycle)
@@ -281,27 +281,6 @@ LaplaceProblem<dim, fe_degree>::run()
       solve();
 
       postprocess_solution();
-
-      const auto &mf            = system_matrix->get_matrix_free();
-      const auto &colored_graph = mf.get_colored_graph();
-
-      if (colored_graph.size() > 0)
-        {
-          if (colored_graph[0].size() > 0)
-            {
-              const auto &gpu_data = mf.get_data(0);
-
-              // std::cout << "inv_jacobian.size() =  "
-              //           << gpu_data.inv_jacobian.size() << " | "
-              //           << "JxW.size() =  " << gpu_data.JxW.size() <<
-              //           std::endl;
-
-              std::cout << "shape_values.size() =  "
-                        << gpu_data.shape_values.size() << " | "
-                        << "co_shape_gradients.size() =  "
-                        << gpu_data.co_shape_gradients.size() << std::endl;
-            }
-        }
     }
 }
 

@@ -8,6 +8,9 @@
 
 #include <vector>
 
+// #include "templated_kokkos_kernels.hpp"
+// #include "serial_kernels.hpp"
+
 DEAL_II_NAMESPACE_OPEN
 
 namespace BK3
@@ -19,17 +22,77 @@ namespace BK3
     using DeviceView =
       Kokkos::View<number *, MemorySpace::Default::kokkos_space>;
 
-
     template <typename number>
     using SharedView =
       Kokkos::View<number *,
                    MemorySpace::Default::kokkos_space::execution_space>;
 
 
+    // template <int dim, int n_local_dofs_1d, int n_q_points_1d, typename
+    // number> void KokkosKernel_1D_Block_wrapper(
+    //   const DeviceView<number> shape_values_device,
+    //   const DeviceView<number> co_shape_gradients_device,
+    //   const DeviceView<number> G_device,
+    //   const DeviceView<number> in_device,
+    //   DeviceView<number>       out_device,
+    //   const unsigned int       numThreads,
+    //   const unsigned int       threadsPerBlock,
+    //   const unsigned int       n_cells)
+    // {
+    //   const unsigned int n_tests = 1u;
+
+
+    //   ::BK3::Parallel::KokkosKernel_1D_Block<number,
+    //                                          n_q_points_1d,
+    //                                          n_q_points_1d,
+    //                                          n_q_points_1d>(
+    //     shape_values_device.data(),
+    //     shape_values_device.data(),
+    //     shape_values_device.data(),
+    //     co_shape_gradients_device.data(),
+    //     co_shape_gradients_device.data(),
+    //     co_shape_gradients_device.data(),
+    //     G_device.data(),
+    //     in_device.data(),
+    //     out_device.data(),
+    //     numThreads,
+    //     threadsPerBlock,
+    //     n_cells,
+    //     n_tests);
+    // }
+
+    // template <int dim, int n_local_dofs_1d, int n_q_points_1d, typename
+    // number> void KokkosKernel_serial_wrapper(
+    //   const DeviceView<number> shape_values_device,
+    //   const DeviceView<number> co_shape_gradients_device,
+    //   const DeviceView<number> G_device,
+    //   const DeviceView<number> in_device,
+    //   DeviceView<number>       out_device,
+    //   const unsigned int       n_cells)
+    // {
+
+    //   ::BK3::Serial::SumFactorization<number>(
+    //     n_q_points_1d,
+    //     n_q_points_1d,
+    //     n_q_points_1d,
+    //     n_cells,
+    //     shape_values_device.data(),
+    //     shape_values_device.data(),
+    //     shape_values_device.data(),
+    //     co_shape_gradients_device.data(),
+    //     co_shape_gradients_device.data(),
+    //     co_shape_gradients_device.data(),
+    //     G_device.data(),
+    //     in_device.data(),
+    //     out_device.data());
+    // }
+
+
+
     template <int dim, int n_local_dofs_1d, int n_q_points_1d, typename number>
     void
-    KokkosKernel_1D_Block(const DeviceView<number> shape_values_device,  
-                          const DeviceView<number> co_shape_gradients_device, 
+    KokkosKernel_1D_Block(const DeviceView<number> shape_values_device,
+                          const DeviceView<number> co_shape_gradients_device,
                           const DeviceView<number> G_device,
                           const DeviceView<number> in_device,
                           DeviceView<number>       out_device,
@@ -49,12 +112,13 @@ namespace BK3
         /*FIXME: check for consistency */
 
         const unsigned int scratch_pad_size =
-          5 * n_q_points_total; // working scratch arrays s_wsp0,  s_wsp1, rqr, rqq, rqt
+          5 * n_q_points_total; // working scratch arrays: s_wsp0, s_wsp1,
+                                // rqr,rqq, rqt
 
         unsigned int ssize =
           n_q_points_1d * n_q_points_1d + // shape values
           n_q_points_1d * n_q_points_1d + // co-shape gradients
-          scratch_pad_size; // at most 5 tmp arrays
+          scratch_pad_size;               // at most 5 tmp arrays
 
         const unsigned int shmem_size = ssize * sizeof(number);
 
@@ -245,21 +309,21 @@ namespace BK3
                       {
                         qr += s_wsp1[n * n_q_points_1d * n_q_points_1d +
                                      q * n_q_points_1d + r] *
-                              co_shape_gradients_scratch[p * n_q_points_1d + n];
+                              co_shape_gradients_scratch[n * n_q_points_1d + p];
                       }
 
                     for (unsigned int n = 0; n < n_q_points_1d; n++)
                       {
                         qs += s_wsp1[p * n_q_points_1d * n_q_points_1d +
                                      n * n_q_points_1d + r] *
-                              co_shape_gradients_scratch[q * n_q_points_1d + n];
+                              co_shape_gradients_scratch[n * n_q_points_1d + q];
                       }
 
                     for (unsigned int n = 0; n < n_q_points_1d; n++)
                       {
                         qt += s_wsp1[p * n_q_points_1d * n_q_points_1d +
                                      q * n_q_points_1d + n] *
-                              co_shape_gradients_scratch[r * n_q_points_1d + n];
+                              co_shape_gradients_scratch[n * n_q_points_1d + r];
                       }
 
                     // step-7 : Apply chain rule
@@ -271,7 +335,6 @@ namespace BK3
                         r] = Grt * qr + Gst * qs + Gtt * qt;
                   }
                 team_member.team_barrier();
-                std::cout << std::endl;
 
 
                 // step-8 : Compute out vector in GL nodes
@@ -288,17 +351,17 @@ namespace BK3
                     for (unsigned int n = 0; n < n_q_points_1d; ++n)
                       sum += rqr[n * n_q_points_1d * n_q_points_1d +
                                  q * n_q_points_1d + r] *
-                             co_shape_gradients_scratch[n * n_q_points_1d + p];
+                             co_shape_gradients_scratch[p * n_q_points_1d + n];
 
                     for (unsigned int n = 0; n < n_q_points_1d; ++n)
                       sum += rqs[p * n_q_points_1d * n_q_points_1d +
                                  n * n_q_points_1d + r] *
-                             co_shape_gradients_scratch[n * n_q_points_1d + q];
+                             co_shape_gradients_scratch[q * n_q_points_1d + n];
 
                     for (unsigned int n = 0; n < n_q_points_1d; ++n)
                       sum += rqt[p * n_q_points_1d * n_q_points_1d +
                                  q * n_q_points_1d + n] *
-                             co_shape_gradients_scratch[n * n_q_points_1d + r];
+                             co_shape_gradients_scratch[r * n_q_points_1d + n];
 
                     s_wsp1[p * n_q_points_1d * n_q_points_1d +
                            q * n_q_points_1d + r] = sum;
@@ -376,6 +439,12 @@ namespace BK3
                            j * n_local_dofs_1d + k] = sum;
                   }
                 team_member.team_barrier();
+
+                for (unsigned int i = 0; i < n_local_dofs_total; ++i)
+                  {
+                    std::cout << s_wsp0[i] << " , ";
+                  }
+                std::cout << std::endl;
 
                 // step-12 : Copy wsp0 to out
                 for (unsigned int tid = threadIdx; tid < n_local_dofs_total;
