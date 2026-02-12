@@ -7,7 +7,7 @@
 
 class BenchmarkPrinter{
     public:
-    BenchmarkPrinter(int precision = 3, int w_name = 15, int w_p0 = 4, int w_p1 = 4, int w_p2 = 4, int w_nelmt = 12, int w_numThreads = 16, int w_DOF = 16, int w_time = 10, int w_GDOFs = 8)
+    BenchmarkPrinter(int precision = 3, int w_name = 15, int w_p0 = 4, int w_p1 = 4, int w_p2 = 4, int w_nelmt = 12, int w_numThreads = 16, int w_DOF = 16, int w_time = 12, int w_GDOFs = 12)
         :precision_{precision},
         widths_{
             w_name,
@@ -21,7 +21,7 @@ class BenchmarkPrinter{
             w_GDOFs
     }
     {
-        std::cout << std::fixed << std::setprecision(precision_);
+        std::cout << std::scientific << std::setprecision(precision_);
     }
     
     struct ColumnWidths
