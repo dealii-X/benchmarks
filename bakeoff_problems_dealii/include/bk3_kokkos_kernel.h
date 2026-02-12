@@ -183,6 +183,14 @@ namespace BK3
                   }
                 team_member.team_barrier();
 
+                // for (unsigned int i = 0; i < n_local_dofs_total; ++i)
+                //   {
+                //     std::cout << s_wsp0[i] << " , ";
+                //   }
+                // std::cout << std::endl;
+                // std::cout << std::endl;
+
+
                 if constexpr (dim == 3)
                   {
                     // step-2 : direction 0
@@ -203,7 +211,7 @@ namespace BK3
                             sum +=
                               s_wsp0[i * n_local_dofs_1d * n_local_dofs_1d +
                                      j * n_local_dofs_1d + k] *
-                              shape_values_scratch[p * n_local_dofs_1d + i];
+                              shape_values_scratch[i * n_local_dofs_1d + p];
                           }
                         s_wsp1[p * n_local_dofs_1d * n_local_dofs_1d +
                                j * n_local_dofs_1d + k] = sum;
@@ -227,7 +235,7 @@ namespace BK3
                             sum +=
                               s_wsp1[p * n_local_dofs_1d * n_local_dofs_1d +
                                      j * n_local_dofs_1d + k] *
-                              shape_values_scratch[q * n_local_dofs_1d + j];
+                              shape_values_scratch[j * n_local_dofs_1d + q];
                           }
 
                         s_wsp0[q * n_q_points_1d * n_local_dofs_1d +
@@ -253,13 +261,20 @@ namespace BK3
                             sum +=
                               s_wsp0[q * n_q_points_1d * n_local_dofs_1d +
                                      p * n_local_dofs_1d + k] *
-                              shape_values_scratch[r * n_local_dofs_1d + k];
+                              shape_values_scratch[k * n_local_dofs_1d + r];
                           }
                         s_wsp1[p * n_q_points_1d * n_q_points_1d +
                                q * n_q_points_1d + r] = sum;
                       }
                     team_member.team_barrier();
                   }
+
+                // for (unsigned int i = 0; i < n_local_dofs_total; ++i)
+                //   {
+                //     std::cout << s_wsp1[i] << " , ";
+                //   }
+                // std::cout << std::endl;
+                // std::cout << std::endl;
 
                 // Geometric vals
                 number Grr, Grs, Grt, Gss, Gst, Gtt;
@@ -369,6 +384,14 @@ namespace BK3
                 team_member.team_barrier();
 
 
+                // for (unsigned int i = 0; i < n_local_dofs_total; ++i)
+                //   {
+                //     std::cout << s_wsp1[i] << " , ";
+                //   }
+                // std::cout << std::endl;
+                // std::cout << std::endl;
+
+
 
                 /*
                 Interpolate to GLL nodes
@@ -389,7 +412,7 @@ namespace BK3
                       {
                         sum += s_wsp1[p * n_q_points_1d * n_q_points_1d +
                                       q * n_q_points_1d + r] *
-                               shape_values_scratch[r * n_local_dofs_1d + k];
+                               shape_values_scratch[k * n_local_dofs_1d + r];
                       }
                     s_wsp0[q * n_q_points_1d * n_local_dofs_1d +
                            p * n_local_dofs_1d + k] = sum;
@@ -411,7 +434,7 @@ namespace BK3
                       {
                         sum += s_wsp0[q * n_q_points_1d * n_local_dofs_1d +
                                       p * n_local_dofs_1d + k] *
-                               shape_values_scratch[q * n_local_dofs_1d + j];
+                               shape_values_scratch[j * n_local_dofs_1d + q];
                       }
                     s_wsp1[p * n_local_dofs_1d * n_local_dofs_1d +
                            j * n_local_dofs_1d + k] = sum;
@@ -433,18 +456,26 @@ namespace BK3
                       {
                         sum += s_wsp1[p * n_local_dofs_1d * n_local_dofs_1d +
                                       j * n_local_dofs_1d + k] *
-                               shape_values_scratch[p * n_local_dofs_1d + i];
+                               shape_values_scratch[i * n_local_dofs_1d + p];
                       }
                     s_wsp0[i * n_local_dofs_1d * n_local_dofs_1d +
                            j * n_local_dofs_1d + k] = sum;
                   }
                 team_member.team_barrier();
 
-                for (unsigned int i = 0; i < n_local_dofs_total; ++i)
-                  {
-                    std::cout << s_wsp0[i] << " , ";
-                  }
-                std::cout << std::endl;
+                // for (unsigned int i = 0; i < n_local_dofs_total; ++i)
+                //   {
+                //     std::cout << s_wsp0[i] << " , ";
+                //   }
+                // std::cout << std::endl;
+                // std::cout << std::endl;
+
+
+                // for (unsigned int i = 0; i < n_local_dofs_total; ++i)
+                //   {
+                //     std::cout << s_wsp0[i] << " , ";
+                //   }
+                // std::cout << std::endl;
 
                 // step-12 : Copy wsp0 to out
                 for (unsigned int tid = threadIdx; tid < n_local_dofs_total;

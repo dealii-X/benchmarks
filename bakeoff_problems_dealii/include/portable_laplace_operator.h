@@ -220,6 +220,8 @@ namespace Portable
     //                      });
     // team_member.team_barrier();
     // std::cout << std::endl;
+    // std::cout << std::endl;
+
 
     // Kokkos::parallel_for(
     //   Kokkos::TeamThreadRange(data->team_member,
@@ -265,12 +267,13 @@ namespace Portable
       if constexpr (dim > 2)
         eval.template values<2, true, false, true>(values, values);
 
-
       // Kokkos::parallel_for(
       //   Kokkos::TeamThreadRange(data->team_member, n_local_dofs),
       //   [&](const int &i) { std::cout << values[i] << " , "; });
       // team_member.team_barrier();
       // std::cout << std::endl;
+      // std::cout << std::endl;
+
 
       // constexpr unsigned int nq0 = fe_degree + 1;
       // constexpr unsigned int nq1 = fe_degree + 1;
@@ -432,6 +435,14 @@ namespace Portable
 
       data->team_member.team_barrier();
 
+
+      // Kokkos::parallel_for(
+      //   Kokkos::TeamThreadRange(data->team_member, n_local_dofs),
+      //   [&](const int &i) { std::cout << values[i] << " , "; });
+      // team_member.team_barrier();
+      // std::cout << std::endl;
+      // std::cout << std::endl;
+
       // for (unsigned int p = 0; p < n_local_dofs; ++p)
       //   {
       //     std::cout << values[p] << " , ";
@@ -466,11 +477,18 @@ namespace Portable
 
       team_member.team_barrier();
 
-      for (unsigned int p = 0; p < n_local_dofs; ++p)
-        {
-          std::cout << values[p] << " , ";
-        }
-      std::cout << std::endl;
+      // for (unsigned int p = 0; p < n_local_dofs; ++p)
+      //   {
+      //     std::cout << values[p] << " , ";
+      //   }
+      // std::cout << std::endl;
+
+      // Kokkos::parallel_for(
+      //   Kokkos::TeamThreadRange(data->team_member, n_local_dofs),
+      //   [&](const int &i) { std::cout << values[i] << " , "; });
+      // team_member.team_barrier();
+      // std::cout << std::endl;
+      // std::cout << std::endl;
     }
 
     // 7.distribute dofs
@@ -630,16 +648,14 @@ namespace Portable
 
     src.update_ghost_values();
 
-    LocalLaplaceOperator<dim, fe_degree, number> cell_operator;
-    this->cell_loop(cell_operator, src, dst);
+    // LocalLaplaceOperator<dim, fe_degree, number> cell_operator;
+    // this->cell_loop(cell_operator, src, dst);
 
-    std::cout << "\n\n";
-
-    LinearAlgebra::distributed::Vector<number, MemorySpace::Default> dst_kernel;
-    matrix_free.initialize_dof_vector(dst_kernel);
+    // LinearAlgebra::distributed::Vector<number, MemorySpace::Default> dst_kernel;
+    // matrix_free.initialize_dof_vector(dst_kernel);
 
     DeviceVector<number> src_device(src.get_values(), src.locally_owned_size()),
-      dst_device(dst_kernel.get_values(), dst_kernel.locally_owned_size());
+      dst_device(dst.get_values(), dst.locally_owned_size());
 
     const auto        &colored_graph = matrix_free.get_colored_graph();
     const unsigned int n_colors      = colored_graph.size();
@@ -689,9 +705,6 @@ namespace Portable
 
             Kokkos::fence();
 
-            std::cout << "\n\n";
-
-
             Kokkos::parallel_for(
               "Scatter_E_to_L_dst",
               Kokkos::RangePolicy<ExecutionSpace>(0, n_cells),
@@ -714,17 +727,17 @@ namespace Portable
           }
       }
 
-    dst_kernel.compress(VectorOperation::add);
+    // dst_kernel.compress(VectorOperation::add);
 
     dst.compress(VectorOperation::add);
     src.zero_out_ghost_values();
     matrix_free.copy_constrained_values(src, dst);
 
-    auto dst_error = dst_kernel;
-    dst_error -= dst;
-    std::cout << "dst        = " << dst.l2_norm() << std::endl;
-    std::cout << "dst_kernel = " << dst_kernel.l2_norm() << std::endl;
-    std::cout << "dst_error  = " << dst_error.l2_norm() << std::endl;
+    // auto dst_error = dst_kernel;
+    // dst_error -= dst;
+    // std::cout << "dst        = " << dst.l2_norm() << std::endl;
+    // std::cout << "dst_kernel = " << dst_kernel.l2_norm() << std::endl;
+    // std::cout << "dst_error  = " << dst_error.l2_norm() << std::endl;
   }
 
   template <int dim, int fe_degree, typename number>
