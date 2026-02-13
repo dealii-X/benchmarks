@@ -64,6 +64,6 @@ awk '{print $6 " " $16 " " $20 " " $24 " " $26}' 16P.txt > 16P
 gnuplot -c scripts/plot.gp 16P
 ```
 
-Performance results for a 256-GPU cluster:
-![](docs/256P.png)
+Performance results on 16-GPU cluster:
+![](/docs/16P.png)
 
