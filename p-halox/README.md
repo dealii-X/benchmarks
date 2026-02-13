@@ -65,5 +65,5 @@ gnuplot -c scripts/plot.gp 16P
 ```
 
 Performance results on 16-GPU cluster:
-![](/docs/16P.png)
+![](docs/16P.png)
 
