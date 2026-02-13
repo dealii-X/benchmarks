@@ -59,9 +59,9 @@ mpirun -np 4 ./p-halox 2 128 10 1 5 0
 The transferred data and time bounds can be generated using the provided Gnuplot script, as shown in the example below.
 
 ```
-mpirun -np 256 ./p-halox 2 128 10 1 5 0 > 256P.txt
-awk '{print $6 " " $16 " " $20 " " $24 " " $26}' 256P.txt > 256P
-gnuplot -c scripts/plot.gp 256P
+mpirun -np 16 ./p-halox 2 128 10 1 5 0 > 16P.txt
+awk '{print $6 " " $16 " " $20 " " $24 " " $26}' 16P.txt > 16P
+gnuplot -c scripts/plot.gp 16P
 ```
 
 Performance results for a 256-GPU cluster:
