@@ -4,10 +4,12 @@ set output ARG1 . ".pdf"
 
 if (ARGC != 1) { print "Usage: gnuplot -c plot.gp <file>"; exit }
 
-set logscale x
+set logscale x 2
 set logscale y
 
 set format x "2^{%L}"
+set format y "10^{%L}"
+
 set grid
 set key left top
 
