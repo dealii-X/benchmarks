@@ -142,13 +142,13 @@ void run(int dim, int KB, int nMsg, bool is_periodic, int warmup, int print_topo
 
     if(cart_rank == 0){
 
-        std::cout << "P=" << cart_size << " dim=" << dim << " KB=" << KB << " nMsg=" << nMsg 
-                  << " is_periodic=" << is_periodic << " warmup=" << warmup << " print_topo=" << print_topo << "\n";
+        std::cout << "P= " << cart_size << " dim= " << dim << " KB= " << KB << " nMsg= " << nMsg 
+                  << " is_periodic= " << is_periodic << " warmup= " << warmup << " print_topo= " << print_topo
 
-        std::cout << "min_time_s=" << min_time_loc.time << " min_Rank=" << min_time_loc.rank << "\n";
-        std::cout << "max_time_s=" << max_time_loc.time << " max_Rank=" << max_time_loc.rank << "\n"; 
-        std::cout << "avg_time_s=" << total_time / (double)cart_size << "\n";
-        std::cout << "agg_BW_GBps=" << (double)global_KB_send / max_time_loc.time / (1024.0 * 1024.0) << "\n";
+                  << " min_time_s= " << min_time_loc.time << " min_Rank= " << min_time_loc.rank
+                  << " max_time_s= " << max_time_loc.time << " max_Rank= " << max_time_loc.rank
+                  << " avg_time_s= " << total_time / (double)cart_size
+                  << " agg_BW_GBps= " << (double)global_KB_send / max_time_loc.time / (1000.0 * 1000.0) << "\n";
     }
 
     if(print_topo){
