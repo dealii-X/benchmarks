@@ -164,6 +164,9 @@ void run(int dim, int KB, int nMsg, bool is_periodic, int warmup, int print_topo
 
 
 int main(int argc, char* argv[]){
+    
+    MPI_Init(&argc, &argv);
+    Kokkos::initialize(argc, argv);
 
     int  dim           = (argc > 1) ? atoi(argv[1]) : 2;            // dimension(1,2,3)
     int  KB            = (argc > 2) ? atoi(argv[2]) : 1000;         // Kilobyte transferred between 2 processes (per Iter, per Msg, per direction) 
@@ -172,8 +175,6 @@ int main(int argc, char* argv[]){
     int  warmup        = (argc > 5) ? atoi(argv[5]) : 5;            // Warmup message count before timing starts
     int  print_topo    = (argc > 6) ? atoi(argv[6]) : 0;            // Option for enabling topology print
 
-    MPI_Init(&argc, &argv);
-    Kokkos::initialize(argc, argv);
 
     run(dim, KB, nMsg, is_periodic, warmup, print_topo);
 
