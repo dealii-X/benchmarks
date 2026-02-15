@@ -12,13 +12,16 @@ struct TimeRank{
 }; 
 
 // Prints: process_id and Cartesian coordinates (d0, d1, ..., d{dim-1})
-void print_cart_topo(MPI_Comm cart_comm, int dim, int root = 0)
+void print_cart_topo(MPI_Comm cart_comm, int root = 0)
 {
     int cart_rank = -1, comm_size = 0;
     MPI_Comm_rank(cart_comm, &cart_rank);
     MPI_Comm_size(cart_comm, &comm_size);
 
     if (cart_rank != root) return;
+
+    int dim = 0;
+    MPI_Cartdim_get(cart_comm, &dim);
 
     std::vector<int> dims(dim), periods(dim), coords(dim);
     MPI_Cart_get(cart_comm, dim, dims.data(), periods.data(), coords.data());
@@ -152,7 +155,7 @@ void run(int dim, int KB, int nMsg, bool is_periodic, int warmup, int print_topo
     }
 
     if(print_topo){
-        print_cart_topo(cart_comm, dim);
+        print_cart_topo(cart_comm);
     }
 
     MPI_Comm_free(&cart_comm);
