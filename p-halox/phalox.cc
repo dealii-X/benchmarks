@@ -151,7 +151,7 @@ void run(int dim, int KB, int nMsg, bool is_periodic, int warmup, int print_topo
                   << " min_time_s= " << min_time_loc.time << " min_Rank= " << min_time_loc.rank
                   << " max_time_s= " << max_time_loc.time << " max_Rank= " << max_time_loc.rank
                   << " avg_time_s= " << total_time / (double)cart_size
-                  << " agg_BW_GBps= " << (double)global_KB_send / max_time_loc.time / (1000.0 * 1000.0) << "\n";
+                  << " agg_BW_GBps= " << (double)global_KB_send / max_time_loc.time / (1024.0 * 1024.0) << "\n";
     }
 
     if(print_topo){
