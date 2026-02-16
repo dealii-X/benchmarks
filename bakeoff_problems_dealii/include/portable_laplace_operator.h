@@ -357,6 +357,14 @@ namespace Portable
             &src) const override;
 
     void
+    vmult_dummy(
+      LinearAlgebra::distributed::Vector<number, MemorySpace::Default> &dst,
+      const LinearAlgebra::distributed::Vector<number, MemorySpace::Default>
+                &src,
+      const bool ghost_exchange_on,
+      const bool computation_on) const;
+
+    void
     Tvmult(
       LinearAlgebra::distributed::Vector<number, MemorySpace::Default> &dst,
       const LinearAlgebra::distributed::Vector<number, MemorySpace::Default>
@@ -417,15 +425,6 @@ namespace Portable
                                                                        &src,
       LinearAlgebra::distributed::Vector<number, MemorySpace::Default> &dst)
       const;
-
-    // void
-    // cell_loop_dummy(
-    //   const LocalLaplaceOperator<dim, fe_degree, number> &cell_operator,
-    //   const LinearAlgebra::distributed::Vector<number, MemorySpace::Default>
-    //                                                                    &src,
-    //   LinearAlgebra::distributed::Vector<number, MemorySpace::Default> &dst,
-    //   const bool ghost_exchange_on,
-    //   const bool computation_on) const;
 
     static constexpr unsigned int n_local_dofs =
       Utilities::pow(fe_degree + 1, dim);
@@ -526,6 +525,72 @@ namespace Portable
     dst.compress(VectorOperation::add);
     src.zero_out_ghost_values();
     matrix_free.copy_constrained_values(src, dst);
+  }
+
+
+  template <int dim, int fe_degree, typename number>
+  void
+  LaplaceOperator<dim, fe_degree, number>::vmult_dummy(
+    LinearAlgebra::distributed::Vector<number, MemorySpace::Default>       &dst,
+    const LinearAlgebra::distributed::Vector<number, MemorySpace::Default> &src,
+    const bool ghost_exchange_on,
+    const bool computation_on) const
+  {
+
+
+    if (ghost_exchange_on)
+      src.update_ghost_values();
+
+    if (computation_on)
+      {
+
+    dst = 0.;
+
+        DeviceVector<number> src_device(src.get_values(),
+                                        src.locally_owned_size()),
+          dst_device(dst.get_values(), dst.locally_owned_size());
+
+        const auto        &colored_graph = matrix_free.get_colored_graph();
+        const unsigned int n_colors      = colored_graph.size();
+
+        for (unsigned int color = 0; color < n_colors; ++color)
+          {
+            const unsigned int n_cells = colored_graph[color].size();
+
+            if (n_cells > 0)
+              {
+                const auto &precomputed_data = matrix_free.get_data(color);
+
+                // const unsigned int numThreads      = n_cells;
+                // const unsigned int threadsPerBlock = 1;
+
+                Kokkos::fence();
+
+                BK3::Parallel::KokkosKernel_1D_Block<dim,
+                                                     fe_degree + 1,
+                                                     fe_degree + 1,
+                                                     number>(
+                  precomputed_data.shape_values,
+                  precomputed_data.co_shape_gradients,
+                  G_tensors[color],
+                  src_device,
+                  dst_device,
+                  dirichlet_boundary_dofs_masks[color],
+                  n_cells);
+                // numThreads,
+                // threadsPerBlock);
+
+                Kokkos::fence();
+              }
+          }
+      }
+
+    if (ghost_exchange_on)
+      {
+        dst.compress(VectorOperation::add);
+        src.zero_out_ghost_values();
+        matrix_free.copy_constrained_values(src, dst);
+      }
   }
 
 

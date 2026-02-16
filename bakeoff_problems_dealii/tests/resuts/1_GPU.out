@@ -1,0 +1,697 @@
+The following modules were not unloaded:
+  (Use "module --force purge" to unload all):
+
+  1) Stages/2026
+0: Settings of parameters: 
+0: Number of MPI ranks:            1
+0: Polynomial degree:              4
+0: Minimum size:                   10000
+0: Maximum size:                   100000000000
+0: 
+0: Testing FE_Q<3>(4)
+0: No. of GPUs: 1
+0: Cycle 0
+0: Cycle 1
+0: Cycle 2
+0: Cycle 3
+0: Cycle 4
+0: Cycle 5
+0: Cycle 6
+0: Cycle 7
+0: Cycle 8
+0:   Number of cells: 256 |   Number of DoFs: 18513
+0:      DoFs and constraint set up  (CPU/wall)0.001055s/0.00345376s
+0:      Setup matrices   (CPU/wall) 0.014771s/0.0314155s
+0: Compute rhs   (CPU/wall) 0.00404s/0.00530532s
+0: Total setup time: 0.0401084
+0: 
+0: 
+0:         Memory stats [MB]: 438.551 [p0] 438.551 438.551 [p0]
+0: 
+0: Time solve CG              0.0138478
+0: Time solve CG              0.0129648
+0: Time solve CG              0.0129667
+0: Time solve CG              0.012911
+0: Time solve CG              0.0129698
+0: Time solve CG              0.0128476
+0: Time solve CG              0.0129541
+0: Time solve CG              0.0128448
+0: Time solve CG              0.0128665
+0: Time solve CG              0.0128901
+0: matvec time dp 6.28794e-05 [p0] 6.28794e-05 6.28794e-05 [p0] DoFs/s: 2.94421e+08
+0: matvec time dp 6.34248e-05 [p0] 6.34248e-05 6.34248e-05 [p0] DoFs/s: 2.91889e+08
+0: matvec time dp 6.33936e-05 [p0] 6.33936e-05 6.33936e-05 [p0] DoFs/s: 2.92033e+08
+0: matvec time dp 6.27466e-05 [p0] 6.27466e-05 6.27466e-05 [p0] DoFs/s: 2.95044e+08
+0: matvec time dp 6.28461e-05 [p0] 6.28461e-05 6.28461e-05 [p0] DoFs/s: 2.94577e+08
+0: Best timings for ndof = 18513   mv 6.27466e-05    CG total 0.0128441   CG per iter. 0.00013961
+0: 
+0: 
+0: Best timings for ndof = 18513|  ghost & compute =  6.28808e-05   ghost only      =  1.55179e-05   compute only    =  4.67703e-05
+0: 
+0: cells dofs   matvec   CG_tot_time CG_time/iters cg_its cg_reduction 
+0:   256 18513 6.275e-05   1.284e-02     1.396e-04     92    7.959e-01 
+0: 
+0: 
+0: cells dofs  mv_ghost_and_compute mv_compute_only mv_ghost_only 
+0:   256 18513           6.2881e-05      4.6770e-05    1.5518e-05 
+0: 
+0: 
+0: Cycle 9
+0:   Number of cells: 512 |   Number of DoFs: 35937
+0:      DoFs and constraint set up  (CPU/wall)0.002512s/0.00295628s
+0:      Setup matrices   (CPU/wall) 0.030858s/0.0338489s
+0: Compute rhs   (CPU/wall) 0.006926s/0.0069728s
+0: Total setup time: 0.0437544
+0: 
+0: 
+0:         Memory stats [MB]: 444.887 [p0] 444.887 444.887 [p0]
+0: 
+0: Time solve CG              0.0146387
+0: Time solve CG              0.0142598
+0: Time solve CG              0.0143016
+0: Time solve CG              0.0141908
+0: Time solve CG              0.0142971
+0: Time solve CG              0.014652
+0: Time solve CG              0.014256
+0: Time solve CG              0.0141683
+0: Time solve CG              0.0141773
+0: Time solve CG              0.0141875
+0: matvec time dp 6.42335e-05 [p0] 6.42335e-05 6.42335e-05 [p0] DoFs/s: 5.59474e+08
+0: matvec time dp 6.46905e-05 [p0] 6.46905e-05 6.46905e-05 [p0] DoFs/s: 5.55522e+08
+0: matvec time dp 6.48798e-05 [p0] 6.48798e-05 6.48798e-05 [p0] DoFs/s: 5.53901e+08
+0: matvec time dp 6.51002e-05 [p0] 6.51002e-05 6.51002e-05 [p0] DoFs/s: 5.52026e+08
+0: matvec time dp 6.46364e-05 [p0] 6.46364e-05 6.46364e-05 [p0] DoFs/s: 5.55987e+08
+0: Best timings for ndof = 35937   mv 6.42335e-05    CG total 0.0141676   CG per iter. 0.000143107
+0: 
+0: 
+0: Best timings for ndof = 35937|  ghost & compute =  6.46213e-05   ghost only      =  1.54689e-05   compute only    =  4.85089e-05
+0: 
+0: cells dofs   matvec   CG_tot_time CG_time/iters cg_its cg_reduction 
+0:   256 18513 6.275e-05   1.284e-02     1.396e-04     92    7.959e-01 
+0:   512 35937 6.423e-05   1.417e-02     1.431e-04     99    8.089e-01 
+0: 
+0: 
+0: cells dofs  mv_ghost_and_compute mv_compute_only mv_ghost_only 
+0:   256 18513           6.2881e-05      4.6770e-05    1.5518e-05 
+0:   512 35937           6.4621e-05      4.8509e-05    1.5469e-05 
+0: 
+0: 
+0: Cycle 10
+0:   Number of cells: 1024 |   Number of DoFs: 70785
+0:      DoFs and constraint set up  (CPU/wall)0.003464s/0.00348177s
+0:      Setup matrices   (CPU/wall) 0.060365s/0.0625052s
+0: Compute rhs   (CPU/wall) 0.013232s/0.0135509s
+0: Total setup time: 0.0795078
+0: 
+0: 
+0:         Memory stats [MB]: 448.969 [p0] 448.969 448.969 [p0]
+0: 
+0: Time solve CG              0.0231918
+0: Time solve CG              0.0229832
+0: Time solve CG              0.0228787
+0: Time solve CG              0.0228876
+0: Time solve CG              0.0228178
+0: Time solve CG              0.0228196
+0: Time solve CG              0.0228527
+0: Time solve CG              0.0228393
+0: Time solve CG              0.0229534
+0: Time solve CG              0.022887
+0: matvec time dp 6.93472e-05 [p0] 6.93472e-05 6.93472e-05 [p0] DoFs/s: 1.02073e+09
+0: matvec time dp 6.93456e-05 [p0] 6.93456e-05 6.93456e-05 [p0] DoFs/s: 1.02076e+09
+0: matvec time dp 6.93638e-05 [p0] 6.93638e-05 6.93638e-05 [p0] DoFs/s: 1.02049e+09
+0: matvec time dp 6.94428e-05 [p0] 6.94428e-05 6.94428e-05 [p0] DoFs/s: 1.01933e+09
+0: matvec time dp 6.91853e-05 [p0] 6.91853e-05 6.91853e-05 [p0] DoFs/s: 1.02312e+09
+0: Best timings for ndof = 70785   mv 6.91853e-05    CG total 0.0228172   CG per iter. 0.000149132
+0: 
+0: 
+0: Best timings for ndof = 70785|  ghost & compute =  6.60076e-05   ghost only      =  1.49551e-05   compute only    =  5.05356e-05
+0: 
+0: cells dofs   matvec   CG_tot_time CG_time/iters cg_its cg_reduction 
+0:   256 18513 6.275e-05   1.284e-02     1.396e-04     92    7.959e-01 
+0:   512 35937 6.423e-05   1.417e-02     1.431e-04     99    8.089e-01 
+0:  1024 70785 6.919e-05   2.282e-02     1.491e-04    153    8.727e-01 
+0: 
+0: 
+0: cells dofs  mv_ghost_and_compute mv_compute_only mv_ghost_only 
+0:   256 18513           6.2881e-05      4.6770e-05    1.5518e-05 
+0:   512 35937           6.4621e-05      4.8509e-05    1.5469e-05 
+0:  1024 70785           6.6008e-05      5.0536e-05    1.4955e-05 
+0: 
+0: 
+0: Cycle 11
+0:   Number of cells: 2048 |   Number of DoFs: 139425
+0:      DoFs and constraint set up  (CPU/wall)0.006358s/0.00639697s
+0:      Setup matrices   (CPU/wall) 0.112885s/0.120837s
+0: Compute rhs   (CPU/wall) 0.026807s/0.0269411s
+0: Total setup time: 0.154138
+0: 
+0: 
+0:         Memory stats [MB]: 457.633 [p0] 457.633 457.633 [p0]
+0: 
+0: Time solve CG              0.0278301
+0: Time solve CG              0.0272562
+0: Time solve CG              0.0272603
+0: Time solve CG              0.0272486
+0: Time solve CG              0.0272666
+0: Time solve CG              0.0272525
+0: Time solve CG              0.027289
+0: Time solve CG              0.0272704
+0: Time solve CG              0.0272603
+0: Time solve CG              0.0272506
+0: matvec time dp 7.85209e-05 [p0] 7.85209e-05 7.85209e-05 [p0] DoFs/s: 1.77564e+09
+0: matvec time dp 7.83737e-05 [p0] 7.83737e-05 7.83737e-05 [p0] DoFs/s: 1.77898e+09
+0: matvec time dp 7.87643e-05 [p0] 7.87643e-05 7.87643e-05 [p0] DoFs/s: 1.77016e+09
+0: matvec time dp 7.82439e-05 [p0] 7.82439e-05 7.82439e-05 [p0] DoFs/s: 1.78193e+09
+0: matvec time dp 7.19935e-05 [p0] 7.19935e-05 7.19935e-05 [p0] DoFs/s: 1.93663e+09
+0: Best timings for ndof = 139425   mv 7.19935e-05    CG total 0.0272479   CG per iter. 0.000160282
+0: 
+0: 
+0: Best timings for ndof = 139425|  ghost & compute =  7.16776e-05   ghost only      =  1.44299e-05   compute only    =  5.68503e-05
+0: 
+0: cells  dofs   matvec   CG_tot_time CG_time/iters cg_its cg_reduction 
+0:   256  18513 6.275e-05   1.284e-02     1.396e-04     92    7.959e-01 
+0:   512  35937 6.423e-05   1.417e-02     1.431e-04     99    8.089e-01 
+0:  1024  70785 6.919e-05   2.282e-02     1.491e-04    153    8.727e-01 
+0:  2048 139425 7.199e-05   2.725e-02     1.603e-04    170    8.848e-01 
+0: 
+0: 
+0: cells  dofs  mv_ghost_and_compute mv_compute_only mv_ghost_only 
+0:   256  18513           6.2881e-05      4.6770e-05    1.5518e-05 
+0:   512  35937           6.4621e-05      4.8509e-05    1.5469e-05 
+0:  1024  70785           6.6008e-05      5.0536e-05    1.4955e-05 
+0:  2048 139425           7.1678e-05      5.6850e-05    1.4430e-05 
+0: 
+0: 
+0: Cycle 12
+0:   Number of cells: 4096 |   Number of DoFs: 274625
+0:      DoFs and constraint set up  (CPU/wall)0.009632s/0.009695s
+0:      Setup matrices   (CPU/wall) 0.225576s/0.237373s
+0: Compute rhs   (CPU/wall) 0.053401s/0.0536628s
+0: Total setup time: 0.300676
+0: 
+0: 
+0:         Memory stats [MB]: 471.555 [p0] 471.555 471.555 [p0]
+0: 
+0: Time solve CG              0.0327376
+0: Time solve CG              0.0318889
+0: Time solve CG              0.0318689
+0: Time solve CG              0.0317862
+0: Time solve CG              0.0318836
+0: Time solve CG              0.0317369
+0: Time solve CG              0.031808
+0: Time solve CG              0.0318771
+0: Time solve CG              0.0318307
+0: Time solve CG              0.0318612
+0: matvec time dp 9.32917e-05 [p0] 9.32917e-05 9.32917e-05 [p0] DoFs/s: 2.94372e+09
+0: matvec time dp 9.3093e-05 [p0] 9.3093e-05 9.3093e-05 [p0] DoFs/s: 2.95001e+09
+0: matvec time dp 9.34345e-05 [p0] 9.34345e-05 9.34345e-05 [p0] DoFs/s: 2.93922e+09
+0: matvec time dp 9.30326e-05 [p0] 9.30326e-05 9.30326e-05 [p0] DoFs/s: 2.95192e+09
+0: matvec time dp 9.30252e-05 [p0] 9.30252e-05 9.30252e-05 [p0] DoFs/s: 2.95216e+09
+0: Best timings for ndof = 274625   mv 9.30252e-05    CG total 0.0317361   CG per iter. 0.000176312
+0: 
+0: 
+0: Best timings for ndof = 274625|  ghost & compute =  9.28616e-05   ghost only      =  1.44857e-05   compute only    =  7.7182e-05
+0: 
+0: cells  dofs   matvec   CG_tot_time CG_time/iters cg_its cg_reduction 
+0:   256  18513 6.275e-05   1.284e-02     1.396e-04     92    7.959e-01 
+0:   512  35937 6.423e-05   1.417e-02     1.431e-04     99    8.089e-01 
+0:  1024  70785 6.919e-05   2.282e-02     1.491e-04    153    8.727e-01 
+0:  2048 139425 7.199e-05   2.725e-02     1.603e-04    170    8.848e-01 
+0:  4096 274625 9.303e-05   3.174e-02     1.763e-04    180    8.899e-01 
+0: 
+0: 
+0: cells  dofs  mv_ghost_and_compute mv_compute_only mv_ghost_only 
+0:   256  18513           6.2881e-05      4.6770e-05    1.5518e-05 
+0:   512  35937           6.4621e-05      4.8509e-05    1.5469e-05 
+0:  1024  70785           6.6008e-05      5.0536e-05    1.4955e-05 
+0:  2048 139425           7.1678e-05      5.6850e-05    1.4430e-05 
+0:  4096 274625           9.2862e-05      7.7182e-05    1.4486e-05 
+0: 
+0: 
+0: Cycle 13
+0:   Number of cells: 8192 |   Number of DoFs: 545025
+0:      DoFs and constraint set up  (CPU/wall)0.019797s/0.0199423s
+0:      Setup matrices   (CPU/wall) 0.46737s/0.488913s
+0: Compute rhs   (CPU/wall) 0.10782s/0.111445s
+0: Total setup time: 0.620226
+0: 
+0: 
+0:         Memory stats [MB]: 494.316 [p0] 494.316 494.316 [p0]
+0: 
+0: Time solve CG              0.069606
+0: Time solve CG              0.068472
+0: Time solve CG              0.0682598
+0: Time solve CG              0.0683475
+0: Time solve CG              0.0683577
+0: Time solve CG              0.0683407
+0: Time solve CG              0.0683213
+0: Time solve CG              0.0698465
+0: Time solve CG              0.0683541
+0: Time solve CG              0.0683855
+0: matvec time dp 0.00013098 [p0] 0.00013098 0.00013098 [p0] DoFs/s: 4.16113e+09
+0: matvec time dp 0.000130775 [p0] 0.000130775 0.000130775 [p0] DoFs/s: 4.16764e+09
+0: matvec time dp 0.000130308 [p0] 0.000130308 0.000130308 [p0] DoFs/s: 4.18258e+09
+0: matvec time dp 0.000130407 [p0] 0.000130407 0.000130407 [p0] DoFs/s: 4.17941e+09
+0: matvec time dp 0.000130609 [p0] 0.000130609 0.000130609 [p0] DoFs/s: 4.17295e+09
+0: Best timings for ndof = 545025   mv 0.000130308    CG total 0.068259   CG per iter. 0.000223069
+0: 
+0: 
+0: Best timings for ndof = 545025|  ghost & compute =  0.000130408   ghost only      =  1.4639e-05   compute only    =  0.00011388
+0: 
+0: cells  dofs   matvec   CG_tot_time CG_time/iters cg_its cg_reduction 
+0:   256  18513 6.275e-05   1.284e-02     1.396e-04     92    7.959e-01 
+0:   512  35937 6.423e-05   1.417e-02     1.431e-04     99    8.089e-01 
+0:  1024  70785 6.919e-05   2.282e-02     1.491e-04    153    8.727e-01 
+0:  2048 139425 7.199e-05   2.725e-02     1.603e-04    170    8.848e-01 
+0:  4096 274625 9.303e-05   3.174e-02     1.763e-04    180    8.899e-01 
+0:  8192 545025 1.303e-04   6.826e-02     2.231e-04    306    9.344e-01 
+0: 
+0: 
+0: cells  dofs  mv_ghost_and_compute mv_compute_only mv_ghost_only 
+0:   256  18513           6.2881e-05      4.6770e-05    1.5518e-05 
+0:   512  35937           6.4621e-05      4.8509e-05    1.5469e-05 
+0:  1024  70785           6.6008e-05      5.0536e-05    1.4955e-05 
+0:  2048 139425           7.1678e-05      5.6850e-05    1.4430e-05 
+0:  4096 274625           9.2862e-05      7.7182e-05    1.4486e-05 
+0:  8192 545025           1.3041e-04      1.1388e-04    1.4639e-05 
+0: 
+0: 
+0: Cycle 14
+0:   Number of cells: 16384 |   Number of DoFs: 1081665
+0:      DoFs and constraint set up  (CPU/wall)0.031411s/0.0425062s
+0:      Setup matrices   (CPU/wall) 0.94709s/0.972743s
+0: Compute rhs   (CPU/wall) 0.211558s/0.223632s
+0: Total setup time: 1.23879
+0: 
+0: 
+0:         Memory stats [MB]: 558.383 [p0] 558.383 558.383 [p0]
+0: 
+0: Time solve CG              0.112208
+0: Time solve CG              0.111065
+0: Time solve CG              0.110906
+0: Time solve CG              0.110872
+0: Time solve CG              0.110783
+0: Time solve CG              0.110837
+0: Time solve CG              0.110833
+0: Time solve CG              0.110821
+0: Time solve CG              0.110881
+0: Time solve CG              0.11098
+0: matvec time dp 0.00020439 [p0] 0.00020439 0.00020439 [p0] DoFs/s: 5.29217e+09
+0: matvec time dp 0.000204206 [p0] 0.000204206 0.000204206 [p0] DoFs/s: 5.29692e+09
+0: matvec time dp 0.000204272 [p0] 0.000204272 0.000204272 [p0] DoFs/s: 5.29523e+09
+0: matvec time dp 0.000204639 [p0] 0.000204639 0.000204639 [p0] DoFs/s: 5.28571e+09
+0: matvec time dp 0.000204446 [p0] 0.000204446 0.000204446 [p0] DoFs/s: 5.29072e+09
+0: Best timings for ndof = 1081665   mv 0.000204206    CG total 0.110782   CG per iter. 0.000323924
+0: 
+0: 
+0: Best timings for ndof = 1081665|  ghost & compute =  0.000204231   ghost only      =  1.49049e-05   compute only    =  0.000187521
+0: 
+0: cells  dofs    matvec   CG_tot_time CG_time/iters cg_its cg_reduction 
+0:   256   18513 6.275e-05   1.284e-02     1.396e-04     92    7.959e-01 
+0:   512   35937 6.423e-05   1.417e-02     1.431e-04     99    8.089e-01 
+0:  1024   70785 6.919e-05   2.282e-02     1.491e-04    153    8.727e-01 
+0:  2048  139425 7.199e-05   2.725e-02     1.603e-04    170    8.848e-01 
+0:  4096  274625 9.303e-05   3.174e-02     1.763e-04    180    8.899e-01 
+0:  8192  545025 1.303e-04   6.826e-02     2.231e-04    306    9.344e-01 
+0: 16384 1081665 2.042e-04   1.108e-01     3.239e-04    342    9.409e-01 
+0: 
+0: 
+0: cells  dofs   mv_ghost_and_compute mv_compute_only mv_ghost_only 
+0:   256   18513           6.2881e-05      4.6770e-05    1.5518e-05 
+0:   512   35937           6.4621e-05      4.8509e-05    1.5469e-05 
+0:  1024   70785           6.6008e-05      5.0536e-05    1.4955e-05 
+0:  2048  139425           7.1678e-05      5.6850e-05    1.4430e-05 
+0:  4096  274625           9.2862e-05      7.7182e-05    1.4486e-05 
+0:  8192  545025           1.3041e-04      1.1388e-04    1.4639e-05 
+0: 16384 1081665           2.0423e-04      1.8752e-04    1.4905e-05 
+0: 
+0: 
+0: Cycle 15
+0:   Number of cells: 32768 |   Number of DoFs: 2146689
+0:      DoFs and constraint set up  (CPU/wall)0.068955s/0.0751315s
+0:      Setup matrices   (CPU/wall) 1.85407s/1.92403s
+0: Compute rhs   (CPU/wall) 0.430638s/0.437669s
+0: Total setup time: 2.43673
+0: 
+0: 
+0:         Memory stats [MB]: 614.766 [p0] 614.766 614.766 [p0]
+0: 
+0: Time solve CG              0.220412
+0: Time solve CG              0.201792
+0: Time solve CG              0.200717
+0: Time solve CG              0.200716
+0: Time solve CG              0.200421
+0: Time solve CG              0.200477
+0: Time solve CG              0.200462
+0: Time solve CG              0.200471
+0: Time solve CG              0.200422
+0: Time solve CG              0.200515
+0: matvec time dp 0.000354496 [p0] 0.000354496 0.000354496 [p0] DoFs/s: 6.05561e+09
+0: matvec time dp 0.000354367 [p0] 0.000354367 0.000354367 [p0] DoFs/s: 6.05781e+09
+0: matvec time dp 0.000362645 [p0] 0.000362645 0.000362645 [p0] DoFs/s: 5.91954e+09
+0: matvec time dp 0.00035444 [p0] 0.00035444 0.00035444 [p0] DoFs/s: 6.05656e+09
+0: matvec time dp 0.000354455 [p0] 0.000354455 0.000354455 [p0] DoFs/s: 6.0563e+09
+0: Best timings for ndof = 2146689   mv 0.000354367    CG total 0.20042   CG per iter. 0.000559832
+0: 
+0: 
+0: Best timings for ndof = 2146689|  ghost & compute =  0.000353991   ghost only      =  1.51471e-05   compute only    =  0.000336344
+0: 
+0: cells  dofs    matvec   CG_tot_time CG_time/iters cg_its cg_reduction 
+0:   256   18513 6.275e-05   1.284e-02     1.396e-04     92    7.959e-01 
+0:   512   35937 6.423e-05   1.417e-02     1.431e-04     99    8.089e-01 
+0:  1024   70785 6.919e-05   2.282e-02     1.491e-04    153    8.727e-01 
+0:  2048  139425 7.199e-05   2.725e-02     1.603e-04    170    8.848e-01 
+0:  4096  274625 9.303e-05   3.174e-02     1.763e-04    180    8.899e-01 
+0:  8192  545025 1.303e-04   6.826e-02     2.231e-04    306    9.344e-01 
+0: 16384 1081665 2.042e-04   1.108e-01     3.239e-04    342    9.409e-01 
+0: 32768 2146689 3.544e-04   2.004e-01     5.598e-04    358    9.437e-01 
+0: 
+0: 
+0: cells  dofs   mv_ghost_and_compute mv_compute_only mv_ghost_only 
+0:   256   18513           6.2881e-05      4.6770e-05    1.5518e-05 
+0:   512   35937           6.4621e-05      4.8509e-05    1.5469e-05 
+0:  1024   70785           6.6008e-05      5.0536e-05    1.4955e-05 
+0:  2048  139425           7.1678e-05      5.6850e-05    1.4430e-05 
+0:  4096  274625           9.2862e-05      7.7182e-05    1.4486e-05 
+0:  8192  545025           1.3041e-04      1.1388e-04    1.4639e-05 
+0: 16384 1081665           2.0423e-04      1.8752e-04    1.4905e-05 
+0: 32768 2146689           3.5399e-04      3.3634e-04    1.5147e-05 
+0: 
+0: 
+0: Cycle 16
+0:   Number of cells: 65536 |   Number of DoFs: 4276737
+0:      DoFs and constraint set up  (CPU/wall)0.128839s/0.147652s
+0:      Setup matrices   (CPU/wall) 3.70958s/3.83218s
+0: Compute rhs   (CPU/wall) 0.854357s/0.865157s
+0: Total setup time: 4.8449
+0: 
+0: 
+0:         Memory stats [MB]: 689.375 [p0] 689.375 689.375 [p0]
+0: 
+0: Time solve CG              0.654751
+0: Time solve CG              0.616231
+0: Time solve CG              0.616298
+0: Time solve CG              0.616129
+0: Time solve CG              0.615957
+0: Time solve CG              0.616102
+0: Time solve CG              0.615988
+0: Time solve CG              0.61604
+0: Time solve CG              0.616285
+0: Time solve CG              0.616121
+0: matvec time dp 0.000658043 [p0] 0.000658043 0.000658043 [p0] DoFs/s: 6.49917e+09
+0: matvec time dp 0.000660334 [p0] 0.000660334 0.000660334 [p0] DoFs/s: 6.47663e+09
+0: matvec time dp 0.000659924 [p0] 0.000659924 0.000659924 [p0] DoFs/s: 6.48065e+09
+0: matvec time dp 0.000659886 [p0] 0.000659886 0.000659886 [p0] DoFs/s: 6.48102e+09
+0: matvec time dp 0.000660114 [p0] 0.000660114 0.000660114 [p0] DoFs/s: 6.47878e+09
+0: Best timings for ndof = 4276737   mv 0.000658043    CG total 0.615956   CG per iter. 0.000995082
+0: 
+0: 
+0: Best timings for ndof = 4276737|  ghost & compute =  0.000661703   ghost only      =  1.57818e-05   compute only    =  0.000642959
+0: 
+0: cells  dofs    matvec   CG_tot_time CG_time/iters cg_its cg_reduction 
+0:   256   18513 6.275e-05   1.284e-02     1.396e-04     92    7.959e-01 
+0:   512   35937 6.423e-05   1.417e-02     1.431e-04     99    8.089e-01 
+0:  1024   70785 6.919e-05   2.282e-02     1.491e-04    153    8.727e-01 
+0:  2048  139425 7.199e-05   2.725e-02     1.603e-04    170    8.848e-01 
+0:  4096  274625 9.303e-05   3.174e-02     1.763e-04    180    8.899e-01 
+0:  8192  545025 1.303e-04   6.826e-02     2.231e-04    306    9.344e-01 
+0: 16384 1081665 2.042e-04   1.108e-01     3.239e-04    342    9.409e-01 
+0: 32768 2146689 3.544e-04   2.004e-01     5.598e-04    358    9.437e-01 
+0: 65536 4276737 6.580e-04   6.160e-01     9.951e-04    619    9.671e-01 
+0: 
+0: 
+0: cells  dofs   mv_ghost_and_compute mv_compute_only mv_ghost_only 
+0:   256   18513           6.2881e-05      4.6770e-05    1.5518e-05 
+0:   512   35937           6.4621e-05      4.8509e-05    1.5469e-05 
+0:  1024   70785           6.6008e-05      5.0536e-05    1.4955e-05 
+0:  2048  139425           7.1678e-05      5.6850e-05    1.4430e-05 
+0:  4096  274625           9.2862e-05      7.7182e-05    1.4486e-05 
+0:  8192  545025           1.3041e-04      1.1388e-04    1.4639e-05 
+0: 16384 1081665           2.0423e-04      1.8752e-04    1.4905e-05 
+0: 32768 2146689           3.5399e-04      3.3634e-04    1.5147e-05 
+0: 65536 4276737           6.6170e-04      6.4296e-04    1.5782e-05 
+0: 
+0: 
+0: Cycle 17
+0:   Number of cells: 131072 |   Number of DoFs: 8520321
+0:      DoFs and constraint set up  (CPU/wall)0.234755s/0.283029s
+0:      Setup matrices   (CPU/wall) 7.58996s/7.83738s
+0: Compute rhs   (CPU/wall) 1.69371s/1.72838s
+0: Total setup time: 9.8487
+0: 
+0: 
+0:         Memory stats [MB]: 829.316 [p0] 829.316 829.316 [p0]
+0: 
+0: Time solve CG              1.31914
+0: Time solve CG              1.30146
+0: Time solve CG              1.3015
+0: Time solve CG              1.30218
+0: Time solve CG              1.30172
+0: Time solve CG              1.30195
+0: Time solve CG              1.30207
+0: Time solve CG              1.30208
+0: Time solve CG              1.30196
+0: Time solve CG              1.30225
+0: matvec time dp 0.00127835 [p0] 0.00127835 0.00127835 [p0] DoFs/s: 6.66508e+09
+0: matvec time dp 0.00128175 [p0] 0.00128175 0.00128175 [p0] DoFs/s: 6.64741e+09
+0: matvec time dp 0.00128631 [p0] 0.00128631 0.00128631 [p0] DoFs/s: 6.62386e+09
+0: matvec time dp 0.00129461 [p0] 0.00129461 0.00129461 [p0] DoFs/s: 6.58137e+09
+0: matvec time dp 0.00128184 [p0] 0.00128184 0.00128184 [p0] DoFs/s: 6.64695e+09
+0: Best timings for ndof = 8520321   mv 0.00127835    CG total 1.30146   CG per iter. 0.00189165
+0: 
+0: 
+0: Best timings for ndof = 8520321|  ghost & compute =  0.00128161   ghost only      =  1.69213e-05   compute only    =  0.00125313
+0: 
+0: cells   dofs    matvec   CG_tot_time CG_time/iters cg_its cg_reduction 
+0:    256   18513 6.275e-05   1.284e-02     1.396e-04     92    7.959e-01 
+0:    512   35937 6.423e-05   1.417e-02     1.431e-04     99    8.089e-01 
+0:   1024   70785 6.919e-05   2.282e-02     1.491e-04    153    8.727e-01 
+0:   2048  139425 7.199e-05   2.725e-02     1.603e-04    170    8.848e-01 
+0:   4096  274625 9.303e-05   3.174e-02     1.763e-04    180    8.899e-01 
+0:   8192  545025 1.303e-04   6.826e-02     2.231e-04    306    9.344e-01 
+0:  16384 1081665 2.042e-04   1.108e-01     3.239e-04    342    9.409e-01 
+0:  32768 2146689 3.544e-04   2.004e-01     5.598e-04    358    9.437e-01 
+0:  65536 4276737 6.580e-04   6.160e-01     9.951e-04    619    9.671e-01 
+0: 131072 8520321 1.278e-03   1.301e+00     1.892e-03    688    9.703e-01 
+0: 
+0: 
+0: cells   dofs   mv_ghost_and_compute mv_compute_only mv_ghost_only 
+0:    256   18513           6.2881e-05      4.6770e-05    1.5518e-05 
+0:    512   35937           6.4621e-05      4.8509e-05    1.5469e-05 
+0:   1024   70785           6.6008e-05      5.0536e-05    1.4955e-05 
+0:   2048  139425           7.1678e-05      5.6850e-05    1.4430e-05 
+0:   4096  274625           9.2862e-05      7.7182e-05    1.4486e-05 
+0:   8192  545025           1.3041e-04      1.1388e-04    1.4639e-05 
+0:  16384 1081665           2.0423e-04      1.8752e-04    1.4905e-05 
+0:  32768 2146689           3.5399e-04      3.3634e-04    1.5147e-05 
+0:  65536 4276737           6.6170e-04      6.4296e-04    1.5782e-05 
+0: 131072 8520321           1.2816e-03      1.2531e-03    1.6921e-05 
+0: 
+0: 
+0: Cycle 18
+0:   Number of cells: 262144 |   Number of DoFs: 16974593
+0:      DoFs and constraint set up  (CPU/wall)0.430694s/0.531055s
+0:      Setup matrices   (CPU/wall) 15.1112s/15.5349s
+0: Compute rhs   (CPU/wall) 3.40169s/3.46768s
+0: Total setup time: 19.5336
+0: 
+0: 
+0:         Memory stats [MB]: 1165.24 [p0] 1165.24 1165.24 [p0]
+0: 
+0: Time solve CG              2.62832
+0: Time solve CG              2.61058
+0: Time solve CG              2.61253
+0: Time solve CG              2.61163
+0: Time solve CG              2.61196
+0: Time solve CG              2.61201
+0: Time solve CG              2.61239
+0: Time solve CG              2.6123
+0: Time solve CG              2.61235
+0: Time solve CG              2.61229
+0: matvec time dp 0.00249984 [p0] 0.00249984 0.00249984 [p0] DoFs/s: 6.79027e+09
+0: matvec time dp 0.00252996 [p0] 0.00252996 0.00252996 [p0] DoFs/s: 6.70944e+09
+0: matvec time dp 0.00251349 [p0] 0.00251349 0.00251349 [p0] DoFs/s: 6.75341e+09
+0: matvec time dp 0.00252856 [p0] 0.00252856 0.00252856 [p0] DoFs/s: 6.71315e+09
+0: matvec time dp 0.00252968 [p0] 0.00252968 0.00252968 [p0] DoFs/s: 6.71017e+09
+0: Best timings for ndof = 16974593   mv 0.00249984    CG total 2.61058   CG per iter. 0.00361576
+0: 
+0: 
+0: Best timings for ndof = 16974593|  ghost & compute =  0.0025289   ghost only      =  1.84146e-05   compute only    =  0.00248931
+0: 
+0: cells    dofs    matvec   CG_tot_time CG_time/iters cg_its cg_reduction 
+0:    256    18513 6.275e-05   1.284e-02     1.396e-04     92    7.959e-01 
+0:    512    35937 6.423e-05   1.417e-02     1.431e-04     99    8.089e-01 
+0:   1024    70785 6.919e-05   2.282e-02     1.491e-04    153    8.727e-01 
+0:   2048   139425 7.199e-05   2.725e-02     1.603e-04    170    8.848e-01 
+0:   4096   274625 9.303e-05   3.174e-02     1.763e-04    180    8.899e-01 
+0:   8192   545025 1.303e-04   6.826e-02     2.231e-04    306    9.344e-01 
+0:  16384  1081665 2.042e-04   1.108e-01     3.239e-04    342    9.409e-01 
+0:  32768  2146689 3.544e-04   2.004e-01     5.598e-04    358    9.437e-01 
+0:  65536  4276737 6.580e-04   6.160e-01     9.951e-04    619    9.671e-01 
+0: 131072  8520321 1.278e-03   1.301e+00     1.892e-03    688    9.703e-01 
+0: 262144 16974593 2.500e-03   2.611e+00     3.616e-03    722    9.717e-01 
+0: 
+0: 
+0: cells    dofs   mv_ghost_and_compute mv_compute_only mv_ghost_only 
+0:    256    18513           6.2881e-05      4.6770e-05    1.5518e-05 
+0:    512    35937           6.4621e-05      4.8509e-05    1.5469e-05 
+0:   1024    70785           6.6008e-05      5.0536e-05    1.4955e-05 
+0:   2048   139425           7.1678e-05      5.6850e-05    1.4430e-05 
+0:   4096   274625           9.2862e-05      7.7182e-05    1.4486e-05 
+0:   8192   545025           1.3041e-04      1.1388e-04    1.4639e-05 
+0:  16384  1081665           2.0423e-04      1.8752e-04    1.4905e-05 
+0:  32768  2146689           3.5399e-04      3.3634e-04    1.5147e-05 
+0:  65536  4276737           6.6170e-04      6.4296e-04    1.5782e-05 
+0: 131072  8520321           1.2816e-03      1.2531e-03    1.6921e-05 
+0: 262144 16974593           2.5289e-03      2.4893e-03    1.8415e-05 
+0: 
+0: 
+0: Cycle 19
+0:   Number of cells: 524288 |   Number of DoFs: 33883137
+0:      DoFs and constraint set up  (CPU/wall)0.818099s/1.0385s
+0:      Setup matrices   (CPU/wall) 30.291s/31.1919s
+0: Compute rhs   (CPU/wall) 6.79085s/6.9123s
+0: Total setup time: 39.1426
+0: 
+0: 
+0:         Memory stats [MB]: 1878.76 [p0] 1878.76 1878.76 [p0]
+0: 
+0: Time solve CG              9.04879
+0: Time solve CG              9.0156
+0: Time solve CG              9.01703
+0: Time solve CG              9.01664
+0: Time solve CG              9.01708
+0: Time solve CG              9.01725
+0: Time solve CG              9.01838
+0: Time solve CG              9.01894
+0: Time solve CG              9.01821
+0: Time solve CG              9.01782
+0: matvec time dp 0.00501882 [p0] 0.00501882 0.00501882 [p0] DoFs/s: 6.75122e+09
+0: matvec time dp 0.00499767 [p0] 0.00499767 0.00499767 [p0] DoFs/s: 6.77979e+09
+0: matvec time dp 0.00499237 [p0] 0.00499237 0.00499237 [p0] DoFs/s: 6.78699e+09
+0: matvec time dp 0.00499334 [p0] 0.00499334 0.00499334 [p0] DoFs/s: 6.78567e+09
+0: matvec time dp 0.00499283 [p0] 0.00499283 0.00499283 [p0] DoFs/s: 6.78636e+09
+0: Best timings for ndof = 33883137   mv 0.00499237    CG total 9.0156   CG per iter. 0.00719521
+0: 
+0: 
+0: Best timings for ndof = 33883137|  ghost & compute =  0.00499175   ghost only      =  2.77891e-05   compute only    =  0.0049501
+0: 
+0: cells    dofs    matvec   CG_tot_time CG_time/iters cg_its cg_reduction 
+0:    256    18513 6.275e-05   1.284e-02     1.396e-04     92    7.959e-01 
+0:    512    35937 6.423e-05   1.417e-02     1.431e-04     99    8.089e-01 
+0:   1024    70785 6.919e-05   2.282e-02     1.491e-04    153    8.727e-01 
+0:   2048   139425 7.199e-05   2.725e-02     1.603e-04    170    8.848e-01 
+0:   4096   274625 9.303e-05   3.174e-02     1.763e-04    180    8.899e-01 
+0:   8192   545025 1.303e-04   6.826e-02     2.231e-04    306    9.344e-01 
+0:  16384  1081665 2.042e-04   1.108e-01     3.239e-04    342    9.409e-01 
+0:  32768  2146689 3.544e-04   2.004e-01     5.598e-04    358    9.437e-01 
+0:  65536  4276737 6.580e-04   6.160e-01     9.951e-04    619    9.671e-01 
+0: 131072  8520321 1.278e-03   1.301e+00     1.892e-03    688    9.703e-01 
+0: 262144 16974593 2.500e-03   2.611e+00     3.616e-03    722    9.717e-01 
+0: 524288 33883137 4.992e-03   9.016e+00     7.195e-03   1253    9.836e-01 
+0: 
+0: 
+0: cells    dofs   mv_ghost_and_compute mv_compute_only mv_ghost_only 
+0:    256    18513           6.2881e-05      4.6770e-05    1.5518e-05 
+0:    512    35937           6.4621e-05      4.8509e-05    1.5469e-05 
+0:   1024    70785           6.6008e-05      5.0536e-05    1.4955e-05 
+0:   2048   139425           7.1678e-05      5.6850e-05    1.4430e-05 
+0:   4096   274625           9.2862e-05      7.7182e-05    1.4486e-05 
+0:   8192   545025           1.3041e-04      1.1388e-04    1.4639e-05 
+0:  16384  1081665           2.0423e-04      1.8752e-04    1.4905e-05 
+0:  32768  2146689           3.5399e-04      3.3634e-04    1.5147e-05 
+0:  65536  4276737           6.6170e-04      6.4296e-04    1.5782e-05 
+0: 131072  8520321           1.2816e-03      1.2531e-03    1.6921e-05 
+0: 262144 16974593           2.5289e-03      2.4893e-03    1.8415e-05 
+0: 524288 33883137           4.9918e-03      4.9501e-03    2.7789e-05 
+0: 
+0: 
+0: Cycle 20
+0:   Number of cells: 1048576 |   Number of DoFs: 67634433
+0:      DoFs and constraint set up  (CPU/wall)1.59461s/2.00791s
+0:      Setup matrices   (CPU/wall) 60.7399s/62.5115s
+0: Compute rhs   (CPU/wall) 13.5689s/13.8219s
+0: Total setup time: 78.3411
+0: 
+0: 
+0:         Memory stats [MB]: 3234.86 [p0] 3234.86 3234.86 [p0]
+0: 
+0: Time solve CG              19.7057
+0: Time solve CG              19.6889
+0: Time solve CG              19.6949
+0: Time solve CG              19.6948
+0: Time solve CG              19.693
+0: Time solve CG              19.6955
+0: Time solve CG              19.697
+0: Time solve CG              19.6957
+0: Time solve CG              19.6932
+0: Time solve CG              19.6971
+0: matvec time dp 0.00989752 [p0] 0.00989752 0.00989752 [p0] DoFs/s: 6.83348e+09
+0: matvec time dp 0.0100044 [p0] 0.0100044 0.0100044 [p0] DoFs/s: 6.76045e+09
+0: matvec time dp 0.0099153 [p0] 0.0099153 0.0099153 [p0] DoFs/s: 6.82122e+09
+0: matvec time dp 0.00995749 [p0] 0.00995749 0.00995749 [p0] DoFs/s: 6.79232e+09
+0: matvec time dp 0.00993719 [p0] 0.00993719 0.00993719 [p0] DoFs/s: 6.80619e+09
+0: Best timings for ndof = 67634433   mv 0.00989752    CG total 19.6889   CG per iter. 0.0141749
+0: 
+0: 
+0: Best timings for ndof = 67634433|  ghost & compute =  0.00997129   ghost only      =  5.38199e-05   compute only    =  0.00986477
+0: 
+0:  cells    dofs    matvec   CG_tot_time CG_time/iters cg_its cg_reduction 
+0:     256    18513 6.275e-05   1.284e-02     1.396e-04     92    7.959e-01 
+0:     512    35937 6.423e-05   1.417e-02     1.431e-04     99    8.089e-01 
+0:    1024    70785 6.919e-05   2.282e-02     1.491e-04    153    8.727e-01 
+0:    2048   139425 7.199e-05   2.725e-02     1.603e-04    170    8.848e-01 
+0:    4096   274625 9.303e-05   3.174e-02     1.763e-04    180    8.899e-01 
+0:    8192   545025 1.303e-04   6.826e-02     2.231e-04    306    9.344e-01 
+0:   16384  1081665 2.042e-04   1.108e-01     3.239e-04    342    9.409e-01 
+0:   32768  2146689 3.544e-04   2.004e-01     5.598e-04    358    9.437e-01 
+0:   65536  4276737 6.580e-04   6.160e-01     9.951e-04    619    9.671e-01 
+0:  131072  8520321 1.278e-03   1.301e+00     1.892e-03    688    9.703e-01 
+0:  262144 16974593 2.500e-03   2.611e+00     3.616e-03    722    9.717e-01 
+0:  524288 33883137 4.992e-03   9.016e+00     7.195e-03   1253    9.836e-01 
+0: 1048576 67634433 9.898e-03   1.969e+01     1.417e-02   1389    9.852e-01 
+0: 
+0: 
+0:  cells    dofs   mv_ghost_and_compute mv_compute_only mv_ghost_only 
+0:     256    18513           6.2881e-05      4.6770e-05    1.5518e-05 
+0:     512    35937           6.4621e-05      4.8509e-05    1.5469e-05 
+0:    1024    70785           6.6008e-05      5.0536e-05    1.4955e-05 
+0:    2048   139425           7.1678e-05      5.6850e-05    1.4430e-05 
+0:    4096   274625           9.2862e-05      7.7182e-05    1.4486e-05 
+0:    8192   545025           1.3041e-04      1.1388e-04    1.4639e-05 
+0:   16384  1081665           2.0423e-04      1.8752e-04    1.4905e-05 
+0:   32768  2146689           3.5399e-04      3.3634e-04    1.5147e-05 
+0:   65536  4276737           6.6170e-04      6.4296e-04    1.5782e-05 
+0:  131072  8520321           1.2816e-03      1.2531e-03    1.6921e-05 
+0:  262144 16974593           2.5289e-03      2.4893e-03    1.8415e-05 
+0:  524288 33883137           4.9918e-03      4.9501e-03    2.7789e-05 
+0: 1048576 67634433           9.9713e-03      9.8648e-03    5.3820e-05 
+0: 
+0: 
+0: Cycle 21
+0:   Number of cells: 2097152 |   Number of DoFs: 135005697
+0:      DoFs and constraint set up  (CPU/wall)3.09708s/3.8092s
+0: 
+0: 
+0: ----------------------------------------------------
+0: Exception on processing: 
+0: Kokkos ERROR: Cuda memory space failed to allocate 17.58 GiB (label="inv_jacobian_0").
+0: Aborting!
+0: ----------------------------------------------------
+0: double free or corruption (!prev)
+0: [jwb0698:504574] *** Process received signal ***
+0: [jwb0698:504574] Signal: Aborted (6)
+0: [jwb0698:504574] Signal code:  (-6)
+0: [jwb0698:504574] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x147040cb5c30]
+0: [jwb0698:504574] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x147040d0302c]
+0: [jwb0698:504574] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x147040cb5b86]
+0: [jwb0698:504574] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x147040c9f873]
+0: [jwb0698:504574] [ 4] /usr/lib64/libc.so.6(+0x2a1b2)[0x147040ca01b2]
+0: [jwb0698:504574] [ 5] /usr/lib64/libc.so.6(+0x970d7)[0x147040d0d0d7]
+0: [jwb0698:504574] [ 6] /usr/lib64/libc.so.6(+0x98dcc)[0x147040d0edcc]
+0: [jwb0698:504574] [ 7] /usr/lib64/libc.so.6(free+0x55)[0x147040d11415]
+0: [jwb0698:504574] [ 8] ./timing_bp_5_3(_ZNSt3setIiSt4lessIiESaIiEED2Ev+0x24)[0x5c79f4]
+0: [jwb0698:504574] [ 9] /usr/lib64/libc.so.6(__cxa_finalize+0xb7)[0x147040cb78c7]
+0: [jwb0698:504574] [10] /p/home/jusers/prusak1/juwels/sw/dealii/lib/libdeal_II.so.9.8.0-pre(+0x1f4f7d7)[0x1470435187d7]
+0: [jwb0698:504574] *** End of error message ***
+srun: error: jwb0698: task 0: Aborted (core dumped)

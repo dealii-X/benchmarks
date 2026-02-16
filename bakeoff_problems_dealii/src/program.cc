@@ -269,6 +269,10 @@ LaplaceProblem<dim, fe_degree>::run()
 
       pcout << "Cycle " << cycle << std::endl;
 
+      pcout << "  MPI processes = "
+            << Utilities::MPI::n_mpi_processes(mpi_communicator) << std::endl;
+
+
       setup_grid(cycle);
 
       setup_dofs();
