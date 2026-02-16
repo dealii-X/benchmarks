@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "bk3_kokkos_kernel.h"
+#include "bk3_kokkos_kernel.h"
 #include "portable_laplace_operator_base.h"
 
 DEAL_II_NAMESPACE_OPEN
@@ -135,6 +136,8 @@ namespace Portable
 
       // DeviceVector<number> nonconstdst = dst;
       func(&data, src, dst);
+      // DeviceVector<number> nonconstdst = dst;
+      func(&data, src, dst);
     }
   };
 
@@ -182,6 +185,7 @@ namespace Portable
     operator()(const CellData<dim, number> *data,
                const DeviceVector<number>  &src,
                const DeviceVector<number>  &dst) const;
+               const DeviceVector<number>  &dst) const;
   };
 
   template <int dim, int fe_degree, typename number>
@@ -189,6 +193,7 @@ namespace Portable
   LocalLaplaceOperator<dim, fe_degree, number>::operator()(
     const CellData<dim, number> *data,
     const DeviceVector<number>  &src,
+    const DeviceVector<number>  &dst) const
     const DeviceVector<number>  &dst) const
   {
     const auto &precomputed_data = data->precomputed_data;
@@ -252,6 +257,8 @@ namespace Portable
       if constexpr (dim > 2)
         eval.template co_gradients<2, true, false, false>(
           values, Kokkos::subview(gradients, Kokkos::ALL, 2));
+
+      team_member.team_barrier();
 
       team_member.team_barrier();
     }
@@ -396,6 +403,8 @@ namespace Portable
 
     void
     compute_G_tensors();
+    void
+    compute_G_tensors();
 
   private:
     using ExecutionSpace =
@@ -431,10 +440,24 @@ namespace Portable
 
     static constexpr unsigned int n_local_dofs =
       Utilities::pow(fe_degree + 1, dim);
+    // void
+    // cell_loop_dummy(
+    //   const LocalLaplaceOperator<dim, fe_degree, number> &cell_operator,
+    //   const LinearAlgebra::distributed::Vector<number, MemorySpace::Default>
+    //                                                                    &src,
+    //   LinearAlgebra::distributed::Vector<number, MemorySpace::Default> &dst,
+    //   const bool ghost_exchange_on,
+    //   const bool computation_on) const;
+
+
+    static constexpr unsigned int n_local_dofs =
+      Utilities::pow(fe_degree + 1, dim);
 
     MatrixFree<dim, number> matrix_free;
 
     ObserverPointer<const AffineConstraints<number>> constraints;
+
+    static const unsigned int n_q_points = Utilities::pow(fe_degree + 1, dim);
 
     static const unsigned int n_q_points = Utilities::pow(fe_degree + 1, dim);
 
@@ -445,6 +468,7 @@ namespace Portable
     std::vector<
       Kokkos::View<unsigned int **, MemorySpace::Default::kokkos_space>>
       dirichlet_boundary_dofs_masks;
+
 
 
     std::vector<Kokkos::View<number *, MemorySpace::Default::kokkos_space>>
@@ -489,7 +513,6 @@ namespace Portable
     // this->cell_loop(cell_operator, src, dst);
     // matrix_free.copy_constrained_values(src, dst);
 
-    // std::cout << "dst.l2_norm() = " << dst.l2_norm() << std::endl;
     src.update_ghost_values();
 
     DeviceVector<number> src_device(src.get_values(), src.locally_owned_size()),
@@ -502,114 +525,36 @@ namespace Portable
       {
         const unsigned int n_cells = colored_graph[color].size();
 
-        // std::cout << "n_cells = " << n_cells << std::endl;
         if (n_cells > 0)
           {
-            // const auto &dirichlet_boundary_dofs_mask =
-            //   dirichlet_boundary_dofs_masks[color];
             const auto &precomputed_data = matrix_free.get_data(color);
 
-            // DeviceVector<number> src_e_vector("src_e_vector",
-            //                                   n_cells * n_local_dofs),
-            //   dst_e_vector("dst_e_vector", n_cells * n_local_dofs);
-
-            // // Kokkos::parallel_for(
-            //   "Gather_L_to_E_src",
-            //   Kokkos::RangePolicy<ExecutionSpace>(0, n_cells),
-            //   KOKKOS_LAMBDA(const int cell_id) {
-            //     std::cout << "Cell " << cell_id << ": ";
-            //     for (unsigned int i = 0; i < n_local_dofs; ++i)
-            //       {
-            //         const auto global_idx =
-            //           dirichlet_boundary_dofs_mask(i, cell_id);
-            //         std::cout << global_idx << " ";
-            //         // if (dirichlet_boundary_dofs_mask(i, cell_id) ==
-            //         //     numbers::invalid_unsigned_int)
-            //         //   src_e_vector(cell_id * n_local_dofs + i) = 0;
-            //         // else
-            //         //   src_e_vector(cell_id * n_local_dofs + i) =
-            //         //     src_device[global_idx];
-            //       }
-            //     std::cout << std::endl;
-            //   });
-
-            // Kokkos::fence();
-
-            // const unsigned int numThreads      = 1;
-            // const unsigned int threadsPerBlock = n_q_points;
-
+            // const unsigned int numThreads      = n_cells;
+            // const unsigned int threadsPerBlock = 1;
 
             Kokkos::fence();
 
-            // DeviceVector<number> src_e_vector("src_e_vector",
-            // //                                   n_cells * n_local_dofs),
-
-            // DeviceVector<number> dst_nonconst("dst_nonconst",
-            //                                   dst.locally_owned_size());
-            // dst_nonconst = dst_device;
-
-
-            // DeviceVector<number> dst_e_vector("dst_e_vector",
-            //                                   n_cells * n_local_dofs);
-            // dst_e_vector = dst_device;
-
-            std::cout << "N CELLS BEFORE LAUNCH OF THE KERNEL = " << n_cells
-                      << std::endl
-                      << std::endl;
-
-
-            std::cout << "PRECOMP. DATA. N CELLS = " << precomputed_data.n_cells
-                      << std::endl
-                      << std::endl;
             BK3::Parallel::
               KokkosKernel_1D_Block<dim, fe_degree + 1, fe_degree + 1, number>(
                 precomputed_data.shape_values,
                 precomputed_data.co_shape_gradients,
                 G_tensors[color],
                 src_device,
-                // src_e_vector,
                 dst_device,
                 dirichlet_boundary_dofs_masks[color],
                 n_cells);
-
-            // std::cout << "AFTER KERNEL EXECTUTION" << std::endl;
-
-            // dst_device = dst_e_vector;
-
-            // Kokkos::fence();
-
-            // Kokkos::parallel_for(
-            //   "Scatter_E_to_L_dst",
-            //   Kokkos::RangePolicy<ExecutionSpace>(0, n_cells),
-            //   KOKKOS_LAMBDA(const int cell_id) {
-            //     for (unsigned int i = 0; i < n_local_dofs; ++i)
-            //       {
-            //         const auto global_idx =
-            //           precomputed_data.local_to_global(i, cell_id);
-
-            //         if (dirichlet_boundary_dofs_mask(i, cell_id) !=
-            //             numbers::invalid_unsigned_int)
-            //           {
-            //             Kokkos::atomic_add(&dst_device[global_idx],
-            //                                dst_e_vector(cell_id *
-            //                                n_local_dofs +
-            //                                             i));
-            //           }
-            //       }
-            //   });
+                // numThreads,
+                // threadsPerBlock);
 
             Kokkos::fence();
           }
-        Kokkos::fence();
       }
-    Kokkos::fence();
 
     dst.compress(VectorOperation::add);
     src.zero_out_ghost_values();
     matrix_free.copy_constrained_values(src, dst);
-
-    // std::cout << "dst.l2_norm() = " << dst.l2_norm() << std::endl;
   }
+
 
 
   template <int dim, int fe_degree, typename number>
@@ -673,6 +618,7 @@ namespace Portable
                   }
               });
             Kokkos::fence();
+            Kokkos::fence();
           }
       }
   }
@@ -705,6 +651,10 @@ namespace Portable
     std::vector<types::global_dof_index> local_dof_indices(n_local_dofs);
     std::vector<types::global_dof_index> lexicographic_dof_indices(
       n_local_dofs);
+    std::vector<types::global_dof_index> subdomain_local_dof_indices(
+      n_local_dofs);
+
+    const auto &partitioner = matrix_free.get_vector_partitioner();
 
     for (unsigned int color = 0; color < n_colors; ++color)
       {
@@ -725,20 +675,47 @@ namespace Portable
             auto boundary_dofs_mask_host = Kokkos::create_mirror_view(
               this->dirichlet_boundary_dofs_masks[color]);
 
-            auto cell = graph.cbegin(), end_cell = graph.cend();
+            // auto triacell = graph.begin(), end_triacell = graph.end();
+            // const auto n_cells = mf_data.n_cells;
 
-            for (unsigned int cell_id = 0; cell != end_cell; ++cell, ++cell_id)
+            // for (unsigned int cell_id = 0; triacell != end_triacell;
+            //      ++triacell, ++cell_id)
+            for (unsigned int cell_id = 0; cell_id < mf_data.n_cells; ++cell_id)
               {
-                (*cell)->get_dof_indices(local_dof_indices);
+                auto triacell = graph[cell_id];
+
+                typename DoFHandler<dim>::cell_iterator cell(
+                  &(dof_handler.get_triangulation()),
+                  triacell->level(),
+                  triacell->index(),
+                  &dof_handler);
+
+                cell->get_dof_indices(local_dof_indices);
+
+                triacell->get_dof_indices(subdomain_local_dof_indices);
+
+                if (partitioner)
+                  for (auto &index : local_dof_indices)
+                    index = partitioner->global_to_local(index);
 
                 for (unsigned int i = 0; i < n_local_dofs; ++i)
                   {
                     const auto global_dof = local_dof_indices[lex_numbering[i]];
-                    if (constraints->is_constrained(global_dof))
+                    const auto subdomain_local_dof =
+                      subdomain_local_dof_indices[lex_numbering[i]];
+
+                    if (constraints->is_constrained(subdomain_local_dof))
                       boundary_dofs_mask_host(i, cell_id) =
                         numbers::invalid_unsigned_int;
                     else
-                      boundary_dofs_mask_host(i, cell_id) = global_dof;
+                      {
+                        boundary_dofs_mask_host(i, cell_id) = global_dof;
+
+                        // std::cout << "Local DoF: " << subdomain_local_dof << " | "
+                        //           << "Global DoF: "
+                        //           << boundary_dofs_mask_host(i, cell_id)
+                        //           << std::endl;
+                      }
                   }
               }
 
@@ -823,6 +800,7 @@ namespace Portable
     else
       {
         src.update_ghost_values();
+        src.update_ghost_values();
 
         // Execute the loop on the cells
         for (unsigned int color = 0; color < n_colors; ++color)
@@ -851,8 +829,10 @@ namespace Portable
               }
           }
         dst.compress(VectorOperation::add);
+        dst.compress(VectorOperation::add);
       }
 
+    src.zero_out_ghost_values();
     src.zero_out_ghost_values();
   }
 

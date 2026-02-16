@@ -29,6 +29,8 @@ namespace BK3
 
     using DoFIndicesView =
       Kokkos::View<unsigned int **, MemorySpace::Default::kokkos_space>;
+    using DoFIndicesView =
+      Kokkos::View<unsigned int **, MemorySpace::Default::kokkos_space>;
 
     template <int dim, int n_local_dofs_1d, int n_q_points_1d, typename number>
     void
@@ -43,12 +45,9 @@ namespace BK3
       unsigned int             numThreads      = numbers::invalid_unsigned_int,
       unsigned int             threadsPerBlock = numbers::invalid_unsigned_int)
     {
-      std::cout << "NCELLS INSIDE THE KERNEL = " << n_cells << "\n\n";
       constexpr unsigned n_q_points_total = Utilities::pow(n_q_points_1d, dim);
       constexpr unsigned n_local_dofs_total =
         Utilities::pow(n_local_dofs_1d, dim);
-
-      // DeviceView<number> out_device_nonconst = out_device;
 
       if (numThreads == numbers::invalid_unsigned_int)
         numThreads = n_cells * n_q_points_total / 2;
@@ -61,6 +60,7 @@ namespace BK3
         numThreads / (std::min(n_q_points_total, threadsPerBlock));
       if (numBlocks == 0)
         numBlocks = 1;
+
 
       {
         const unsigned int scratch_pad_size =
@@ -104,22 +104,19 @@ namespace BK3
 
             // copy to shared memory
             {
-              // int local_idx = 0;
-              for (unsigned int local_idx = 0;
-                   local_idx < n_q_points_1d * n_q_points_1d;
-                   local_idx += 1)
+              for (unsigned int tid = threadIdx;
+                   tid < n_local_dofs_1d * n_q_points_1d;
+                   tid += blockSize)
                 {
-                  shape_values_scratch[local_idx] =
-                    shape_values_device[local_idx];
+                  shape_values_scratch[tid] = shape_values_device[tid];
                 }
-            }
-            {
-              for (unsigned int local_idx = 0;
-                   local_idx < n_q_points_1d * n_q_points_1d;
-                   local_idx += 1)
+
+                for (unsigned int tid = threadIdx;
+                   tid < n_q_points_1d * n_q_points_1d;
+                   tid += blockSize)
                 {
-                  co_shape_gradients_scratch[local_idx] =
-                    co_shape_gradients_device[local_idx];
+                  co_shape_gradients_scratch[tid] =
+                    co_shape_gradients_device[tid];
                 }
             }
 
@@ -142,46 +139,34 @@ namespace BK3
 
             while (cell_index < n_cells)
               {
-                Kokkos::printf("CELLS =  %d, CURRENT CELL =  %d\n",
-                               n_cells,
-                               cell_index);
-
                 team_member.team_barrier();
                 {
                   // step-1 : Copy from in to the scratch values
-                  for (unsigned int local_idx = 0;
-                       local_idx < n_local_dofs_total;
-                       ++local_idx)
+                  for (unsigned int tid = threadIdx;
+                       tid <
+                       n_local_dofs_1d * n_local_dofs_1d * n_local_dofs_1d;
+                       tid += blockSize)
                     {
-                      // const int p = tid / (n_local_dofs_1d *
-                      // n_local_dofs_1d); const int j = (tid % (n_local_dofs_1d
-                      // * n_local_dofs_1d)) /
-                      //               n_local_dofs_1d;
-                      // const int k = tid % n_local_dofs_1d;
+                      const int i = tid / (n_local_dofs_1d * n_local_dofs_1d);
+                      const int j =
+                        (tid % (n_local_dofs_1d * n_local_dofs_1d)) /
+                        n_local_dofs_1d;
+                      const int k = tid % n_local_dofs_1d;
 
-                      // const int local_id = p * n_local_dofs_1d *
-                      // n_local_dofs_1d +
-                      //                      j * n_local_dofs_1d + k;
+                      const int local_idx =
+                        i * n_local_dofs_1d * n_local_dofs_1d +
+                        j * n_local_dofs_1d + k;
 
                       const unsigned int dof_index =
                         dof_indices(local_idx, cell_index);
-                      // std::cout << "dof_index = " << dof_index << std::endl;
+
                       if (dof_index == numbers::invalid_unsigned_int)
-                        s_wsp0[local_idx] = 0;
+                        s_wsp0[tid] = 0;
                       else
-                        s_wsp0[local_idx] = in_device[dof_index];
-                      // s_wsp0[tid] =
-                      //   in_device[cell_index * n_local_dofs_total + ti];
+                        s_wsp0[tid] = in_device[dof_index];
                     }
                 }
                 team_member.team_barrier();
-
-                // for (unsigned int tid = threadIdx; tid < n_local_dofs_total;
-                //      tid += blockSize)
-                //   {
-                //     std::cout << s_wsp0[tid] << " , ";
-                //   }
-                // std::cout << std::endl;
 
                 if constexpr (dim == 3)
                   {
@@ -435,57 +420,26 @@ namespace BK3
                   }
                 team_member.team_barrier();
 
-                // for (unsigned int tid = threadIdx; tid < n_local_dofs_total;
-                //      tid += blockSize)
-                //   {
-                //     std::cout << s_wsp0[tid] << " , ";
-                //   }
-                // std::cout << std::endl;
-
-                // team_member.team_barrier();
-
-                // DeviceView<number> out_device_nonconst = out_device;
-                // number out_l2_norm = 0;
-                // for (unsigned int tid = threadIdx; tid < n_local_dofs_total;
-                //      tid += blockSize)
-                //   {
-                //     out_l2_norm += s_wsp0[tid] * s_wsp0[tid];
-                //   }
-                // team_member.team_barrier();
-
-                // out_l2_norm = std::sqrt(out_l2_norm);
-
-                // Kokkos::printf("On cell %d, l2_norm = %f\n",
-                //                cell_index,
-                //                out_l2_norm);
-
                 // step-12 : Copy wsp0 to out
-                for (unsigned int local_idx = 0; local_idx < n_local_dofs_total;
-                     local_idx += 1)
+                for (unsigned int tid = threadIdx; tid < n_local_dofs_total;
+                     tid += blockSize)
                   {
-                    // const int p = tid / (n_local_dofs_1d * n_local_dofs_1d);
-                    // const int j = (tid % (n_local_dofs_1d * n_local_dofs_1d))
-                    // /
-                    //               n_local_dofs_1d;
-                    // const int k = tid % n_local_dofs_1d;
+                    const int i = tid / (n_local_dofs_1d * n_local_dofs_1d);
+                    const int j = (tid % (n_local_dofs_1d * n_local_dofs_1d)) /
+                                  n_local_dofs_1d;
+                    const int k = tid % n_local_dofs_1d;
 
-                    // const int local_id = p * n_local_dofs_1d *
-                    // n_local_dofs_1d +
-                    //                      j * n_local_dofs_1d + k;
+                    const int local_idx =
+                      i * n_local_dofs_1d * n_local_dofs_1d +
+                      j * n_local_dofs_1d + k;
+
                     const unsigned int dof_index =
                       dof_indices(local_idx, cell_index);
 
                     if (dof_index != numbers::invalid_unsigned_int)
                       {
-                        // std::cout << "dof_index = " << dof_index << " , ";
-                        // Kokkos::printf("Cell_id = %d, dof_index = %d",
-                        // cell_index, dof_index);
-                        Kokkos::atomic_add(&out_device[dof_index],
-                                           s_wsp0[local_idx]);
+                        Kokkos::atomic_add(&out_device[dof_index], s_wsp0[tid]);
                       }
-
-                    // out_device[cell_index * n_local_dofs_total + tid] =
-                    //   s_wsp0[tid];
                   }
                 team_member.team_barrier();
                 // std::cout << std::endl;
