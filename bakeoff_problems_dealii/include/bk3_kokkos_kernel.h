@@ -98,9 +98,6 @@ namespace BK3
             const unsigned int threadIdx = team_member.team_rank();
             const unsigned int blockSize = team_member.team_size();
 
-            // Kokkos::printf("threadIdx = %d, blockSize = %d\n",
-            //                threadIdx,
-            //                blockSize);
 
             // copy to shared memory
             {
@@ -111,7 +108,7 @@ namespace BK3
                   shape_values_scratch[tid] = shape_values_device[tid];
                 }
 
-                for (unsigned int tid = threadIdx;
+              for (unsigned int tid = threadIdx;
                    tid < n_q_points_1d * n_q_points_1d;
                    tid += blockSize)
                 {
@@ -128,23 +125,12 @@ namespace BK3
 
             unsigned int cell_index = team_member.league_rank();
 
-            // std::cout << "cell_index = " << cell_index << ": ";
-            // for (unsigned int i = 0; i < n_local_dofs_total; ++i)
-            //   {
-            //     std::cout << dof_indices(i, cell_index) << " ";
-            //   }
-            // std::cout << std::endl;
-
-
-
             while (cell_index < n_cells)
               {
                 team_member.team_barrier();
                 {
                   // step-1 : Copy from in to the scratch values
-                  for (unsigned int tid = threadIdx;
-                       tid <
-                       n_local_dofs_1d * n_local_dofs_1d * n_local_dofs_1d;
+                  for (unsigned int tid = threadIdx; tid < n_local_dofs_total;
                        tid += blockSize)
                     {
                       const int i = tid / (n_local_dofs_1d * n_local_dofs_1d);
@@ -442,10 +428,8 @@ namespace BK3
                       }
                   }
                 team_member.team_barrier();
-                // std::cout << std::endl;
 
                 cell_index += team_member.league_size();
-                // std::cout << "REACHED HERE" << std::endl;
               }
           });
         Kokkos::fence();

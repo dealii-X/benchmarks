@@ -260,12 +260,6 @@ LaplaceProblem<dim, fe_degree>::run()
                                 40,  48,  56,  64,   80,   96,  112, 128,
                                 160, 192, 224, 256,  320,  384, 448, 512,
                                 640, 768, 896, 1024, 1280, 1536};
-  const unsigned int sizes[] = {1,   2,   3,   4,    5,    6,   7,   8,
-                                10,  12,  14,  16,   20,   24,  28,  32,
-                                40,  48,  56,  64,   80,   96,  112, 128,
-                                160, 192, 224, 256,  320,  384, 448, 512,
-                                640, 768, 896, 1024, 1280, 1536};
-
 
   // for (unsigned int cycle = 8; cycle < 9; ++cycle)
   for (unsigned int cycle = 0; cycle < sizeof(sizes) / sizeof(unsigned int);

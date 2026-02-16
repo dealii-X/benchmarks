@@ -8,7 +8,6 @@
 #include <memory>
 
 #include "bk3_kokkos_kernel.h"
-#include "bk3_kokkos_kernel.h"
 #include "portable_laplace_operator_base.h"
 
 DEAL_II_NAMESPACE_OPEN
@@ -134,9 +133,6 @@ namespace Portable
                                  gradients,
                                  scratch_pad};
 
-      // DeviceVector<number> nonconstdst = dst;
-      func(&data, src, dst);
-      // DeviceVector<number> nonconstdst = dst;
       func(&data, src, dst);
     }
   };
@@ -185,7 +181,6 @@ namespace Portable
     operator()(const CellData<dim, number> *data,
                const DeviceVector<number>  &src,
                const DeviceVector<number>  &dst) const;
-               const DeviceVector<number>  &dst) const;
   };
 
   template <int dim, int fe_degree, typename number>
@@ -193,7 +188,6 @@ namespace Portable
   LocalLaplaceOperator<dim, fe_degree, number>::operator()(
     const CellData<dim, number> *data,
     const DeviceVector<number>  &src,
-    const DeviceVector<number>  &dst) const
     const DeviceVector<number>  &dst) const
   {
     const auto &precomputed_data = data->precomputed_data;
@@ -257,8 +251,6 @@ namespace Portable
       if constexpr (dim > 2)
         eval.template co_gradients<2, true, false, false>(
           values, Kokkos::subview(gradients, Kokkos::ALL, 2));
-
-      team_member.team_barrier();
 
       team_member.team_barrier();
     }
@@ -403,8 +395,6 @@ namespace Portable
 
     void
     compute_G_tensors();
-    void
-    compute_G_tensors();
 
   private:
     using ExecutionSpace =
@@ -437,29 +427,14 @@ namespace Portable
     //   const bool ghost_exchange_on,
     //   const bool computation_on) const;
 
-
     static constexpr unsigned int n_local_dofs =
       Utilities::pow(fe_degree + 1, dim);
-    // void
-    // cell_loop_dummy(
-    //   const LocalLaplaceOperator<dim, fe_degree, number> &cell_operator,
-    //   const LinearAlgebra::distributed::Vector<number, MemorySpace::Default>
-    //                                                                    &src,
-    //   LinearAlgebra::distributed::Vector<number, MemorySpace::Default> &dst,
-    //   const bool ghost_exchange_on,
-    //   const bool computation_on) const;
 
-
-    static constexpr unsigned int n_local_dofs =
-      Utilities::pow(fe_degree + 1, dim);
+    static const unsigned int n_q_points = Utilities::pow(fe_degree + 1, dim);
 
     MatrixFree<dim, number> matrix_free;
 
     ObserverPointer<const AffineConstraints<number>> constraints;
-
-    static const unsigned int n_q_points = Utilities::pow(fe_degree + 1, dim);
-
-    static const unsigned int n_q_points = Utilities::pow(fe_degree + 1, dim);
 
     std::shared_ptr<DiagonalMatrix<
       LinearAlgebra::distributed::Vector<number, MemorySpace::Default>>>
@@ -468,8 +443,6 @@ namespace Portable
     std::vector<
       Kokkos::View<unsigned int **, MemorySpace::Default::kokkos_space>>
       dirichlet_boundary_dofs_masks;
-
-
 
     std::vector<Kokkos::View<number *, MemorySpace::Default::kokkos_space>>
       G_tensors;
@@ -543,8 +516,8 @@ namespace Portable
                 dst_device,
                 dirichlet_boundary_dofs_masks[color],
                 n_cells);
-                // numThreads,
-                // threadsPerBlock);
+            // numThreads,
+            // threadsPerBlock);
 
             Kokkos::fence();
           }
@@ -618,7 +591,6 @@ namespace Portable
                   }
               });
             Kokkos::fence();
-            Kokkos::fence();
           }
       }
   }
@@ -675,11 +647,6 @@ namespace Portable
             auto boundary_dofs_mask_host = Kokkos::create_mirror_view(
               this->dirichlet_boundary_dofs_masks[color]);
 
-            // auto triacell = graph.begin(), end_triacell = graph.end();
-            // const auto n_cells = mf_data.n_cells;
-
-            // for (unsigned int cell_id = 0; triacell != end_triacell;
-            //      ++triacell, ++cell_id)
             for (unsigned int cell_id = 0; cell_id < mf_data.n_cells; ++cell_id)
               {
                 auto triacell = graph[cell_id];
@@ -708,14 +675,7 @@ namespace Portable
                       boundary_dofs_mask_host(i, cell_id) =
                         numbers::invalid_unsigned_int;
                     else
-                      {
-                        boundary_dofs_mask_host(i, cell_id) = global_dof;
-
-                        // std::cout << "Local DoF: " << subdomain_local_dof << " | "
-                        //           << "Global DoF: "
-                        //           << boundary_dofs_mask_host(i, cell_id)
-                        //           << std::endl;
-                      }
+                      boundary_dofs_mask_host(i, cell_id) = global_dof;
                   }
               }
 
@@ -800,7 +760,6 @@ namespace Portable
     else
       {
         src.update_ghost_values();
-        src.update_ghost_values();
 
         // Execute the loop on the cells
         for (unsigned int color = 0; color < n_colors; ++color)
@@ -829,10 +788,8 @@ namespace Portable
               }
           }
         dst.compress(VectorOperation::add);
-        dst.compress(VectorOperation::add);
       }
 
-    src.zero_out_ghost_values();
     src.zero_out_ghost_values();
   }
 
