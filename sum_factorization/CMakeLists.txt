@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.20)
 
 project(benchmark LANGUAGES CXX)
 find_package(Kokkos REQUIRED)
