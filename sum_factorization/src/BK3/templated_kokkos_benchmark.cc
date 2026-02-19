@@ -151,8 +151,8 @@ int main(int argc, char **argv){
                 case 6:  run_test<float, 6, 6, 6>(nelmt * nq * nq * nq / 2, nq*nq*nq, nelmt, 10); break;
                 case 7:  run_test<float, 7, 7, 7>(nelmt * nq * nq * nq / 2, nq*nq*nq, nelmt, 10); break;
                 case 8:  run_test<float, 8, 8, 8>(nelmt * nq * nq * nq / 2, nq*nq*nq, nelmt, 10); break;
-                case 9:  run_test<float, 9, 9, 9>(nelmt * nq * nq * nq / 2, nq*nq*nq, nelmt, 10); break;
-                case 10: run_test<float,10,10,10>(nelmt * nq * nq * nq / 2, nq*nq*nq, nelmt, 10); break;
+                case 9:  run_test<float, 9, 9, 9>(nelmt * nq * nq * nq / 2, 7*7*7   , nelmt, 10); break;
+                case 10: run_test<float,10,10,10>(nelmt * nq * nq * nq / 2, 7*7*7   , nelmt, 10); break;
                 default: break;
             }
         }
