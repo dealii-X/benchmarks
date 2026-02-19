@@ -107,7 +107,35 @@ int main(int argc, char **argv){
     Kokkos::initialize(argc, argv);
 
     std::cout.precision(8);
-    run_test<float, nq0, nq1, nq2>(numThreads, threadsPerBlock, nelmt, ntests);
+
+    constexpr int    N   = 50;
+    constexpr double min = 1e4;
+    constexpr double max = 1e8;
+
+    const double log_step = std::pow(max / min, 1.0 / (N - 1));
+
+    for (int istep = 0; istep < N; ++istep)
+    {
+        int dof = static_cast<int>(std::llround(min * std::pow(log_step, istep)));
+
+        for (int nq = 3; nq <= 10; ++nq) {
+            int nm = nq - 1;
+            nelmt = dof / (nm * nm * nm);
+            if (nelmt == 0) continue;
+
+            switch (nq) {
+                case 3:  run_test<float, 3, 3, 3>(nelmt * nq * nq * nq / 2, nq*nq*nq, nelmt, 10); break;
+                case 4:  run_test<float, 4, 4, 4>(nelmt * nq * nq * nq / 2, nq*nq*nq, nelmt, 10); break;
+                case 5:  run_test<float, 5, 5, 5>(nelmt * nq * nq * nq / 2, nq*nq*nq, nelmt, 10); break;
+                case 6:  run_test<float, 6, 6, 6>(nelmt * nq * nq * nq / 2, nq*nq*nq, nelmt, 10); break;
+                case 7:  run_test<float, 7, 7, 7>(nelmt * nq * nq * nq / 2, nq*nq*nq, nelmt, 10); break;
+                case 8:  run_test<float, 8, 8, 8>(nelmt * nq * nq * nq / 2, nq*nq*nq, nelmt, 10); break;
+                case 9:  run_test<float, 9, 9, 9>(nelmt * nq * nq * nq / 2, nq*nq*nq, nelmt, 10); break;
+                case 10: run_test<float,10,10,10>(nelmt * nq * nq * nq / 2, nq*nq*nq, nelmt, 10); break;
+                default: break;
+            }
+        }
+    }
 
     Kokkos::finalize();
     return 0;
