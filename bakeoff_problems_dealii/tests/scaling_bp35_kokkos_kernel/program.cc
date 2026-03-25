@@ -32,8 +32,7 @@
 #include <iostream>
 #include <memory>
 
-#include "bk3_kokkos_kernel.h"
-#include "portable_laplace_operator.h"
+#include "portable_laplace_operator_bk35.h"
 
 using namespace dealii;
 
@@ -90,7 +89,7 @@ private:
   IndexSet locally_relevant_dofs;
 
 
-  std::unique_ptr<Portable::LaplaceOperator<dim, fe_degree, double>>
+  std::unique_ptr<Portable::LaplaceOperatorBK35<dim, fe_degree, double>>
     system_matrix;
 
   LinearAlgebra::distributed::Vector<double, MemorySpace::Host>
@@ -165,7 +164,7 @@ LaplaceProblem<dim, fe_degree>::setup_matrix_free()
   Timer time;
 
   system_matrix =
-    std::make_unique<Portable::LaplaceOperator<dim, fe_degree, double>>(
+    std::make_unique<Portable::LaplaceOperatorBK35<dim, fe_degree, double>>(
       dof_handler, constraints, overlap_communication_computation);
 
   system_matrix->initialize_dof_vector(solution_device);
