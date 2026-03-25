@@ -8,14 +8,13 @@
 #include <memory>
 
 #include "bk3_kokkos_kernel.h"
-#include "portable_laplace_operator_base.h"
 
 DEAL_II_NAMESPACE_OPEN
 
 namespace Portable
 {
   template <int dim, int fe_degree, typename number>
-  class LaplaceOperatorBK35 : public LaplaceOperatorBase<dim, number>
+  class LaplaceOperatorBK35
   {
   public:
     LaplaceOperatorBK35(const DoFHandler<dim>           &dof_handler,
@@ -25,7 +24,7 @@ namespace Portable
     void
     vmult(LinearAlgebra::distributed::Vector<number, MemorySpace::Default> &dst,
           const LinearAlgebra::distributed::Vector<number, MemorySpace::Default>
-            &src) const override;
+            &src) const;
 
     void
     vmult_dummy(
@@ -39,27 +38,27 @@ namespace Portable
     Tvmult(
       LinearAlgebra::distributed::Vector<number, MemorySpace::Default> &dst,
       const LinearAlgebra::distributed::Vector<number, MemorySpace::Default>
-        &src) const override;
+        &src) const;
 
     void
     initialize_dof_vector(
       LinearAlgebra::distributed::Vector<number, MemorySpace::Default> &vec)
-      const override;
+      const;
 
     void
     setup_dof_indices_per_color();
 
     types::global_dof_index
-    m() const override;
+    m() const;
 
     types::global_dof_index
-    n() const override;
+    n() const;
 
     const MatrixFree<dim, number> &
-    get_matrix_free() const override;
+    get_matrix_free() const;
 
     const std::shared_ptr<const Utilities::MPI::Partitioner> &
-    get_vector_partitioner() const override;
+    get_vector_partitioner() const;
 
     void
     compute_G_tensors();
