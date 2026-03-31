@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13.4)
 
 # 1. Set the target name
-set(TARGET "timing_bp_5_3")
+set(TARGET "program")
 
 # 2. Source files
 set(TARGET_SRC ${TARGET}.cc)
@@ -32,5 +32,5 @@ deal_ii_invoke_autopilot()
 # This points to where your "multigrid/" and "operators/" folders are
 target_include_directories(${TARGET} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/../include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../include
 )

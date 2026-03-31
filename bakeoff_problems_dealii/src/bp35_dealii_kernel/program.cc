@@ -32,7 +32,6 @@
 #include <iostream>
 #include <memory>
 
-#include "bk3_kokkos_kernel.h"
 #include "portable_laplace_operator.h"
 
 using namespace dealii;

@@ -8,9 +8,6 @@
 
 #include <vector>
 
-// #include "templated_kokkos_kernels.hpp"
-// #include "serial_kernels.hpp"
-
 DEAL_II_NAMESPACE_OPEN
 
 namespace BK3
