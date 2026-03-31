@@ -62,7 +62,6 @@ int main(int argc, char **argv){
     unsigned int numBlocks         = (argc > 3) ? atoi(argv[3]) : (nelmt + nelmtPerBatch - 1) / nelmtPerBatch / 2;
 
     unsigned int threadsPerBlock   = nq * nq * std::max(1u, nelmtPerBatch);
-                 threadsPerBlock   = ((threadsPerBlock + 31) / 32) * 32;
 
     threadsPerBlock                = (argc > 4) ? atoi(argv[4]) : threadsPerBlock;
     unsigned int ntests            = (argc > 5) ? atoi(argv[5]) : 10u;
