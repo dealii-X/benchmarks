@@ -60,7 +60,7 @@ int main(int argc, char **argv){
     unsigned int nelmt             = (argc > 2) ? atoi(argv[2]) : 2 << 18;
     
     unsigned int nelmtPerBatch     = shmemPerBlock / (2 * nq * nq * nq) / sizeof(T);    if(nelmtPerBatch == 0) nelmtPerBatch = 1;
-    unsigned int numBlocks         = (argc > 3) ? atoi(argv[3]) : (nelmt + nelmtPerBatch - 1) / nelmtPerBatch / 2;
+    unsigned int numBlocks         = (argc > 3) ? atoi(argv[3]) : (nelmt + nelmtPerBatch - 1) / nelmtPerBatch / 2; if (numBlocks == 0) numBlocks = 1;
 
     unsigned int threadsPerBlock   = nq * nq * std::max(1u, nelmtPerBatch);
 
