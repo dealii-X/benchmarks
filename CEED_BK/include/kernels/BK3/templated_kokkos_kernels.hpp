@@ -57,9 +57,9 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                 Kokkos::parallel_for(policy,
                 KOKKOS_LAMBDA (member_type team_member){
 
-                    T r_p[14];
-                    T r_q[14];
-                    T r_r[14];
+                    T r_p[nq];
+                    T r_q[nq];
+                    T r_r[nq];
 
                     //shared memory access
                     T *scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
