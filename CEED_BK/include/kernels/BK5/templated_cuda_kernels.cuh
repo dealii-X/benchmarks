@@ -49,14 +49,14 @@ __global__ void LaplaceOperator(
 
         for(unsigned int tid = threadIdx.x; tid < c_nelmtPerBatch * nq * nq; tid += blockDim.x){
             
-            int b = tid / (nq * nq);
+            int e = tid / (nq * nq);
             int j = tid % (nq * nq) / nq;
             int k = tid % nq;
 
             //copy to register
             for(unsigned int n = 0; n < nq; n++)
             {
-                r_i[n] = s_wsp[b * nq*nq*nq + n * nq*nq + j * nq + k];
+                r_i[n] = s_wsp[e * nq*nq*nq + n * nq*nq + j * nq + k];
                 r_j[n] = s_dbasis[j * nq + n];
                 r_k[n] = s_dbasis[k * nq + n];
             }
@@ -69,38 +69,38 @@ __global__ void LaplaceOperator(
                 qr = 0; qs = 0; qt = 0; 
     
                 //Load Geometric Factors, coalesced access
-                Grr = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 0 * nq*nq*nq + i * nq * nq + j * nq + k];
-                Grs = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 1 * nq*nq*nq + i * nq * nq + j * nq + k];
-                Grt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 2 * nq*nq*nq + i * nq * nq + j * nq + k];
-                Gss = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 3 * nq*nq*nq + i * nq * nq + j * nq + k];
-                Gst = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 4 * nq*nq*nq + i * nq * nq + j * nq + k];
-                Gtt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 5 * nq*nq*nq + i * nq * nq + j * nq + k];
+                Grr = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 0 * nq*nq*nq + i * nq * nq + j * nq + k];
+                Grs = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 1 * nq*nq*nq + i * nq * nq + j * nq + k];
+                Grt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 2 * nq*nq*nq + i * nq * nq + j * nq + k];
+                Gss = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 3 * nq*nq*nq + i * nq * nq + j * nq + k];
+                Gst = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 4 * nq*nq*nq + i * nq * nq + j * nq + k];
+                Gtt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 5 * nq*nq*nq + i * nq * nq + j * nq + k];
         
                 // Multiply by D
                 for(unsigned int n = 0; n < nq; n++){
                     qr += s_dbasis[i * nq + n] * r_i[n];
-                    qs += r_j[n] * s_wsp[b * nq*nq*nq + i * nq * nq + n * nq + k];
-                    qt += r_k[n] * s_wsp[b * nq*nq*nq + i * nq * nq + j * nq + n];
+                    qs += r_j[n] * s_wsp[e * nq*nq*nq + i * nq * nq + n * nq + k];
+                    qt += r_k[n] * s_wsp[e * nq*nq*nq + i * nq * nq + j * nq + n];
                 }
 
                 // Apply chain rule
-                s_rqr[b * nq*nq*nq + i * nq * nq + j * nq + k] = Grr * qr + Grs * qs + Grt * qt;
-                s_rqs[b * nq*nq*nq + i * nq * nq + j * nq + k] = Grs * qr + Gss * qs + Gst * qt;
-                s_rqt[b * nq*nq*nq + i * nq * nq + j * nq + k] = Grt * qr + Gst * qs + Gtt * qt;
+                s_rqr[e * nq*nq*nq + i * nq * nq + j * nq + k] = Grr * qr + Grs * qs + Grt * qt;
+                s_rqs[e * nq*nq*nq + i * nq * nq + j * nq + k] = Grs * qr + Gss * qs + Gst * qt;
+                s_rqt[e * nq*nq*nq + i * nq * nq + j * nq + k] = Grt * qr + Gst * qs + Gtt * qt;
             }
         }
         __syncthreads();
 
         for(unsigned int tid = threadIdx.x; tid < c_nelmtPerBatch * nq * nq; tid += blockDim.x){
 
-            int b = tid / (nq * nq);
+            int e = tid / (nq * nq);
             int j = tid % (nq * nq) / nq;
             int k = tid % nq;
 
             //copy to register
             for(unsigned int n = 0; n < nq; n++)
             {
-                r_i[n] = s_rqr[b * nq*nq*nq + n * nq * nq + j * nq + k];
+                r_i[n] = s_rqr[e * nq*nq*nq + n * nq * nq + j * nq + k];
                 r_j[n] = s_dbasis[n * nq + j];
                 r_k[n] = s_dbasis[n * nq + k];
             }
@@ -112,12 +112,12 @@ __global__ void LaplaceOperator(
                     tmp0 += r_i[n] * s_dbasis[n * nq + i];
         
                 for(unsigned int n = 0; n < nq; ++n)                
-                    tmp0 += s_rqs[b * nq*nq*nq + i * nq * nq + n * nq + k] * r_j[n];
+                    tmp0 += s_rqs[e * nq*nq*nq + i * nq * nq + n * nq + k] * r_j[n];
         
                 for(unsigned int n = 0; n < nq; ++n)
-                    tmp0 += s_rqt[b * nq*nq*nq + i * nq * nq + j * nq + n] * r_k[n];
+                    tmp0 += s_rqt[e * nq*nq*nq + i * nq * nq + j * nq + n] * r_k[n];
         
-                d_out[eb * nelmtPerBatch * nq * nq * nq + b  * nq * nq * nq + i * nq * nq + j * nq + k] = tmp0;
+                d_out[eb * nelmtPerBatch * nq * nq * nq + e  * nq * nq * nq + i * nq * nq + j * nq + k] = tmp0;
             }
         }
 

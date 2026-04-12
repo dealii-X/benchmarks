@@ -95,14 +95,14 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                             
                             for(unsigned int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize){
 
-                                int b = tid / (nq * nq);
+                                int e = tid / (nq * nq);
                                 int q = tid % (nq * nq) / nq;
                                 int r = tid % nq;
 
                                 //copy to register
                                 for(unsigned int n = 0; n < nq; n++)
                                 {
-                                    r_p[n] = s_wsp[b * nq*nq*nq + r * nq*nq + q * nq + n];
+                                    r_p[n] = s_wsp[e * nq*nq*nq + r * nq*nq + q * nq + n];
                                     r_q[n] = s_dbasis[q * nq + n];
                                     r_r[n] = s_dbasis[r * nq + n];
                                 }
@@ -115,24 +115,24 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                     qr = 0; qs = 0; qt = 0; 
                                 
                                     //Load Geometric Factors, coalesced access
-                                    Grr = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 0 * nq*nq*nq + p * nq * nq + q * nq + r];
-                                    Grs = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 1 * nq*nq*nq + p * nq * nq + q * nq + r];
-                                    Grt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 2 * nq*nq*nq + p * nq * nq + q * nq + r];
-                                    Gss = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 3 * nq*nq*nq + p * nq * nq + q * nq + r];
-                                    Gst = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 4 * nq*nq*nq + p * nq * nq + q * nq + r];
-                                    Gtt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 5 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                    Grr = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 0 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                    Grs = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 1 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                    Grt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 2 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                    Gss = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 3 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                    Gst = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 4 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                    Gtt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 5 * nq*nq*nq + p * nq * nq + q * nq + r];
                                 
                                     // Multiply by D
                                     for(unsigned int n = 0; n < nq; n++){
                                         qr += s_dbasis[p * nq + n] * r_p[n];
-                                        qs += r_q[n] * s_wsp[b * nq*nq*nq + r * nq*nq + n * nq + p];
-                                        qt += r_r[n] * s_wsp[b * nq*nq*nq + n * nq*nq + q * nq + p];
+                                        qs += r_q[n] * s_wsp[e * nq*nq*nq + r * nq*nq + n * nq + p];
+                                        qt += r_r[n] * s_wsp[e * nq*nq*nq + n * nq*nq + q * nq + p];
                                     }
                                 
                                     // Apply chain rule
-                                    s_rqr[b * nq*nq*nq + p * nq * nq + q * nq + r] = Grr * qr + Grs * qs + Grt * qt;
-                                    s_rqs[b * nq*nq*nq + p * nq * nq + q * nq + r] = Grs * qr + Gss * qs + Gst * qt;
-                                    s_rqt[b * nq*nq*nq + p * nq * nq + q * nq + r] = Grt * qr + Gst * qs + Gtt * qt;
+                                    s_rqr[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grr * qr + Grs * qs + Grt * qt;
+                                    s_rqs[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grs * qr + Gss * qs + Gst * qt;
+                                    s_rqt[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grt * qr + Gst * qs + Gtt * qt;
                                 }
                             }
                             team_member.team_barrier();
@@ -140,14 +140,14 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                     
                             for(unsigned int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize){
                             
-                                int b = tid / (nq * nq);
+                                int e = tid / (nq * nq);
                                 int q = tid % (nq * nq) / nq;
                                 int r = tid % nq;
                             
                                 //copy to register
                                 for(unsigned int n = 0; n < nq; n++)
                                 {
-                                    r_p[n] = s_rqr[b * nq*nq*nq + n * nq * nq + q * nq + r];
+                                    r_p[n] = s_rqr[e * nq*nq*nq + n * nq * nq + q * nq + r];
                                     r_q[n] = s_dbasis[n * nq + q];
                                     r_r[n] = s_dbasis[n * nq + r];
                                 }
@@ -159,12 +159,12 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                         tmp0 += r_p[n] * s_dbasis[n * nq + p];
                                 
                                     for(unsigned int n = 0; n < nq; ++n)                
-                                        tmp0 += s_rqs[b * nq*nq*nq + p * nq * nq + n * nq + r] * r_q[n];
+                                        tmp0 += s_rqs[e * nq*nq*nq + p * nq * nq + n * nq + r] * r_q[n];
                                 
                                     for(unsigned int n = 0; n < nq; ++n)
-                                        tmp0 += s_rqt[b * nq*nq*nq + p * nq * nq + q * nq + n] * r_r[n];
+                                        tmp0 += s_rqt[e * nq*nq*nq + p * nq * nq + q * nq + n] * r_r[n];
                                 
-                                    d_out[eb * nelmtPerBatch * nq * nq * nq + b  * nq * nq * nq + p * nq * nq + q * nq + r] = tmp0;
+                                    d_out[eb * nelmtPerBatch * nq * nq * nq + e  * nq * nq * nq + p * nq * nq + q * nq + r] = tmp0;
                                 }
                             }
                             team_member.team_barrier();

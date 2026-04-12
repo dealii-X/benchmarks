@@ -46,12 +46,12 @@ template <typename T, const unsigned int nq>
             //step-2 : direction 0
             for(int tid = threadIdx.x; tid < c_nelmtPerBatch * nm * nm; tid += blockDim.x)
             {
-                int b = tid / (nm * nm);
+                int e = tid / (nm * nm);
                 int j = tid % (nm * nm) / nm;
                 int k = tid % nm;
 
                 for(int i=0; i<nm; ++i){
-                    reg[i] = s_wsp0[b * nm*nm*nm + i * nm*nm + j * nm + k];
+                    reg[i] = s_wsp0[e * nm*nm*nm + i * nm*nm + j * nm + k];
                 }
 
                 for (int p = 0; p < nq; ++p) {
@@ -61,7 +61,7 @@ template <typename T, const unsigned int nq>
                         tmp += s_basis[p * nm + i] * reg[i];
                     }
                 
-                    s_wsp1[b * nq*nm*nm + p * nm*nm + j * nm + k] = tmp;
+                    s_wsp1[e * nq*nm*nm + p * nm*nm + j * nm + k] = tmp;
                 }
             }
             __syncthreads();
@@ -70,12 +70,12 @@ template <typename T, const unsigned int nq>
             //step-3 : direction 1
             for(int tid = threadIdx.x; tid < c_nelmtPerBatch * nm * nq; tid += blockDim.x)
             {
-                int b = tid / (nq * nm);
+                int e = tid / (nq * nm);
                 int p = tid % (nq * nm) / nm;
                 int k = tid % nm;
 
                 for(int j=0; j<nm; ++j){
-                    reg[j] = s_wsp1[b * nq*nm*nm + p * nm*nm + j * nm + k];
+                    reg[j] = s_wsp1[e * nq*nm*nm + p * nm*nm + j * nm + k];
                 }
 
                 for (int q = 0; q < nq; ++q) {
@@ -85,7 +85,7 @@ template <typename T, const unsigned int nq>
                         tmp += s_basis[q * nm + j] * reg[j];
                     }
 
-                    s_wsp0[b * nq*nq*nm + q * nq*nm + p * nm + k] = tmp;
+                    s_wsp0[e * nq*nq*nm + q * nq*nm + p * nm + k] = tmp;
                 }
             }
             __syncthreads();
@@ -94,12 +94,12 @@ template <typename T, const unsigned int nq>
             //step-4 : direction 2 + step-5 : Multiply with weights and determinant of Jacobi
             for(int tid = threadIdx.x; tid < c_nelmtPerBatch * nq * nq; tid += blockDim.x)
             {
-                int b = tid / (nq * nq);
+                int e = tid / (nq * nq);
                 int q = tid % (nq * nq) / nq;
                 int p = tid % nq;
 
                 for(int k=0; k<nm; ++k){
-                    reg[k] = s_wsp0[b * nq*nq*nm + q * nq*nm + p * nm + k];
+                    reg[k] = s_wsp0[e * nq*nq*nm + q * nq*nm + p * nm + k];
                 }
                 for (int r = 0; r < nq; ++r) {
                     T tmp = 0.0;
@@ -108,7 +108,7 @@ template <typename T, const unsigned int nq>
                         tmp += s_basis[r * nm + k] * reg[k];
                     }
 
-                    s_wsp1[b * nq*nq*nq + r * nq*nq + q * nq + p] = tmp * d_JxW[eb * nelmtPerBatch * nq * nq * nq + b * nq*nq*nq + r * nq*nq + q * nq + p];
+                    s_wsp1[e * nq*nq*nq + r * nq*nq + q * nq + p] = tmp * d_JxW[eb * nelmtPerBatch * nq * nq * nq + e * nq*nq*nq + r * nq*nq + q * nq + p];
                 }
             }
             __syncthreads();
@@ -118,12 +118,12 @@ template <typename T, const unsigned int nq>
             //step-6 : direction 2
             for(int tid = threadIdx.x; tid < c_nelmtPerBatch * nq * nq; tid += blockDim.x)
             {                
-                int b = tid / (nq * nq);
+                int e = tid / (nq * nq);
                 int q = tid % (nq * nq) / nq;
                 int p = tid % nq;
 
                 for(int r=0; r<nq; ++r){
-                    reg[r] = s_wsp1[b * nq*nq*nq + r * nq*nq + q * nq + p];
+                    reg[r] = s_wsp1[e * nq*nq*nq + r * nq*nq + q * nq + p];
                 }
 
                 for (int k = 0; k < nm; ++k) {
@@ -133,7 +133,7 @@ template <typename T, const unsigned int nq>
                         tmp += s_basis[r * nm + k] * reg[r];
                     }
 
-                    s_wsp0[b * nm*nq*nq + k * nq*nq + q * nq + p] = tmp;
+                    s_wsp0[e * nm*nq*nq + k * nq*nq + q * nq + p] = tmp;
                 }   
             }
             __syncthreads();
@@ -142,12 +142,12 @@ template <typename T, const unsigned int nq>
             //step-7 : direction 1
             for(int tid = threadIdx.x; tid < c_nelmtPerBatch * nm * nq; tid += blockDim.x)
             {   
-                int b = tid / (nm * nq);
+                int e = tid / (nm * nq);
                 int k = tid % (nm * nq) / nq;
                 int p = tid % nq;
 
                 for(int q=0; q<nq; ++q){
-                    reg[q] = s_wsp0[b * nm*nq*nq + k * nq*nq + q * nq + p];
+                    reg[q] = s_wsp0[e * nm*nq*nq + k * nq*nq + q * nq + p];
                 }
 
                 for (int j = 0; j < nm; ++j) {
@@ -156,7 +156,7 @@ template <typename T, const unsigned int nq>
                     for(int q = 0; q < nq; ++q) {
                         tmp += s_basis[q * nm + j] * reg[q];
                     }
-                    s_wsp1[b * nm*nm*nq + k * nm*nq + j * nq + p] = tmp;
+                    s_wsp1[e * nm*nm*nq + k * nm*nq + j * nq + p] = tmp;
                 }
             }
             __syncthreads();
@@ -164,12 +164,12 @@ template <typename T, const unsigned int nq>
             //step-8 : direction 0
             for(int tid = threadIdx.x; tid < c_nelmtPerBatch * nm * nm; tid += blockDim.x)
             {   
-                int b = tid / (nm * nm);
+                int e = tid / (nm * nm);
                 int j = tid % (nm * nm) / nm;
                 int k = tid % nm;
 
                 for(int p=0; p<nq; ++p){
-                    reg[p] = s_wsp1[b * nm*nm*nq + k * nm*nq + j * nq + p];
+                    reg[p] = s_wsp1[e * nm*nm*nq + k * nm*nq + j * nq + p];
                 }
 
                 for (int i = 0; i < nm; ++i) {
@@ -177,7 +177,7 @@ template <typename T, const unsigned int nq>
                     for(int p = 0; p < nq; ++p) {
                         tmp += s_basis[p * nm + i] * reg[p];
                     }
-                    s_wsp0[b * nm*nm*nm + i * nm*nm + j * nm + k] = tmp;
+                    s_wsp0[e * nm*nm*nm + i * nm*nm + j * nm + k] = tmp;
                 }
             }
             __syncthreads();

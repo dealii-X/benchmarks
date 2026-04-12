@@ -112,12 +112,12 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                         //step-2 : direction 0
                         for(int tid = threadIdx; tid < c_nelmtPerBatch * nm * nm; tid += blockSize)
                         {
-                            int b = tid / (nm * nm);
+                            int e = tid / (nm * nm);
                             int j = tid % (nm * nm) / nm;
                             int k = tid % nm;
                         
                             for(int i=0; i<nm; ++i){
-                                r_p[i] = s_wsp0[b * nm*nm*nm + i * nm*nm + j * nm + k];
+                                r_p[i] = s_wsp0[e * nm*nm*nm + i * nm*nm + j * nm + k];
                             }
                         
                             for (int p = 0; p < nq; ++p) {
@@ -127,7 +127,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                     tmp += s_basis[p * nm + i] * r_p[i];
                                 }
                             
-                                s_wsp1[b * nq*nm*nm + p * nm*nm + j * nm + k] = tmp;
+                                s_wsp1[e * nq*nm*nm + p * nm*nm + j * nm + k] = tmp;
                             }
                         }
                         team_member.team_barrier();
@@ -135,11 +135,11 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                         //step-3 : direction 1
                         for(int tid = threadIdx; tid < c_nelmtPerBatch * nm * nq; tid += blockSize)
                         {
-                            int b = tid / (nq * nm);
+                            int e = tid / (nq * nm);
                             int p = tid % (nq * nm) / nm;
                             int k = tid % nm;
                             for(int j=0; j<nm; ++j){
-                                r_q[j] = s_wsp1[b * nq*nm*nm + p * nm*nm + j * nm + k];
+                                r_q[j] = s_wsp1[e * nq*nm*nm + p * nm*nm + j * nm + k];
                             }
                         
                             for (int q = 0; q < nq; ++q) {
@@ -149,7 +149,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                     tmp += s_basis[q * nm + j] * r_q[j];
                                 }
                             
-                                s_wsp0[b * nq*nq*nm + q * nq*nm + p * nm + k] = tmp;
+                                s_wsp0[e * nq*nq*nm + q * nq*nm + p * nm + k] = tmp;
                             }
                         }
                         team_member.team_barrier();
@@ -157,12 +157,12 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                         //step-4 : direction 2
                         for(int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize)
                         {
-                            int b = tid / (nq * nq);
+                            int e = tid / (nq * nq);
                             int q = tid % (nq * nq) / nq;
                             int p = tid % nq;
                         
                             for(int k=0; k<nm; ++k){
-                                r_r[k] = s_wsp0[b * nq*nq*nm + q * nq*nm + p * nm + k];
+                                r_r[k] = s_wsp0[e * nq*nq*nm + q * nq*nm + p * nm + k];
                             }
                             for (int r = 0; r < nq; ++r) {
                                 T tmp = 0.0;
@@ -171,21 +171,21 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                     tmp += s_basis[r * nm + k] * r_r[k];
                                 }
                             
-                                s_wsp1[b * nq*nq*nq + r * nq*nq + q * nq + p] = tmp;
+                                s_wsp1[e * nq*nq*nq + r * nq*nq + q * nq + p] = tmp;
                             }
                         }
                         team_member.team_barrier();
                         
                         for(unsigned int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize){
 
-                            int b = tid / (nq * nq);
+                            int e = tid / (nq * nq);
                             int q = tid % (nq * nq) / nq;
                             int r = tid % nq;
 
                             //copy to register
                             for(unsigned int n = 0; n < nq; n++)
                             {
-                                r_p[n] = s_wsp1[b * nq*nq*nq + r * nq*nq + q * nq + n];
+                                r_p[n] = s_wsp1[e * nq*nq*nq + r * nq*nq + q * nq + n];
                                 r_q[n] = s_dbasis[q * nq + n];
                                 r_r[n] = s_dbasis[r * nq + n];
                             }
@@ -198,24 +198,24 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                 qr = 0; qs = 0; qt = 0; 
                             
                                 //Load Geometric Factors, coalesced access
-                                Grr = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 0 * nq*nq*nq + p * nq * nq + q * nq + r];
-                                Grs = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 1 * nq*nq*nq + p * nq * nq + q * nq + r];
-                                Grt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 2 * nq*nq*nq + p * nq * nq + q * nq + r];
-                                Gss = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 3 * nq*nq*nq + p * nq * nq + q * nq + r];
-                                Gst = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 4 * nq*nq*nq + p * nq * nq + q * nq + r];
-                                Gtt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + b * 6 * nq*nq*nq + 5 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                Grr = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 0 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                Grs = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 1 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                Grt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 2 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                Gss = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 3 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                Gst = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 4 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                Gtt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 5 * nq*nq*nq + p * nq * nq + q * nq + r];
                             
                                 // Multiply by D
                                 for(unsigned int n = 0; n < nq; n++){
                                     qr += s_dbasis[p * nq + n] * r_p[n];
-                                    qs += r_q[n] * s_wsp1[b * nq*nq*nq + r * nq*nq + n * nq + p];
-                                    qt += r_r[n] * s_wsp1[b * nq*nq*nq + n * nq*nq + q * nq + p];
+                                    qs += r_q[n] * s_wsp1[e * nq*nq*nq + r * nq*nq + n * nq + p];
+                                    qt += r_r[n] * s_wsp1[e * nq*nq*nq + n * nq*nq + q * nq + p];
                                 }
                             
                                 // Apply chain rule
-                                s_rqr[b * nq*nq*nq + p * nq * nq + q * nq + r] = Grr * qr + Grs * qs + Grt * qt;
-                                s_rqs[b * nq*nq*nq + p * nq * nq + q * nq + r] = Grs * qr + Gss * qs + Gst * qt;
-                                s_rqt[b * nq*nq*nq + p * nq * nq + q * nq + r] = Grt * qr + Gst * qs + Gtt * qt;
+                                s_rqr[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grr * qr + Grs * qs + Grt * qt;
+                                s_rqs[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grs * qr + Gss * qs + Gst * qt;
+                                s_rqt[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grt * qr + Gst * qs + Gtt * qt;
                             }
                         }
                         team_member.team_barrier();
@@ -223,14 +223,14 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                     
                         for(unsigned int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize){
                         
-                            int b = tid / (nq * nq);
+                            int e = tid / (nq * nq);
                             int q = tid % (nq * nq) / nq;
                             int r = tid % nq;
                         
                             //copy to register
                             for(unsigned int n = 0; n < nq; n++)
                             {
-                                r_p[n] = s_rqr[b * nq*nq*nq + n * nq * nq + q * nq + r];
+                                r_p[n] = s_rqr[e * nq*nq*nq + n * nq * nq + q * nq + r];
                                 r_q[n] = s_dbasis[n * nq + q];
                                 r_r[n] = s_dbasis[n * nq + r];
                             }
@@ -242,12 +242,12 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                     tmp0 += r_p[n] * s_dbasis[n * nq + p];
                             
                                 for(unsigned int n = 0; n < nq; ++n)                
-                                    tmp0 += s_rqs[b * nq*nq*nq + p * nq * nq + n * nq + r] * r_q[n];
+                                    tmp0 += s_rqs[e * nq*nq*nq + p * nq * nq + n * nq + r] * r_q[n];
                             
                                 for(unsigned int n = 0; n < nq; ++n)
-                                    tmp0 += s_rqt[b * nq*nq*nq + p * nq * nq + q * nq + n] * r_r[n];
+                                    tmp0 += s_rqt[e * nq*nq*nq + p * nq * nq + q * nq + n] * r_r[n];
                             
-                                s_wsp1[b * nq*nq*nq + r * nq*nq + q * nq + p] = tmp0;
+                                s_wsp1[e * nq*nq*nq + r * nq*nq + q * nq + p] = tmp0;
                             }
                         }
                         team_member.team_barrier();
@@ -260,12 +260,12 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                         //step-9 : direction 2
                         for(int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize)
                         {                
-                            int b = tid / (nq * nq);
+                            int e = tid / (nq * nq);
                             int q = tid % (nq * nq) / nq;
                             int p = tid % nq;
                         
                             for(int r=0; r<nq; ++r){
-                                r_r[r] = s_wsp1[b * nq*nq*nq + r * nq*nq + q * nq + p];
+                                r_r[r] = s_wsp1[e * nq*nq*nq + r * nq*nq + q * nq + p];
                             }
                         
                             for (int k = 0; k < nm; ++k) {
@@ -275,7 +275,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                     tmp += s_basis[r * nm + k] * r_r[r];
                                 }
                             
-                                s_wsp0[b * nm*nq*nq + k * nq*nq + q * nq + p] = tmp;
+                                s_wsp0[e * nm*nq*nq + k * nq*nq + q * nq + p] = tmp;
                             }   
                         }
                         team_member.team_barrier();
@@ -283,12 +283,12 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                         //step-10 : direction 1
                         for(int tid = threadIdx; tid < c_nelmtPerBatch * nm * nq; tid += blockSize)
                         {   
-                            int b = tid / (nm * nq);
+                            int e = tid / (nm * nq);
                             int k = tid % (nm * nq) / nq;
                             int p = tid % nq;
                         
                             for(int q=0; q<nq; ++q){
-                                r_q[q] = s_wsp0[b * nm*nq*nq + k * nq*nq + q * nq + p];
+                                r_q[q] = s_wsp0[e * nm*nq*nq + k * nq*nq + q * nq + p];
                             }
                         
                             for (int j = 0; j < nm; ++j) {
@@ -297,7 +297,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                 for(int q = 0; q < nq; ++q) {
                                     tmp += s_basis[q * nm + j] * r_q[q];
                                 }
-                                s_wsp1[b * nm*nm*nq + k * nm*nq + j * nq + p] = tmp;
+                                s_wsp1[e * nm*nm*nq + k * nm*nq + j * nq + p] = tmp;
                             }
                         }
                         team_member.team_barrier();
@@ -305,12 +305,12 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                         //step-11 : direction 0
                         for(int tid = threadIdx; tid < c_nelmtPerBatch * nm * nm; tid += blockSize)
                         {   
-                            int b = tid / (nm * nm);
+                            int e = tid / (nm * nm);
                             int j = tid % (nm * nm) / nm;
                             int k = tid % nm;
                         
                             for(int p=0; p<nq; ++p){
-                                r_p[p] = s_wsp1[b * nm*nm*nq + k * nm*nq + j * nq + p];
+                                r_p[p] = s_wsp1[e * nm*nm*nq + k * nm*nq + j * nq + p];
                             }
                         
                             for (int i = 0; i < nm; ++i) {
@@ -318,7 +318,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                 for(int p = 0; p < nq; ++p) {
                                     tmp += s_basis[p * nm + i] * r_p[p];
                                 }
-                                s_wsp0[b * nm*nm*nm + i * nm*nm + j * nm + k] = tmp;
+                                s_wsp0[e * nm*nm*nm + i * nm*nm + j * nm + k] = tmp;
                             }
                         }
                         team_member.team_barrier();
