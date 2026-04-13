@@ -26,31 +26,31 @@ T SumFactorization( const unsigned int nq0, const unsigned int nq1, const unsign
 
                     //Load Geometric Factors, coalesced access
                     Grr = G[e * 6 * nq0 * nq1 * nq2 + 0 * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k];
-                    Grs = G[e * 6 * nq0 * nq1 * nq2 + 0 * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k];
-                    Grt = G[e * 6 * nq0 * nq1 * nq2 + 0 * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k];
-                    Gss = G[e * 6 * nq0 * nq1 * nq2 + 0 * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k];
-                    Gst = G[e * 6 * nq0 * nq1 * nq2 + 0 * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k];
-                    Gtt = G[e * 6 * nq0 * nq1 * nq2 + 0 * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k];
+                    Grs = G[e * 6 * nq0 * nq1 * nq2 + 1 * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k];
+                    Grt = G[e * 6 * nq0 * nq1 * nq2 + 2 * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k];
+                    Gss = G[e * 6 * nq0 * nq1 * nq2 + 3 * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k];
+                    Gst = G[e * 6 * nq0 * nq1 * nq2 + 4 * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k];
+                    Gtt = G[e * 6 * nq0 * nq1 * nq2 + 5 * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k];
                     
                     // Multiply by D
                     T qr = 0.0; T qs = 0.0; T qt = 0.0;
 
                     for(unsigned int n = 0; n < nq0; ++n){
-                        qr += in[e * nq0 * nq1 * nq2 + n * nq1 * nq2 + j * nq2 + k] * dbasis0[i * nq0 + n];
+                        qr += in[e * nq0 * nq1 * nq2 + n * nq1 * nq2 + j * nq2 + k] * dbasis0[n * nq0 + i];
                     }
 
                     for(unsigned int n = 0; n < nq1; ++n){
-                        qs += in[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + n * nq2 + k] * dbasis1[j * nq1 + n];
+                        qs += in[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + n * nq2 + k] * dbasis1[n * nq1 + j];
                     }
 
                     for(unsigned int n = 0; n < nq2; ++n){
-                        qt += in[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + n] * dbasis2[k * nq2 + n];
+                        qt += in[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + n] * dbasis2[n * nq2 + k];
                     }
 
                     // Apply chain rule
-                    rqr[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k] = Grr * qr + Grs * qs + Grt * qt;
-                    rqs[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k] = Grs * qr + Gss * qs + Gst * qt;
-                    rqt[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k] = Grt * qr + Gst * qs + Gtt * qt;
+                    rqr[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k] = Grr * qt + Grs * qs + Grt * qr;
+                    rqs[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k] = Grs * qt + Gss * qs + Gst * qr;
+                    rqt[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k] = Grt * qt + Gst * qs + Gtt * qr;
                 }
             }
         }
@@ -61,13 +61,13 @@ T SumFactorization( const unsigned int nq0, const unsigned int nq1, const unsign
 
                 T tmp0 = (T)0;
                 for(unsigned int n = 0; n < nq0; ++n)
-                    tmp0 += rqr[e * nq0 * nq1 * nq2 + n * nq1 * nq2 + j * nq2 + k] * dbasis0[n * nq0 + i];
+                    tmp0 += rqr[e * nq0 * nq1 * nq2 + n * nq1 * nq2 + j * nq2 + k] * dbasis0[i * nq0 + n];
 
                 for(unsigned int n = 0; n < nq1; ++n)                
-                    tmp0 += rqs[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + n * nq2 + k] * dbasis1[n * nq1 + j];
+                    tmp0 += rqs[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + n * nq2 + k] * dbasis1[j * nq1 + n];
 
                 for(unsigned int n = 0; n < nq2; ++n)
-                    tmp0 += rqt[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + n] * dbasis2[n * nq2 + k];
+                    tmp0 += rqt[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + n] * dbasis2[k * nq2 + n];
 
                 out[e * nq0 * nq1 * nq2 + i * nq1 * nq2 + j * nq2 + k] = tmp0;
                 }

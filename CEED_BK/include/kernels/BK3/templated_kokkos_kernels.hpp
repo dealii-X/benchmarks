@@ -124,7 +124,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                 T tmp = 0.0;
                             
                                 for(int i = 0; i < nm; ++i) {
-                                    tmp += s_basis[p * nm + i] * r_p[i];
+                                    tmp += s_basis[i * nq + p] * r_p[i];
                                 }
                             
                                 s_wsp1[e * nq*nm*nm + p * nm*nm + j * nm + k] = tmp;
@@ -146,7 +146,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                 T tmp = 0.0;
                             
                                 for(int j = 0; j < nm; ++j) {
-                                    tmp += s_basis[q * nm + j] * r_q[j];
+                                    tmp += s_basis[j * nq + q] * r_q[j];
                                 }
                             
                                 s_wsp0[e * nq*nq*nm + q * nq*nm + p * nm + k] = tmp;
@@ -168,7 +168,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                 T tmp = 0.0;
                             
                                 for(int k = 0; k < nm; ++k) {
-                                    tmp += s_basis[r * nm + k] * r_r[k];
+                                    tmp += s_basis[k * nq + r] * r_r[k];
                                 }
                             
                                 s_wsp1[e * nq*nq*nq + r * nq*nq + q * nq + p] = tmp;
@@ -186,8 +186,8 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                             for(unsigned int n = 0; n < nq; n++)
                             {
                                 r_p[n] = s_wsp1[e * nq*nq*nq + r * nq*nq + q * nq + n];
-                                r_q[n] = s_dbasis[q * nq + n];
-                                r_r[n] = s_dbasis[r * nq + n];
+                                r_q[n] = s_dbasis[n * nq + q];
+                                r_r[n] = s_dbasis[n * nq + r];
                             }
                         
                             T Grr, Grs, Grt, Gss, Gst, Gtt;
@@ -207,15 +207,15 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                             
                                 // Multiply by D
                                 for(unsigned int n = 0; n < nq; n++){
-                                    qr += s_dbasis[p * nq + n] * r_p[n];
+                                    qr += s_dbasis[n * nq + p] * r_p[n];
                                     qs += r_q[n] * s_wsp1[e * nq*nq*nq + r * nq*nq + n * nq + p];
                                     qt += r_r[n] * s_wsp1[e * nq*nq*nq + n * nq*nq + q * nq + p];
                                 }
                             
                                 // Apply chain rule
-                                s_rqr[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grr * qr + Grs * qs + Grt * qt;
-                                s_rqs[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grs * qr + Gss * qs + Gst * qt;
-                                s_rqt[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grt * qr + Gst * qs + Gtt * qt;
+                                s_rqr[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grr * qt + Grs * qs + Grt * qr;
+                                s_rqs[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grs * qt + Gss * qs + Gst * qr;
+                                s_rqt[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grt * qt + Gst * qs + Gtt * qr;
                             }
                         }
                         team_member.team_barrier();
@@ -231,15 +231,15 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                             for(unsigned int n = 0; n < nq; n++)
                             {
                                 r_p[n] = s_rqr[e * nq*nq*nq + n * nq * nq + q * nq + r];
-                                r_q[n] = s_dbasis[n * nq + q];
-                                r_r[n] = s_dbasis[n * nq + r];
+                                r_q[n] = s_dbasis[q * nq + n];
+                                r_r[n] = s_dbasis[r * nq + n];
                             }
                         
                             for(unsigned int p = 0; p < nq; ++p)
                             {
                                 T tmp0 = 0;
                                 for(unsigned int n = 0; n < nq; ++n)
-                                    tmp0 += r_p[n] * s_dbasis[n * nq + p];
+                                    tmp0 += r_p[n] * s_dbasis[p * nq + n];
                             
                                 for(unsigned int n = 0; n < nq; ++n)                
                                     tmp0 += s_rqs[e * nq*nq*nq + p * nq * nq + n * nq + r] * r_q[n];
@@ -272,7 +272,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                 T tmp = 0.0;
                             
                                 for(int r = 0; r < nq; ++r) {
-                                    tmp += s_basis[r * nm + k] * r_r[r];
+                                    tmp += s_basis[k * nq + r] * r_r[r];
                                 }
                             
                                 s_wsp0[e * nm*nq*nq + k * nq*nq + q * nq + p] = tmp;
@@ -295,7 +295,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                 T tmp = 0.0;
                             
                                 for(int q = 0; q < nq; ++q) {
-                                    tmp += s_basis[q * nm + j] * r_q[q];
+                                    tmp += s_basis[j * nq + q] * r_q[q];
                                 }
                                 s_wsp1[e * nm*nm*nq + k * nm*nq + j * nq + p] = tmp;
                             }
@@ -316,7 +316,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                             for (int i = 0; i < nm; ++i) {
                                 T tmp = 0.0;
                                 for(int p = 0; p < nq; ++p) {
-                                    tmp += s_basis[p * nm + i] * r_p[p];
+                                    tmp += s_basis[i * nq + p] * r_p[p];
                                 }
                                 s_wsp0[e * nm*nm*nm + i * nm*nm + j * nm + k] = tmp;
                             }

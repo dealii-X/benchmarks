@@ -57,8 +57,8 @@ __global__ void LaplaceOperator(
             for(unsigned int n = 0; n < nq; n++)
             {
                 r_i[n] = s_wsp[e * nq*nq*nq + n * nq*nq + j * nq + k];
-                r_j[n] = s_dbasis[j * nq + n];
-                r_k[n] = s_dbasis[k * nq + n];
+                r_j[n] = s_dbasis[n * nq + j];
+                r_k[n] = s_dbasis[n * nq + k];
             }
 
             T Grr, Grs, Grt, Gss, Gst, Gtt;
@@ -78,15 +78,15 @@ __global__ void LaplaceOperator(
         
                 // Multiply by D
                 for(unsigned int n = 0; n < nq; n++){
-                    qr += s_dbasis[i * nq + n] * r_i[n];
+                    qr += s_dbasis[n * nq + i] * r_i[n];
                     qs += r_j[n] * s_wsp[e * nq*nq*nq + i * nq * nq + n * nq + k];
                     qt += r_k[n] * s_wsp[e * nq*nq*nq + i * nq * nq + j * nq + n];
                 }
 
                 // Apply chain rule
-                s_rqr[e * nq*nq*nq + i * nq * nq + j * nq + k] = Grr * qr + Grs * qs + Grt * qt;
-                s_rqs[e * nq*nq*nq + i * nq * nq + j * nq + k] = Grs * qr + Gss * qs + Gst * qt;
-                s_rqt[e * nq*nq*nq + i * nq * nq + j * nq + k] = Grt * qr + Gst * qs + Gtt * qt;
+                s_rqr[e * nq*nq*nq + i * nq * nq + j * nq + k] = Grr * qt + Grs * qs + Grt * qr;
+                s_rqs[e * nq*nq*nq + i * nq * nq + j * nq + k] = Grs * qt + Gss * qs + Gst * qr;
+                s_rqt[e * nq*nq*nq + i * nq * nq + j * nq + k] = Grt * qt + Gst * qs + Gtt * qr;
             }
         }
         __syncthreads();
@@ -101,15 +101,15 @@ __global__ void LaplaceOperator(
             for(unsigned int n = 0; n < nq; n++)
             {
                 r_i[n] = s_rqr[e * nq*nq*nq + n * nq * nq + j * nq + k];
-                r_j[n] = s_dbasis[n * nq + j];
-                r_k[n] = s_dbasis[n * nq + k];
+                r_j[n] = s_dbasis[j * nq + n];
+                r_k[n] = s_dbasis[k * nq + n];
             }
 
             for(unsigned int i = 0; i < nq; ++i)
             {
                 T tmp0 = 0;
                 for(unsigned int n = 0; n < nq; ++n)
-                    tmp0 += r_i[n] * s_dbasis[n * nq + i];
+                    tmp0 += r_i[n] * s_dbasis[i * nq + n];
         
                 for(unsigned int n = 0; n < nq; ++n)                
                     tmp0 += s_rqs[e * nq*nq*nq + i * nq * nq + n * nq + k] * r_j[n];

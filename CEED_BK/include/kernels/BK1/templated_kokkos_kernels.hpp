@@ -97,7 +97,7 @@ std::vector<double> Kokkos_MassOperator(const unsigned int nelmt, const unsigned
                                     T tmp = 0.0;
                                 
                                     for(int i = 0; i < nm; ++i) {
-                                        tmp += s_basis[p * nm + i] * reg[i];
+                                        tmp += s_basis[i * nq + p] * reg[i];
                                     }
                                 
                                     s_wsp1[e * nq*nm*nm + p * nm*nm + j * nm + k] = tmp;
@@ -120,7 +120,7 @@ std::vector<double> Kokkos_MassOperator(const unsigned int nelmt, const unsigned
                                     T tmp = 0.0;
                                 
                                     for(int j = 0; j < nm; ++j) {
-                                        tmp += s_basis[q * nm + j] * reg[j];
+                                        tmp += s_basis[j * nq + q] * reg[j];
                                     }
                                 
                                     s_wsp0[e * nq*nq*nm + q * nq*nm + p * nm + k] = tmp;
@@ -142,7 +142,7 @@ std::vector<double> Kokkos_MassOperator(const unsigned int nelmt, const unsigned
                                     T tmp = 0.0;
                                 
                                     for(int k = 0; k < nm; ++k) {
-                                        tmp += s_basis[r * nm + k] * reg[k];
+                                        tmp += s_basis[k * nq + r] * reg[k];
                                     }
                                 
                                     s_wsp1[e * nq*nq*nq + r * nq*nq + q * nq + p] = tmp * d_JxW[eb * nelmtPerBatch * nq * nq * nq + e * nq*nq*nq + r * nq*nq + q * nq + p];
@@ -167,7 +167,7 @@ std::vector<double> Kokkos_MassOperator(const unsigned int nelmt, const unsigned
                                     T tmp = 0.0;
                                 
                                     for(int r = 0; r < nq; ++r) {
-                                        tmp += s_basis[r * nm + k] * reg[r];
+                                        tmp += s_basis[k * nq + r] * reg[r];
                                     }
                                 
                                     s_wsp0[e * nm*nq*nq + k * nq*nq + q * nq + p] = tmp;
@@ -190,7 +190,7 @@ std::vector<double> Kokkos_MassOperator(const unsigned int nelmt, const unsigned
                                     T tmp = 0.0;
                                 
                                     for(int q = 0; q < nq; ++q) {
-                                        tmp += s_basis[q * nm + j] * reg[q];
+                                        tmp += s_basis[j * nq + q] * reg[q];
                                     }
                                     s_wsp1[e * nm*nm*nq + k * nm*nq + j * nq + p] = tmp;
                                 }
@@ -212,7 +212,7 @@ std::vector<double> Kokkos_MassOperator(const unsigned int nelmt, const unsigned
                                 for (int i = 0; i < nm; ++i) {
                                     T tmp = 0.0;
                                     for(int p = 0; p < nq; ++p) {
-                                        tmp += s_basis[p * nm + i] * reg[p];
+                                        tmp += s_basis[i * nq + p] * reg[p];
                                     }
                                     s_wsp0[e * nm*nm*nm + i * nm*nm + j * nm + k] = tmp;
                                 }

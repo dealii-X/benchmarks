@@ -45,7 +45,7 @@ T SumFactorization( const unsigned int nq0, const unsigned int nq1, const unsign
             for(unsigned int k = 0; k < nm2; k++){
                 for(unsigned int j = 0; j < nm1; j++){
                     for(unsigned int i = 0; i < nm0; i++){
-                        wsp1[p * nm1 * nm2 + j * nm2 + k] += wsp0[i * nm1 * nm2 + j * nm2 + k] * basis0[p * nm0 + i];
+                        wsp1[p * nm1 * nm2 + j * nm2 + k] += wsp0[i * nm1 * nm2 + j * nm2 + k] * basis0[i * nq0 + p];
                     }
                 }
             }
@@ -57,7 +57,7 @@ T SumFactorization( const unsigned int nq0, const unsigned int nq1, const unsign
             for(unsigned int p = 0; p < nq0; p++){
                 for(unsigned int k = 0; k < nm2; k++){
                     for(unsigned int j = 0; j < nm1; j++){
-                        wsp0[q * nq0 * nm2 + p * nm2 + k] += wsp1[p * nm1 * nm2 + j * nm2 + k] * basis1[q * nm1 + j];
+                        wsp0[q * nq0 * nm2 + p * nm2 + k] += wsp1[p * nm1 * nm2 + j * nm2 + k] * basis1[j * nq1 + q];
                     }
                 }
             }
@@ -70,7 +70,7 @@ T SumFactorization( const unsigned int nq0, const unsigned int nq1, const unsign
             for(unsigned int q = 0; q < nq1; q++){
                 for(unsigned int p = 0; p < nq0; p++){
                     for(unsigned int k = 0; k < nm2; k++){
-                        wsp1[p * nq1 * nq2 + q * nq2 + r] += wsp0[q * nq0 * nm2 + p * nm2 + k] * basis2[r * nm2 + k];
+                        wsp1[p * nq1 * nq2 + q * nq2 + r] += wsp0[q * nq0 * nm2 + p * nm2 + k] * basis2[k * nq2 + r];
                     }
                 }
             }
@@ -84,32 +84,32 @@ T SumFactorization( const unsigned int nq0, const unsigned int nq1, const unsign
                 for(unsigned int r = 0; r < nq2; ++r){
 
                     //step-5 : Load Geometric Factors, coalesced access
-                    Grr = G[e * nq0 * nq1 * 6 * nq2 + p * nq1 * 6 * nq2 + q * 6 * nq2 + 0 * nq2 + r];
-                    Grs = G[e * nq0 * nq1 * 6 * nq2 + p * nq1 * 6 * nq2 + q * 6 * nq2 + 1 * nq2 + r];
-                    Grt = G[e * nq0 * nq1 * 6 * nq2 + p * nq1 * 6 * nq2 + q * 6 * nq2 + 2 * nq2 + r];
-                    Gss = G[e * nq0 * nq1 * 6 * nq2 + p * nq1 * 6 * nq2 + q * 6 * nq2 + 3 * nq2 + r];
-                    Gst = G[e * nq0 * nq1 * 6 * nq2 + p * nq1 * 6 * nq2 + q * 6 * nq2 + 4 * nq2 + r];
-                    Gtt = G[e * nq0 * nq1 * 6 * nq2 + p * nq1 * 6 * nq2 + q * 6 * nq2 + 5 * nq2 + r];
+                    Grr = G[e * nq0 * nq1 * nq2 * 6 + 0 * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r];
+                    Grs = G[e * nq0 * nq1 * nq2 * 6 + 1 * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r];
+                    Grt = G[e * nq0 * nq1 * nq2 * 6 + 2 * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r];
+                    Gss = G[e * nq0 * nq1 * nq2 * 6 + 3 * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r];
+                    Gst = G[e * nq0 * nq1 * nq2 * 6 + 4 * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r];
+                    Gtt = G[e * nq0 * nq1 * nq2 * 6 + 5 * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r];
                     
                     //step-6 : Multiply by D
                     T qr = 0.0; T qs = 0.0; T qt = 0.0;
 
                     for(unsigned int n = 0; n < nq0; ++n){
-                        qr += wsp1[n * nq1 * nq2 + q * nq2 + r] * dbasis0[p * nq0 + n];
+                        qr += wsp1[n * nq1 * nq2 + q * nq2 + r] * dbasis0[n * nq0 + p];
                     }
 
                     for(unsigned int n = 0; n < nq1; ++n){
-                        qs += wsp1[p * nq1 * nq2 + n * nq2 + r] * dbasis1[q * nq1 + n];
+                        qs += wsp1[p * nq1 * nq2 + n * nq2 + r] * dbasis1[n * nq1 + q];
                     }
 
                     for(unsigned int n = 0; n < nq2; ++n){
-                        qt += wsp1[p * nq1 * nq2 + q * nq2 + n] * dbasis2[r * nq2 + n];
+                        qt += wsp1[p * nq1 * nq2 + q * nq2 + n] * dbasis2[n * nq2 + r];
                     }
 
                     // step-7 : Apply chain rule
-                    rqr[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r] = Grr * qr + Grs * qs + Grt * qt;
-                    rqs[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r] = Grs * qr + Gss * qs + Gst * qt;
-                    rqt[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r] = Grt * qr + Gst * qs + Gtt * qt;
+                    rqr[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r] = Grr * qt + Grs * qs + Grt * qr;
+                    rqs[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r] = Grs * qt + Gss * qs + Gst * qr;
+                    rqt[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + r] = Grt * qt + Gst * qs + Gtt * qr;
                 }
             }
         }
@@ -121,13 +121,13 @@ T SumFactorization( const unsigned int nq0, const unsigned int nq1, const unsign
 
                 T tmp0 = (T)0;
                 for(unsigned int n = 0; n < nq0; ++n)
-                    tmp0 += rqr[e * nq0 * nq1 * nq2 + n * nq1 * nq2 + q * nq2 + r] * dbasis0[n * nq0 + p];
+                    tmp0 += rqr[e * nq0 * nq1 * nq2 + n * nq1 * nq2 + q * nq2 + r] * dbasis0[p * nq0 + n];
 
                 for(unsigned int n = 0; n < nq1; ++n)                
-                    tmp0 += rqs[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + n * nq2 + r] * dbasis1[n * nq1 + q];
+                    tmp0 += rqs[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + n * nq2 + r] * dbasis1[q * nq1 + n];
 
                 for(unsigned int n = 0; n < nq2; ++n)
-                    tmp0 += rqt[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + n] * dbasis2[n * nq2 + r];
+                    tmp0 += rqt[e * nq0 * nq1 * nq2 + p * nq1 * nq2 + q * nq2 + n] * dbasis2[r * nq2 + n];
 
                 wsp1[p * nq1 * nq2 + q * nq2 + r] = tmp0;
                 }
@@ -146,7 +146,7 @@ T SumFactorization( const unsigned int nq0, const unsigned int nq1, const unsign
             for(unsigned int q = 0; q < nq1; q++){
                 for(unsigned int p = 0; p < nq0; p++){ 
                     for(unsigned int r = 0; r < nq2; r++){
-                        wsp0[q * nq0 * nm2 + p * nm2 + k] += wsp1[p * nq1 * nq2 + q * nq2 + r] * basis2[r * nm2 + k];
+                        wsp0[q * nq0 * nm2 + p * nm2 + k] += wsp1[p * nq1 * nq2 + q * nq2 + r] * basis2[k * nq2 + r];
                     }
                 }
             }
@@ -158,7 +158,7 @@ T SumFactorization( const unsigned int nq0, const unsigned int nq1, const unsign
             for(unsigned int k = 0; k < nm2; k++){
                 for(unsigned int p = 0; p < nq0; p++){
                     for(unsigned int q = 0; q < nq1; q++){
-                        wsp1[p * nm1 * nm2 + j * nm2 + k] += wsp0[q * nq0 * nm2 + p * nm2 + k] * basis1[q * nm1 + j];
+                        wsp1[p * nm1 * nm2 + j * nm2 + k] += wsp0[q * nq0 * nm2 + p * nm2 + k] * basis1[j * nq1 + q];
                     }
                 }
             }
@@ -171,7 +171,7 @@ T SumFactorization( const unsigned int nq0, const unsigned int nq1, const unsign
             for(unsigned int j = 0; j < nm1; j++){
                 for(unsigned int k = 0; k < nm2; k++){
                     for(unsigned int p = 0; p < nq0; p++){
-                        wsp0[i * nm1 * nm2 + j * nm2 + k] += wsp1[p * nm1 * nm2 + j * nm2 + k] * basis0[p * nm0 + i];
+                        wsp0[i * nm1 * nm2 + j * nm2 + k] += wsp1[p * nm1 * nm2 + j * nm2 + k] * basis0[i * nq0 + p];
                     }
                 }
             }
@@ -186,6 +186,7 @@ T SumFactorization( const unsigned int nq0, const unsigned int nq1, const unsign
             }
         }
     }
+    delete[] wsp0; delete[] wsp1; delete[] rqr; delete[] rqs; delete[] rqt;
     
     //return element-wise square of in array and apply sum reduction
     return std::transform_reduce(out, out + nelmt * nm0 * nm1 * nm2,
@@ -193,7 +194,6 @@ T SumFactorization( const unsigned int nq0, const unsigned int nq1, const unsign
                           [](T lhs, T rhs){return rhs + lhs;},
                           [](T val1, T val2){return val1 * val2;});
     
-    delete[] wsp0; delete[] wsp1; delete[] rqr; delete[] rqs; delete[] rqt;
 }
 
 }  //namespace Serial

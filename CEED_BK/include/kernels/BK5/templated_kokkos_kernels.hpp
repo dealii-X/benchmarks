@@ -103,8 +103,8 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                 for(unsigned int n = 0; n < nq; n++)
                                 {
                                     r_p[n] = s_wsp[e * nq*nq*nq + r * nq*nq + q * nq + n];
-                                    r_q[n] = s_dbasis[q * nq + n];
-                                    r_r[n] = s_dbasis[r * nq + n];
+                                    r_q[n] = s_dbasis[n * nq + q];
+                                    r_r[n] = s_dbasis[n * nq + r];
                                 }
                             
                                 T Grr, Grs, Grt, Gss, Gst, Gtt;
@@ -124,15 +124,15 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                 
                                     // Multiply by D
                                     for(unsigned int n = 0; n < nq; n++){
-                                        qr += s_dbasis[p * nq + n] * r_p[n];
+                                        qr += s_dbasis[n * nq + p] * r_p[n];
                                         qs += r_q[n] * s_wsp[e * nq*nq*nq + r * nq*nq + n * nq + p];
                                         qt += r_r[n] * s_wsp[e * nq*nq*nq + n * nq*nq + q * nq + p];
                                     }
                                 
                                     // Apply chain rule
-                                    s_rqr[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grr * qr + Grs * qs + Grt * qt;
-                                    s_rqs[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grs * qr + Gss * qs + Gst * qt;
-                                    s_rqt[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grt * qr + Gst * qs + Gtt * qt;
+                                    s_rqr[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grr * qt + Grs * qs + Grt * qr;
+                                    s_rqs[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grs * qt + Gss * qs + Gst * qr;
+                                    s_rqt[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grt * qt + Gst * qs + Gtt * qr;
                                 }
                             }
                             team_member.team_barrier();
@@ -148,15 +148,15 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                 for(unsigned int n = 0; n < nq; n++)
                                 {
                                     r_p[n] = s_rqr[e * nq*nq*nq + n * nq * nq + q * nq + r];
-                                    r_q[n] = s_dbasis[n * nq + q];
-                                    r_r[n] = s_dbasis[n * nq + r];
+                                    r_q[n] = s_dbasis[q * nq + n];
+                                    r_r[n] = s_dbasis[r * nq + n];
                                 }
                             
                                 for(unsigned int p = 0; p < nq; ++p)
                                 {
                                     T tmp0 = 0;
                                     for(unsigned int n = 0; n < nq; ++n)
-                                        tmp0 += r_p[n] * s_dbasis[n * nq + p];
+                                        tmp0 += r_p[n] * s_dbasis[p * nq + n];
                                 
                                     for(unsigned int n = 0; n < nq; ++n)                
                                         tmp0 += s_rqs[e * nq*nq*nq + p * nq * nq + n * nq + r] * r_q[n];

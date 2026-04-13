@@ -27,7 +27,7 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
     {
         for(unsigned int i = 0u; i < nm; i++)
         {
-            basis[p * nm + i] = std::cos((T)(p * nm + i));
+            basis[i * nq + p] = std::cos((T)(i * nq + p));
         }
     }
 

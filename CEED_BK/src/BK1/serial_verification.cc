@@ -26,21 +26,21 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         {
             for(unsigned int i = 0u; i < nm0; i++)
             {
-                basis0[p * nm0 + i] = std::cos((T)(p * nm0 + i));
+                basis0[i * nq0 + p] = std::cos((T)(i * nq0 + p));
             }
         }
         for(unsigned int q = 0u; q < nq1; q++)
         {
             for(unsigned int j = 0u; j < nm1; j++)
             {
-                basis1[q * nm1 + j] = std::cos((T)(q * nm1 + j));
+                basis1[j * nq1 + q] = std::cos((T)(j * nq1 + q));
             }
         }
         for(unsigned int r = 0u; r < nq2; r++)
         {
             for(unsigned int k = 0u; k < nm2; k++)
             {
-                basis2[r * nm2 + k] = std::cos((T)(r * nm2 + k));
+                basis2[k * nq2 + r] = std::cos((T)(k * nq2 + r));
             }
         }
 

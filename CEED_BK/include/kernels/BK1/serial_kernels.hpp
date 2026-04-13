@@ -36,7 +36,7 @@ T SumFactorization(const unsigned int nq0, const unsigned nq1, const unsigned in
             for(unsigned int k = 0; k < nm2; k++){
                 for(unsigned int j = 0; j < nm1; j++){
                     for(unsigned int i = 0; i < nm0; i++){
-                        wsp1[p * nm1 * nm2 + j * nm2 + k] += wsp0[i * nm1 * nm2 + j * nm2 + k] * basis0[p * nm0 + i];
+                        wsp1[p * nm1 * nm2 + j * nm2 + k] += wsp0[i * nm1 * nm2 + j * nm2 + k] * basis0[i * nq0 + p];
                     }
                 }
             }
@@ -48,7 +48,7 @@ T SumFactorization(const unsigned int nq0, const unsigned nq1, const unsigned in
             for(unsigned int p = 0; p < nq0; p++){
                 for(unsigned int k = 0; k < nm2; k++){
                     for(unsigned int j = 0; j < nm1; j++){
-                        wsp0[q * nq0 * nm2 + p * nm2 + k] += wsp1[p * nm1 * nm2 + j * nm2 + k] * basis1[q * nm1 + j];
+                        wsp0[q * nq0 * nm2 + p * nm2 + k] += wsp1[p * nm1 * nm2 + j * nm2 + k] * basis1[j * nq1 + q];
                     }
                 }
             }
@@ -61,7 +61,7 @@ T SumFactorization(const unsigned int nq0, const unsigned nq1, const unsigned in
             for(unsigned int q = 0; q < nq1; q++){
                 for(unsigned int p = 0; p < nq0; p++){
                     for(unsigned int k = 0; k < nm2; k++){
-                        wsp1[p * nq1 * nq2 + q * nq2 + r] += wsp0[q * nq0 * nm2 + p * nm2 + k] * basis2[r * nm2 + k];
+                        wsp1[p * nq1 * nq2 + q * nq2 + r] += wsp0[q * nq0 * nm2 + p * nm2 + k] * basis2[k * nq2 + r];
                     }
                 }
             }
@@ -85,7 +85,7 @@ T SumFactorization(const unsigned int nq0, const unsigned nq1, const unsigned in
             for(unsigned int q = 0; q < nq1; q++){
                 for(unsigned int p = 0; p < nq0; p++){ 
                     for(unsigned int r = 0; r < nq2; r++){
-                        wsp0[q * nq0 * nm2 + p * nm2 + k] += wsp1[p * nq1 * nq2 + q * nq2 + r] * basis2[r * nm2 + k];
+                        wsp0[q * nq0 * nm2 + p * nm2 + k] += wsp1[p * nq1 * nq2 + q * nq2 + r] * basis2[k * nq2 + r];
                     }
                 }
             }
@@ -97,7 +97,7 @@ T SumFactorization(const unsigned int nq0, const unsigned nq1, const unsigned in
             for(unsigned int k = 0; k < nm2; k++){
                 for(unsigned int p = 0; p < nq0; p++){
                     for(unsigned int q = 0; q < nq1; q++){
-                        wsp1[p * nm1 * nm2 + j * nm2 + k] += wsp0[q * nq0 * nm2 + p * nm2 + k] * basis1[q * nm1 + j];
+                        wsp1[p * nm1 * nm2 + j * nm2 + k] += wsp0[q * nq0 * nm2 + p * nm2 + k] * basis1[j * nq1 + q];
                     }
                 }
             }
@@ -110,7 +110,7 @@ T SumFactorization(const unsigned int nq0, const unsigned nq1, const unsigned in
             for(unsigned int j = 0; j < nm1; j++){
                 for(unsigned int k = 0; k < nm2; k++){
                     for(unsigned int p = 0; p < nq0; p++){
-                        wsp0[i * nm1 * nm2 + j * nm2 + k] += wsp1[p * nm1 * nm2 + j * nm2 + k] * basis0[p * nm0 + i];
+                        wsp0[i * nm1 * nm2 + j * nm2 + k] += wsp1[p * nm1 * nm2 + j * nm2 + k] * basis0[i * nq0 + p];
                     }
                 }
             }
