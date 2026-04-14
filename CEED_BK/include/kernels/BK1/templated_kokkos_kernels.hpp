@@ -73,8 +73,8 @@ std::vector<double> Kokkos_MassOperator(const unsigned int nelmt, const unsigned
                         while(eb < (nelmt + nelmtPerBatch - 1) / nelmtPerBatch)
                         {   
                             //current nelmtPerBatch (edge case, last batch size can be less)
-                            int c_nelmtPerBatch = (eb * nelmtPerBatch + nelmtPerBatch > nelmt) ? (nelmt - eb * nelmtPerBatch) : nelmtPerBatch; 
-            
+                            int c_nelmtPerBatch = std::min(nelmtPerBatch, nelmt - eb * nelmtPerBatch);
+                                       
                             //step-1 : Copy from in to the wsp0
                             for(int i = threadIdx; i < c_nelmtPerBatch * nm * nm * nm; i += blockSize)
                             {

@@ -88,8 +88,8 @@ int main(int argc, char **argv){
             unsigned int nelmt = dof / (nm * nm * nm);
             if (nelmt == 0) continue;
             
-            unsigned int nelmtPerBatch     = shmemPerBlock / (4 * nq * nq * nq) / sizeof(T);    if(nelmtPerBatch == 0) nelmtPerBatch = 1;
-            unsigned int numBlocks         = (nelmt + nelmtPerBatch - 1) / nelmtPerBatch / 2;   
+            unsigned int nelmtPerBatch     = std::max(1UL, shmemPerBlock / (4 * nq * nq * nq) / sizeof(T));
+            unsigned int numBlocks         = std::max(1U, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch / 2);   
             unsigned int threadsPerBlock   = nq * nq * std::max(1u, nelmtPerBatch);
 
             switch (nq) {
