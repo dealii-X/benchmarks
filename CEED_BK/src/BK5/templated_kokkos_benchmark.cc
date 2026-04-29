@@ -50,7 +50,7 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
 
 int main(int argc, char **argv){
 
-    using T = float;
+    using T = double;
     int shmemPerBlock = 10800;
 
     Kokkos::initialize(argc, argv);
