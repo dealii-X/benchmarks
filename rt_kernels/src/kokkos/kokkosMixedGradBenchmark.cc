@@ -11,11 +11,9 @@ template<typename T, const unsigned int nq, const unsigned int nm_t, const unsig
 void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch, 
               const unsigned int numBlocks, const unsigned int threadsPerBlock, const unsigned int ntests)
 {   
-    // Velocity DoFs (Output)
     constexpr unsigned int ndof_u_1D = nm_n * nm_t * nm_t;
     constexpr unsigned int ndof_u_total = ndof_u_1D * 3;
 
-    // Pressure DoFs (Input)
     constexpr unsigned int ndof_p_total = nm_p * nm_p * nm_p;
 
     T* dbasis_n = new T[nm_n * nq];
@@ -24,7 +22,6 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
 
     T* G_scalar = new T[nq * nq * nq];
     
-    // Swapped input and output variables for the Gradient operator
     T* in_p     = new T[nelmt * ndof_p_total];
     T* out_u    = new T[nelmt * ndof_u_total];
 
@@ -71,7 +68,6 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
         uint64_t nDOF_U = (uint64_t)ndof_u_total * nelmt; 
         uint64_t nDOF_P = (uint64_t)ndof_p_total * nelmt; 
         
-        // Bandwidth: read in_p (scalar), read/write out_u (vector)
         T bw = 1.0e-9 * (nDOF_P + nDOF_U) * sizeof(T) / time; 
         
         printer("MixedGrad", nq - 2, nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, nDOF_U, time, DOFs, bw, std::sqrt(sum));
@@ -92,7 +88,6 @@ int main(int argc, char **argv){
     unsigned int nq     = p + 2;
     unsigned int nelmt  = (argc > 2) ? atoi(argv[2]) : 2 << 15;
     
-    // Shared memory logic remains exactly identical (5 workspaces of size nq^3)
     unsigned int nelmtPerBatch = std::max(1UL, shmemPerBlock / (5 * nq * nq * nq) / sizeof(T));
     unsigned int numBlocks     = (argc > 3) ? atoi(argv[3]) : std::max(1U, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch);
 
