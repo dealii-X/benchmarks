@@ -8,7 +8,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include/kokkos_kernels)
 include_directories(${CMAKE_SOURCE_DIR}/include/serial_kernels)
 
 
-set(KOKKOS_BENCHMARKS kokkosMassBenchmark)
+set(KOKKOS_BENCHMARKS kokkosMassBenchmark kokkosMixedDivBenchmark kokkosMixedGradBenchmark)
 
 foreach(benchmark IN LISTS KOKKOS_BENCHMARKS)
     add_executable("${benchmark}" "${CMAKE_CURRENT_SOURCE_DIR}/src/kokkos/${benchmark}.cc")
