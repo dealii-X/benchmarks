@@ -62,8 +62,6 @@ std::vector<double> Kokkos_Mass(
             KOKKOS_LAMBDA (member_type team_member){
             
             T r_p[nq];
-            T r_q[nq];
-            T r_r[nq];
 
             //shared memory access
             T *scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
@@ -146,7 +144,6 @@ std::vector<double> Kokkos_Mass(
                     int p = (tid / nm_t) % nq;
                     int k = tid % nm_t;
                     
-                    T r_p[nm_t];
                     for(int j = 0; j < nm_t; ++j) {
                         r_p[j] = s_wsp1[e * (nq*nm_t*nm_t) + p*nm_t*nm_t + j*nm_t + k];
                     }
@@ -165,7 +162,6 @@ std::vector<double> Kokkos_Mass(
                     int q = (tid / nq) % nq;
                     int p = tid % nq;
                     
-                    T r_p[nm_t];
                     for(int k = 0; k < nm_t; ++k) {
                         r_p[k] = s_wsp0[e * (nq*nq*nm_t) + q*nq*nm_t + p*nm_t + k];
                     }
@@ -191,7 +187,6 @@ std::vector<double> Kokkos_Mass(
                     int j = (tid / nm_t) % nm_n;
                     int k = tid % nm_t;
                     
-                    T r_p[nm_t];
                     for(int i = 0; i < nm_t; ++i) {
                         r_p[i] = s_uq_1[e * ndof_1D + i*nm_n*nm_t + j*nm_t + k];
                     }
@@ -211,7 +206,6 @@ std::vector<double> Kokkos_Mass(
                     int p = (tid / nm_t) % nq;
                     int k = tid % nm_t;
                     
-                    T r_p[nm_n];
                     for(int j = 0; j < nm_n; ++j) {
                         r_p[j] = s_wsp1[e * (nq*nm_n*nm_t) + p*nm_n*nm_t + j*nm_t + k];
                     }
@@ -231,7 +225,6 @@ std::vector<double> Kokkos_Mass(
                     int q = (tid / nq) % nq;
                     int p = tid % nq;
                     
-                    T r_p[nm_t];
                     for(int k = 0; k < nm_t; ++k) {
                         r_p[k] = s_wsp0[e * (nq*nq*nm_t) + q*nq*nm_t + p*nm_t + k];
                     }
@@ -256,7 +249,6 @@ std::vector<double> Kokkos_Mass(
                     int j = (tid / nm_n) % nm_t;
                     int k = tid % nm_n;
                     
-                    T r_p[nm_t];
                     for(int i = 0; i < nm_t; ++i) {
                         r_p[i] = s_uq_2[e * ndof_1D + i*nm_t*nm_n + j*nm_n + k];
                     }
@@ -275,7 +267,6 @@ std::vector<double> Kokkos_Mass(
                     int p = (tid / nm_n) % nq;
                     int k = tid % nm_n;
                     
-                    T r_p[nm_t];
                     for(int j = 0; j < nm_t; ++j) {
                         r_p[j] = s_wsp1[e * (nq*nm_t*nm_n) + p*nm_t*nm_n + j*nm_n + k];
                     }
@@ -294,7 +285,6 @@ std::vector<double> Kokkos_Mass(
                     int q = (tid / nq) % nq;
                     int p = tid % nq;
                     
-                    T r_p[nm_n];
                     for(int k = 0; k < nm_n; ++k) {
                         r_p[k] = s_wsp0[e * (nq*nq*nm_n) + q*nq*nm_n + p*nm_n + k];
                     }
@@ -367,10 +357,14 @@ std::vector<double> Kokkos_Mass(
                     int r = (tid / nq) % nq;
                     int q = tid % nq;
                     
+                    for(int p = 0; p < nq; ++p) {
+                        r_p[p] = s_uq_0[e * nq*nq*nq + r * nq*nq + q * nq + p]; 
+                    }
+
                     for (int i = 0; i < nm_n; ++i) {
                         T tmp = 0.0;
                         for(int p = 0; p < nq; ++p) {
-                            tmp += s_uq_0[e * nq*nq*nq + r * nq*nq + q * nq + p] * s_basis_n[i * nq + p];
+                            tmp += r_p[p] * s_basis_n[i * nq + p];
                         }
                         s_wsp0[e * (nq * nq * nm_n) + i * nq * nq + r * nq + q] = tmp;
                     }
@@ -382,16 +376,14 @@ std::vector<double> Kokkos_Mass(
                     int q = (tid / nm_n) % nq;
                     int i = tid % nm_n;
                     
-                    T r_r[nq];
                     for(int r = 0; r < nq; ++r) {
-                        r_r[r] = s_wsp0[e * (nq * nq * nm_n) + i * nq * nq + r * nq + q]; 
+                        r_p[r] = s_wsp0[e * (nq * nq * nm_n) + i * nq * nq + r * nq + q]; 
                     }
                     
                     for (int k = 0; k < nm_t; ++k) {
                         T tmp = 0.0;
                         for(int r = 0; r < nq; ++r)
-                            tmp += r_r[r] * s_basis_t[k*nq + r];
-
+                            tmp += r_p[r] * s_basis_t[k*nq + r];
 
                         s_wsp1[e * (nm_t * nq * nm_n) + k * (nq * nm_n) + q * nm_n + i] = tmp;
                     }
@@ -404,15 +396,14 @@ std::vector<double> Kokkos_Mass(
                     int i = (tid / nm_t) % nm_n;
                     int k = tid % nm_t;
                     
-                    T r_q[nq];
                     for(int q = 0; q < nq; ++q) {
-                        r_q[q] = s_wsp1[e * (nm_t * nq * nm_n) + k * (nq * nm_n) + q * nm_n + i];
+                        r_p[q] = s_wsp1[e * (nm_t * nq * nm_n) + k * (nq * nm_n) + q * nm_n + i];
                     }
                     
                     for (int j = 0; j < nm_t; ++j) {
                         T tmp = 0.0;
                         for(int q = 0; q < nq; ++q)
-                            tmp += r_q[q] * s_basis_t[j*nq + q];
+                            tmp += r_p[q] * s_basis_t[j*nq + q];
 
                         s_uq_0[e * (nm_n*nm_t*nm_t) + i*(nm_t*nm_t) + j*nm_t + k] = tmp;
                     }
@@ -430,11 +421,15 @@ std::vector<double> Kokkos_Mass(
                     int e = tid / (nq * nq);
                     int r = (tid / nq) % nq;
                     int q = tid % nq;
+
+                    for(int p = 0; p < nq; ++p) {
+                        r_p[p] = s_uq_1[e * nq*nq*nq + r * nq*nq + q * nq + p]; 
+                    }
                     
                     for (int i = 0; i < nm_t; ++i) {
                         T tmp = 0.0;
                         for(int p = 0; p < nq; ++p) {
-                            tmp += s_uq_1[e * nq*nq*nq + r * nq*nq + q * nq + p] * s_basis_t[i * nq + p];
+                            tmp += r_p[p] * s_basis_t[i * nq + p];
                         }
                         s_wsp0[e * (nq * nq * nm_t) + i * nq * nq + r * nq + q] = tmp;
                     }
@@ -446,15 +441,14 @@ std::vector<double> Kokkos_Mass(
                     int q = (tid / nm_t) % nq;
                     int i = tid % nm_t;
 
-                    T r_r[nq];
                     for(int r = 0; r < nq; ++r) {
-                        r_r[r] = s_wsp0[e * (nq * nq * nm_t) + i * nq * nq + r * nq + q]; 
+                        r_p[r] = s_wsp0[e * (nq * nq * nm_t) + i * nq * nq + r * nq + q]; 
                     }
                 
                     for (int k = 0; k < nm_t; ++k) {
                         T tmp = 0.0;
                         for(int r = 0; r < nq; ++r) {
-                            tmp += r_r[r] * s_basis_t[k * nq + r];
+                            tmp += r_p[r] * s_basis_t[k * nq + r];
                         }
                     
                         s_wsp1[e * (nm_t * nq * nm_t) + k * (nq * nm_t) + q * nm_t + i] = tmp;
@@ -467,15 +461,14 @@ std::vector<double> Kokkos_Mass(
                     int i = (tid / nm_t) % nm_t;
                     int k = tid % nm_t;
                     
-                    T r_q[nq];
                     for(int q = 0; q < nq; ++q) {
-                        r_q[q] = s_wsp1[e * (nm_t * nq * nm_t) + k * (nq * nm_t) + q * nm_t + i];
+                        r_p[q] = s_wsp1[e * (nm_t * nq * nm_t) + k * (nq * nm_t) + q * nm_t + i];
                     }
                     
                     for (int j = 0; j < nm_n; ++j) {
                         T tmp = 0.0;
                         for(int q = 0; q < nq; ++q)
-                            tmp += r_q[q] * s_basis_n[j*nq + q]; 
+                            tmp += r_p[q] * s_basis_n[j*nq + q]; 
 
                         s_uq_1[e * (nm_t*nm_n*nm_t) + i*(nm_n*nm_t) + j*nm_t + k] = tmp;
                     }
@@ -494,10 +487,14 @@ std::vector<double> Kokkos_Mass(
                     int r = (tid / nq) % nq;
                     int q = tid % nq;
                     
+                    for(int p = 0; p < nq; ++p) {
+                        r_p[p] = s_uq_2[e * nq*nq*nq + r * nq*nq + q * nq + p]; 
+                    }
+
                     for (int i = 0; i < nm_t; ++i) {
                         T tmp = 0.0;
                         for(int p = 0; p < nq; ++p) {
-                            tmp += s_uq_2[e * nq*nq*nq + r * nq*nq + q * nq + p] * s_basis_t[i * nq + p];
+                            tmp += r_p[p] * s_basis_t[i * nq + p];
                         }
                         s_wsp1[e * (nq * nq * nm_t) + i * nq * nq + r * nq + q] = tmp;
                     }
@@ -510,15 +507,14 @@ std::vector<double> Kokkos_Mass(
                     int q = (tid / nm_t) % nq;
                     int i = tid % nm_t;
                     
-                    T r_r[nq];
                     for(int r = 0; r < nq; ++r) {
-                        r_r[r] = s_wsp1[e * (nq * nq * nm_t) + i * nq * nq + r * nq + q]; 
+                        r_p[r] = s_wsp1[e * (nq * nq * nm_t) + i * nq * nq + r * nq + q]; 
                     }
                     
                     for (int k = 0; k < nm_n; ++k) {
                         T tmp = 0.0;
                         for(int r = 0; r < nq; ++r)
-                            tmp += r_r[r] * s_basis_n[k*nq + r];
+                            tmp += r_p[r] * s_basis_n[k*nq + r];
 
                         s_wsp0[e * (nm_t*nm_n*nq) + k*(nm_t*nq) + q*nm_t + i] = tmp;
                     }
@@ -530,15 +526,14 @@ std::vector<double> Kokkos_Mass(
                     int i = (tid / nm_n) % nm_t;
                     int k = tid % nm_n;
                     
-                    T r_q[nq];
                     for(int q = 0; q < nq; ++q) {
-                        r_q[q] = s_wsp0[e * (nm_t*nm_n*nq) + k*(nm_t*nq) + q*nm_t + i];
+                        r_p[q] = s_wsp0[e * (nm_t*nm_n*nq) + k*(nm_t*nq) + q*nm_t + i];
                     }
                     
                     for (int j = 0; j < nm_t; ++j) {
                         T tmp = 0.0;
                         for(int q = 0; q < nq; ++q)
-                            tmp += r_q[q] * s_basis_t[j*nq + q];
+                            tmp += r_p[q] * s_basis_t[j*nq + q];
 
                         s_uq_2[e * (nm_t*nm_t*nm_n) + i*(nm_t*nm_n) + j*nm_n + k] = tmp;
                     }
