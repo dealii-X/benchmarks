@@ -134,9 +134,8 @@ T MixedDiv(const unsigned int nq,
         // PHASE 2: Apply Scalar Metric
         // ==========================================
 
-        int e_offset = e * nq * nq * nq;
         for(unsigned int q_idx = 0; q_idx < nq * nq * nq; ++q_idx){
-            accum[q_idx] *= G_scalar[e_offset + q_idx]; 
+            accum[q_idx] *= G_scalar[q_idx]; 
         }
 
         // ==========================================

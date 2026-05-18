@@ -27,7 +27,9 @@ void run_test(const unsigned int nq, const unsigned int nm_t, const unsigned int
 
     // Separate metrics
     T* G_mass = new T[nelmt * 6 * nq * nq * nq];
-    T* G_div  = new T[nelmt * 1 * nq * nq * nq];
+    T* G_div  = new T[nq * nq * nq];
+    T* G_divdiv  = new T[nelmt * nq * nq * nq];
+
     
     // Arrays for Velocity (u) and Pressure (p)
     T* in_u  = new T[nelmt * ndof_u_total];
@@ -42,12 +44,16 @@ void run_test(const unsigned int nq, const unsigned int nm_t, const unsigned int
 
     // Metric Tensor G_mass
     for(unsigned int i = 0u; i < nelmt * 6 * nq * nq * nq; i++) {
-            G_mass[i] = std::cos(i);
+        G_mass[i] = std::cos(i);
     }
 
     // Metric Tensor div
-    for(unsigned int i = 0u; i < nelmt * 1 * nq * nq * nq; i++) {
-            G_div[i] = std::cos(i);
+    for(unsigned int i = 0u; i < nq * nq * nq; i++) {
+        G_div[i] = std::cos(i);
+    }
+
+    for(unsigned int i = 0u; i < nelmt * nq * nq * nq; i++) {
+        G_divdiv[i] = std::cos(i);
     }
 
 
@@ -120,11 +126,13 @@ void run_test(const unsigned int nq, const unsigned int nm_t, const unsigned int
     T Serial_DivDiv_res = Serial::DivDiv<T>(
         nq, nm_t, nm_n, nelmt, 
         dbasis_n, basis_t, 
-        G_div, in_u, out_u
+        G_divdiv, in_u, out_u
     );
     std::cout << "Serial_DivDiv L2 norm = " << std::sqrt(Serial_DivDiv_res) << "\n";
 
-    delete[] basis_n;  delete[] basis_t;  delete[] dbasis_n; delete[] basis_p; delete[] G_mass;  delete[] G_div; delete[] in_u; delete[] out_u; delete[] in_p; delete[] out_p;
+    delete[] basis_n;  delete[] basis_t;  delete[] dbasis_n; delete[] basis_p;
+    delete[] G_mass;  delete[] G_div; delete[] G_divdiv;
+    delete[] in_u; delete[] out_u; delete[] in_p; delete[] out_p;
 }
 
 int main(int argc, char **argv){
