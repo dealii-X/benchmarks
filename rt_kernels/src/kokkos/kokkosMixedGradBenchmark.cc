@@ -93,6 +93,8 @@ int main(int argc, char **argv){
 
     unsigned int threadsPerBlock = nq * nq * std::max(1u, nelmtPerBatch);
     threadsPerBlock              = (argc > 4) ? atoi(argv[4]) : threadsPerBlock;
+    threadsPerBlock              = std::min(threadsPerBlock, 512u);
+
     
     unsigned int ntests          = (argc > 5) ? atoi(argv[5]) : 10u;
 
