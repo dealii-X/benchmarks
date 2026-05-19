@@ -15,11 +15,9 @@ std::vector<double> Kokkos_MixedGrad(
     const T *__restrict__ dbasis_n, const T *__restrict__ basis_t, const T *__restrict__ basis_p,
     const T *__restrict__ G_scalar, T *__restrict__ in_p, T * __restrict__ out_u, const unsigned int ntests)
 {
-    // DoFs per element for Raviart-Thomas velocity (output)
     constexpr unsigned int ndof_u_1D = nm_n * nm_t * nm_t;
     constexpr unsigned int ndof_u_total = ndof_u_1D * 3;
     
-    // DoFs per element for scalar pressure (input)
     constexpr unsigned int ndof_p_total = nm_p * nm_p * nm_p;
 
     T sum = 0.0;
@@ -46,9 +44,8 @@ std::vector<double> Kokkos_MixedGrad(
         Kokkos::View<T*> d_in("d_in", nelmt * ndof_p_total);
         Kokkos::deep_copy(d_in, in_view);
 
-        Kokkos::View<const T*, Kokkos::HostSpace> out_view(out_u, nelmt * ndof_u_total);
+        Kokkos::View<T*, Kokkos::HostSpace> out_view(out_u, nelmt * ndof_u_total);
         Kokkos::View<T*> d_out("d_out", nelmt * ndof_u_total);
-        Kokkos::deep_copy(d_out, out_view);
 
         Timer kokkosTimer;
         double time_kokkos = std::numeric_limits<T>::max();
@@ -91,14 +88,11 @@ std::vector<double> Kokkos_MixedGrad(
             T *s_out_0   = s_accum   + nelmtPerBatch * nq * nq * nq;
             T *s_out_1   = s_out_0   + nelmtPerBatch * nq * nq * nq;
             
-            // s_out_2 safely aliases s_accum to keep workspace count at 5.
-            // s_accum is fully consumed before s_out_2 is written to.
             T *s_out_2   = s_accum; 
 
             const unsigned int threadIdx = team_member.team_rank();
             const unsigned int blockSize = team_member.team_size();
 
-            // Copy bases to shared memory
             for(unsigned int tid = threadIdx; tid < nm_t * nq; tid += blockSize)
                 s_basis_t[tid] = d_basis_t[tid];
         
@@ -112,14 +106,14 @@ std::vector<double> Kokkos_MixedGrad(
 
             // Element batch iteration
             int eb = team_member.league_rank();
-            const int global_batch_offset_in  = eb * nelmtPerBatch * ndof_p_total;
-            const int global_batch_offset_out = eb * nelmtPerBatch * ndof_u_total;
             
             while(eb < (nelmt + nelmtPerBatch - 1) / nelmtPerBatch)
             {   
+                const int global_batch_offset_in  = eb * nelmtPerBatch * ndof_p_total;
+                const int global_batch_offset_out = eb * nelmtPerBatch * ndof_u_total;
+
                 int c_nelmtPerBatch = std::min(nelmtPerBatch, nelmt - eb * nelmtPerBatch);
 
-                // Load scalar input pressure into s_wsp0
                 for(int tid = threadIdx; tid < c_nelmtPerBatch * ndof_p_total; tid += blockSize) {
                     int e = tid / ndof_p_total;
                     int dof = tid % ndof_p_total;

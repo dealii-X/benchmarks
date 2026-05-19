@@ -37,7 +37,7 @@ std::vector<double> Kokkos_Mass(
         Kokkos::View<T*> d_in("d_in", nelmt * ndof_total);
 
         Kokkos::deep_copy(d_in, in_view);
-        Kokkos::View<const T*, Kokkos::HostSpace> out_view(out, nelmt * ndof_total);
+        Kokkos::View<T*, Kokkos::HostSpace> out_view(out, nelmt * ndof_total);
         Kokkos::View<T*> d_out("d_out", nelmt * ndof_total);
 
 
@@ -93,13 +93,14 @@ std::vector<double> Kokkos_Mass(
             team_member.team_barrier();
 
 
+            
             //element batch iteration
             int eb = team_member.league_rank();
-
-            const int global_batch_offset = eb * nelmtPerBatch * ndof_total;
             
             while(eb < (nelmt + nelmtPerBatch - 1) / nelmtPerBatch)
             {   
+                const int global_batch_offset = eb * nelmtPerBatch * ndof_total;
+
                 //current nelmtPerBatch (edge case, last batch size can be less)
                 int c_nelmtPerBatch = std::min(nelmtPerBatch, nelmt - eb * nelmtPerBatch);
 

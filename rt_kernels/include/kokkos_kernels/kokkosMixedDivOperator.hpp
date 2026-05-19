@@ -43,7 +43,7 @@ std::vector<double> Kokkos_MixedDiv(
         Kokkos::View<T*> d_in("d_in", nelmt * ndof_u_total);
         Kokkos::deep_copy(d_in, in_view);
 
-        Kokkos::View<const T*, Kokkos::HostSpace> out_view(out_p, nelmt * ndof_p_total);
+        Kokkos::View<T*, Kokkos::HostSpace> out_view(out_p, nelmt * ndof_p_total);
         Kokkos::View<T*> d_out("d_out", nelmt * ndof_p_total);
 
         Timer kokkosTimer;
@@ -100,10 +100,10 @@ std::vector<double> Kokkos_MixedDiv(
 
             //element batch iteration
             int eb = team_member.league_rank();
-            const int global_batch_offset = eb * nelmtPerBatch * ndof_u_total;
             
             while(eb < (nelmt + nelmtPerBatch - 1) / nelmtPerBatch)
             {   
+                const int global_batch_offset = eb * nelmtPerBatch * ndof_u_total;
                 int c_nelmtPerBatch = std::min(nelmtPerBatch, nelmt - eb * nelmtPerBatch);
 
                 // Load input
