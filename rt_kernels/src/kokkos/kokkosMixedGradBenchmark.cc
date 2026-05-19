@@ -70,7 +70,7 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
         
         T bw = 1.0e-9 * (nDOF_P + nDOF_U) * sizeof(T) / time; 
         
-        printer("MixedGrad", nq - 2, nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, nDOF_U, time, DOFs, bw, std::sqrt(sum));
+        printer("MixedGrad", nq - 2, nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, nDOF_P, time, DOFs, bw, std::sqrt(sum));
     }
 
     delete[] dbasis_n; delete[] basis_t; delete[] basis_p; delete[] G_scalar; delete[] in_p; delete[] out_u;
