@@ -1,6 +1,6 @@
 # Raviart-Thomas Kernels
 
-This repository implements **H(div)-conforming** vector field FEM discretizations using **Raviart–Thomas** elements on GPUs through the Kokkos portability layer with hexahedral elements evaluated in a matrix-free formulation.
+This repository implements **H(div)-conforming** vector field FEM discretizations using **Raviart–Thomas** elements on GPUs through the Kokkos portability layer. Hexahedral elements used and evaluated in a matrix-free formulation.
 
 ## Key Implementations
 The repository provides high-performance GPU implementations for each individual operator:
