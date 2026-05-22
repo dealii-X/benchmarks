@@ -82,7 +82,7 @@ int main(int argc, char **argv){
     
     Kokkos::initialize(argc, argv);
 
-    size_t shmemPerBlock = Kokkos::TeamPolicy<>::scratch_size_max(0);    //maximum shared memory size per thread block
+    const size_t shmemPerBlock = Kokkos::TeamPolicy<>::scratch_size_max(0);    //maximum shared memory size per thread block
 
     unsigned int p      = (argc > 1) ? atoi(argv[1]) : 2u;    
     unsigned int nq     = p + 2;
