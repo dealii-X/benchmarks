@@ -310,15 +310,10 @@ std::vector<double> Kokkos_Mass(
                     int q = tid % (nq * nq) / nq;
                     int r = tid % nq;
 
-                    T r_n[nm_n] = {0}; 
-                    T r_t1[nm_t] = {0};
-                    T r_t2[nm_t] = {0};
-
                     // Base offset for the current element's geometric factors
                     int e_offset = eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq;
 
                     T G00, G01, G02, G11, G12, G22;
-                    T qr, qs, qt;
                     T u0, u1, u2;
 
                     for(unsigned int p = 0; p < nq; ++p){
