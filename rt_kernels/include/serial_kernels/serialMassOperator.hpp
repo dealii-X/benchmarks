@@ -74,7 +74,7 @@ T Mass(const unsigned int nq,
             T tmp = 0;
             for(unsigned int k=0; k<nm_t; ++k)
                 tmp += wsp1[p*nq*nm_t + q*nm_t + k] * basis_t[k*nq + r];
-            uq_0[p*nq*nq + q*nq + r] = tmp;
+            uq_0[r*nq*nq + q*nq + p] = tmp;
         }
         // --- Component 1 (y-direction) ---
         // y is normal (basis_n), x and z are tangent (basis_t)
@@ -102,7 +102,7 @@ T Mass(const unsigned int nq,
             T tmp = 0;
             for(unsigned int k=0; k<nm_t; ++k)
                 tmp += wsp1[p*nq*nm_t + q*nm_t + k] * basis_t[k*nq + r];
-            uq_1[p*nq*nq + q*nq + r] = tmp;
+            uq_1[r*nq*nq + q*nq + p] = tmp;
         }
 
         // --- Component 2 (z-direction) ---
@@ -131,18 +131,18 @@ T Mass(const unsigned int nq,
             T tmp = 0;
             for(unsigned int k=0; k<nm_n; ++k)
                tmp += wsp1[p*nq*nm_n + q*nm_n + k] * basis_n[k*nq + r];
-               uq_2[p*nq*nq + q*nq + r] = tmp;
+            uq_2[r*nq*nq + q*nq + p] = tmp;
         }
 
 
         // ==========================================
         // PHASE 2: Apply Piola Geometry Metric
         // ==========================================
-        for(unsigned int p = 0; p < nq; ++p){
+        for(unsigned int r = 0; r < nq; ++r){
             for(unsigned int q = 0; q < nq; ++q){              
-                for(unsigned int r = 0; r < nq; ++r){
+                for(unsigned int p = 0; p < nq; ++p){
 
-                    int q_idx = p * nq * nq + q * nq + r;
+                    int q_idx = r * nq * nq + q * nq + p;
                     int e_offset = e * 6 * nq * nq * nq;
 
                     // Load Piola Geometric Factors (1/|J| * J^T * J)
@@ -176,7 +176,7 @@ T Mass(const unsigned int nq,
         for(unsigned int p=0; p<nq; ++p){
             T tmp = 0;
             for(unsigned int r=0; r<nq; ++r)
-                tmp += uq_0[p*nq*nq + q*nq + r] * basis_t[k*nq + r];
+                tmp += uq_0[r*nq*nq + q*nq + p] * basis_t[k*nq + r];
             wsp1[p*nq*nm_t + q*nm_t + k] = tmp;
         }
 
@@ -204,7 +204,7 @@ T Mass(const unsigned int nq,
         for(unsigned int p=0; p<nq; ++p){
             T tmp = 0;
             for(unsigned int r=0; r<nq; ++r)
-                tmp += uq_1[p*nq*nq + q*nq + r] * basis_t[k*nq + r];
+                tmp += uq_1[r*nq*nq + q*nq + p] * basis_t[k*nq + r];
             wsp1[p*nq*nm_t + q*nm_t + k] = tmp;
         }
 
@@ -234,7 +234,7 @@ T Mass(const unsigned int nq,
         for(unsigned int p=0; p<nq; ++p){
             T tmp = 0;
             for(unsigned int r=0; r<nq; ++r)
-                tmp += uq_2[p*nq*nq + q*nq + r] * basis_n[k*nq + r];
+                tmp += uq_2[r*nq*nq + q*nq + p] * basis_n[k*nq + r];
             wsp1[p*nq*nm_n + q*nm_n + k] = tmp;
         }
 

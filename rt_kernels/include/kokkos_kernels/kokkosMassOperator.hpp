@@ -307,30 +307,31 @@ std::vector<double> Kokkos_Mass(
                 for(unsigned int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize){
 
                     int e = tid / (nq * nq);
-                    int q = tid % (nq * nq) / nq;
-                    int r = tid % nq;
+                    int q = (tid / nq) % nq; 
+                    int p = tid % nq;  
 
-                    // Base offset for the current element's geometric factors
                     int e_offset = eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq;
 
                     T G00, G01, G02, G11, G12, G22;
                     T u0, u1, u2;
 
-                    for(unsigned int p = 0; p < nq; ++p){
-                        
-                        G00 = d_G[e_offset + 0 * nq*nq*nq + p * nq * nq + q * nq + r];
-                        G01 = d_G[e_offset + 1 * nq*nq*nq + p * nq * nq + q * nq + r];
-                        G02 = d_G[e_offset + 2 * nq*nq*nq + p * nq * nq + q * nq + r];
-                        G11 = d_G[e_offset + 3 * nq*nq*nq + p * nq * nq + q * nq + r];
-                        G12 = d_G[e_offset + 4 * nq*nq*nq + p * nq * nq + q * nq + r];
-                        G22 = d_G[e_offset + 5 * nq*nq*nq + p * nq * nq + q * nq + r];
+                    for(unsigned int r = 0; r < nq; ++r){
 
-                        int shm_idx = e * nq*nq*nq + r * nq * nq + q * nq + p;
+                        int G_idx = e_offset + r * nq*nq + q * nq + p;
 
+                        G00 = d_G[0 * nq*nq*nq + G_idx];
+                        G01 = d_G[1 * nq*nq*nq + G_idx];
+                        G02 = d_G[2 * nq*nq*nq + G_idx];
+                        G11 = d_G[3 * nq*nq*nq + G_idx];
+                        G12 = d_G[4 * nq*nq*nq + G_idx];
+                        G22 = d_G[5 * nq*nq*nq + G_idx];
+                    
+                        int shm_idx = e * nq*nq*nq + r * nq*nq + q * nq + p;
+                    
                         u0 = s_uq_0[shm_idx];
                         u1 = s_uq_1[shm_idx];
                         u2 = s_uq_2[shm_idx];
-
+                    
                         s_uq_0[shm_idx] = G00 * u0 + G01 * u1 + G02 * u2;
                         s_uq_1[shm_idx] = G01 * u0 + G11 * u1 + G12 * u2;
                         s_uq_2[shm_idx] = G02 * u0 + G12 * u1 + G22 * u2;
