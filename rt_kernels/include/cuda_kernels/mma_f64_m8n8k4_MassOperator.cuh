@@ -124,14 +124,17 @@ __device__ void f64_m8n8k4_tiled_gemm(double *s_A, double *s_B, double *s_C)
         int col = base_col;
         #pragma unroll
         for(int i = 0; i < num_tiles_m; ++i){
-            row = base_row + i * m;     if(row >= M) break;
+            row = base_row + i * m;
             #pragma unroll
             for(int j = 0; j < num_tiles_n; ++j){
-                col = base_col + j * n;     if(col >= N) break;
-                s_C_view(row, col) = r_c[i][j][0];
-
-                col += 1;   if(col >= N) break;
-                s_C_view(row, col) = r_c[i][j][1];
+                col = base_col + j * n;
+                if(row < M && col < N){
+                    s_C_view(row, col) = r_c[i][j][0];
+                }
+                col += 1;
+                if(row < M && col < N){
+                    s_C_view(row, col) = r_c[i][j][1];
+                }
             }
         }
         __syncwarp();
