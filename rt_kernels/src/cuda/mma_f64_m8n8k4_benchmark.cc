@@ -98,7 +98,7 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
         timer.start();
         
         Parallel::f64_m8n8k4_Mass_mma<nq, nm_t, nm_n, nelmtPerBatch><<<numBlocks, threadsPerBlock, shmem_size>>>(
-                nelmt, numBlocks, threadsPerBlock, d_basis_n, d_basis_t, d_G, d_in, d_out, ntests);
+                padded_nelmt, numBlocks, threadsPerBlock, d_basis_n, d_basis_t, d_G, d_in, d_out, ntests);
 
         CUDA_LAST_ERROR_CHECK();
         CUDA_CHECK(cudaDeviceSynchronize());
@@ -111,7 +111,7 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
 
     T sum = 0;
     for(size_t i = 0; i < (size_t)nelmt * ndof_total; i++) {
-        sum += out[i];
+        sum += out[i] * out[i];
     }
 
     uint64_t nDOF  = (uint64_t)ndof_total * nelmt; 

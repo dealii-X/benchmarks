@@ -44,11 +44,19 @@ __device__ void f64_m8n8k4_tiled_gemm(double *s_A, double *s_B, double *s_C)
     int row = base_row;
     int col = base_col;
     
+    #pragma unroll
     for(int i = 0; i < num_tiles_k; i++){
-        row = base_row + i * k;     if(row >= K) break;
+        row = base_row + i * k;
+
+        #pragma unroll
         for(int j = 0; j < num_tiles_n; j++){
-            col = base_col + j * n;     if(col >= N) break;
-            r_b[i][j] = s_B_view(row, col);
+            col = base_col + j * n;
+            if(row < K && col < N){
+                r_b[i][j] = s_B_view(row, col);
+            } 
+            else{
+                r_b[i][j] = 0.0;
+            }
         }
     }
     __syncwarp();
@@ -68,22 +76,33 @@ __device__ void f64_m8n8k4_tiled_gemm(double *s_A, double *s_B, double *s_C)
         int row = base_row;
         int col = base_col;
 
+        #pragma unroll
         for(int i = 0; i < num_tiles_m; i++){
-            row = base_row + i * m;      if(row >= M) break;
+            row = base_row + i * m;
+    
+            #pragma unroll
             for(int j = 0; j < num_tiles_k; j++){
-                col = base_col + j * k;      if(col >= K) break;
-                r_a[i][j] = s_A_view(row, col);
+                col = base_col + j * k;
+                if(row < M && col < K){
+                    r_a[i][j] = s_A_view(row, col);
+                }
+                else{
+                    r_a[i][j] = 0.0;
+                }
             }
         }
         __syncwarp();
     }
 
     //tiled GEMM
+    #pragma unroll
     for(int i = 0; i < num_tiles_m; i++){
+        #pragma unroll
         for(int j = 0; j < num_tiles_n; j++){
+            #pragma unroll
             for(int t = 0; t < num_tiles_k; t++)
             {
-                asm (
+                asm volatile(
                     "mma.sync.aligned.m8n8k4.row.col.f64.f64.f64.f64 "
                     "{%0, %1}, {%2}, {%3}, {%0, %1}; \n"
                     :"+d"(r_c[i][j][0]), "+d"(r_c[i][j][1])
@@ -103,9 +122,10 @@ __device__ void f64_m8n8k4_tiled_gemm(double *s_A, double *s_B, double *s_C)
         
         int row = base_row;
         int col = base_col;
-
+        #pragma unroll
         for(int i = 0; i < num_tiles_m; ++i){
             row = base_row + i * m;     if(row >= M) break;
+            #pragma unroll
             for(int j = 0; j < num_tiles_n; ++j){
                 col = base_col + j * n;     if(col >= N) break;
                 s_C_view(row, col) = r_c[i][j][0];
@@ -309,7 +329,7 @@ void __global__ f64_m8n8k4_Mass_mma(
         __syncwarp();
 
         //s_wsp1(erqi) . s_basis_n(ip) = s_uq_1(erqp)
-        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nm_n, Layout::RowMajor, Layout::RowMajor, Layout::RowMajor>(s_wsp1, s_basis_n, s_uq_1);
+        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nm_t, Layout::RowMajor, Layout::RowMajor, Layout::RowMajor>(s_wsp1, s_basis_t, s_uq_2);
 
 
 
