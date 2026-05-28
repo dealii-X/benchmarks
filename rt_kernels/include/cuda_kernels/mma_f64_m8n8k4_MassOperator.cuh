@@ -1,5 +1,5 @@
-#ifndef MMA_MASS_KERNEL_CUH
-#define MMA_MASS_KERNEL_CUH
+#ifndef MMA_F64_M8N8K4_MASS_OPERATOR_CUH
+#define MMA_F64_M8N8K4_MASS_OPERATOR_CUH
 
 
 namespace Parallel {
@@ -537,4 +537,4 @@ void __global__ f64_m8n8k4_Mass_mma(
 
 
 } //namespace Parallel
-#endif //MMA_MASS_KERNEL_CUH
+#endif //MMA_F64_M8N8K4_MASS_OPERATOR_CUH
