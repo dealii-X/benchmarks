@@ -1,6 +1,7 @@
 #ifndef MMA_TF32_M16N8K4_MASS_OPERATOR_CUH
 #define MMA_TF32_M16N8K4_MASS_OPERATOR_CUH
 
+#include <cstdint>
 
 namespace Parallel {
 
