@@ -10,7 +10,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include/serial_kernels)
 
 
 set(KOKKOS_BENCHMARKS kokkosMassBenchmark kokkosMixedDivBenchmark kokkosMixedGradBenchmark)
-set(CUDA_BENCHMARKS mma_f64_m8n8k4_benchmark)
+set(CUDA_BENCHMARKS mma_f64_m8n8k4_mass_benchmark mma_tf32_m16n8k4_mass_benchmark)
 
 #Kokkos Benchmarks
 foreach(benchmark IN LISTS KOKKOS_BENCHMARKS)
