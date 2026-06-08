@@ -53,7 +53,7 @@ std::vector<double> Kokkos_MixedDiv(
         unsigned int ssize = nm_n * nq +
                              nm_t * nq +
                              nm_p * nq +
-                             5 * nelmtPerBatch * nq * nq * nq;
+                             3 * nelmtPerBatch * nq * nq * nq;
 
         const unsigned int shmem_size = ssize * sizeof(T);
 
@@ -79,9 +79,7 @@ std::vector<double> Kokkos_MixedDiv(
             T *s_wsp0    = s_basis_p + nm_p * nq;
             T *s_wsp1    = s_wsp0    + nelmtPerBatch * nq * nq * nq;
 
-            T *s_uq_0     = s_wsp1   + nelmtPerBatch * nq * nq * nq; 
-            T *s_uq_1     = s_uq_0   + nelmtPerBatch * nq * nq * nq;
-            T *s_uq_2     = s_uq_1   + nelmtPerBatch * nq * nq * nq;
+            T *s_accum     = s_wsp1   + nelmtPerBatch * nq * nq * nq; 
 
             const unsigned int threadIdx = team_member.team_rank();
             const unsigned int blockSize = team_member.team_size();
@@ -106,17 +104,7 @@ std::vector<double> Kokkos_MixedDiv(
                 const int global_batch_offset = eb * nelmtPerBatch * ndof_u_total;
                 int c_nelmtPerBatch = std::min(nelmtPerBatch, nelmt - eb * nelmtPerBatch);
 
-                // Load input
-                for(int tid = threadIdx; tid < c_nelmtPerBatch * ndof_u_1D; tid += blockSize) {
-                    int e = tid / ndof_u_1D;
-                    int dof = tid % ndof_u_1D;
-
-                    s_uq_0[tid] = d_in[global_batch_offset + e * ndof_u_total + 0 * ndof_u_1D + dof];
-                    s_uq_1[tid] = d_in[global_batch_offset + e * ndof_u_total + 1 * ndof_u_1D + dof];
-                    s_uq_2[tid] = d_in[global_batch_offset + e * ndof_u_total + 2 * ndof_u_1D + dof];
-                }
-                team_member.team_barrier();
-                
+ 
                 // ==========================================
                 // PHASE 1: Compute Divergence 
                 // ==========================================
@@ -128,7 +116,7 @@ std::vector<double> Kokkos_MixedDiv(
                     int k = tid % nm_t;
                     
                     for(int i = 0; i < nm_n; ++i){
-                        r_p[i] = s_uq_0[e * ndof_u_1D + i*nm_t*nm_t + j*nm_t + k];
+                        r_p[i] = d_in[global_batch_offset + e * ndof_u_total + 0 * ndof_u_1D + i *nm_t*nm_t + j*nm_t + k];
                     }
                     for (int p = 0; p < nq; ++p) {
                         T tmp = 0.0;
@@ -171,7 +159,7 @@ std::vector<double> Kokkos_MixedDiv(
                         for(int k = 0; k < nm_t; ++k)
                             tmp += r_p[k] * s_basis_t[k*nq + r];
 
-                        s_uq_0[e * (nq*nq*nq) + r*nq*nq + q*nq + p] = tmp;
+                        s_accum[e * (nq*nq*nq) + r*nq*nq + q*nq + p] = tmp;
                     }
                 }
                 team_member.team_barrier();
@@ -183,7 +171,7 @@ std::vector<double> Kokkos_MixedDiv(
                     int k = tid % nm_t;
                     
                     for(int i = 0; i < nm_t; ++i) {
-                        r_p[i] = s_uq_1[e * ndof_u_1D + i*nm_n*nm_t + j*nm_t + k];
+                        r_p[i] = d_in[global_batch_offset + e * ndof_u_total + 1 * ndof_u_1D + i *nm_t*nm_n + j*nm_t + k];
                     }
                     for (int p = 0; p < nq; ++p) {
                         T tmp = 0.0;
@@ -226,7 +214,7 @@ std::vector<double> Kokkos_MixedDiv(
                         for(int k = 0; k < nm_t; ++k)
                             tmp += r_p[k] * s_basis_t[k*nq + r];
 
-                        s_uq_0[e * (nq*nq*nq) + r*nq*nq + q*nq + p] += tmp;
+                        s_accum[e * (nq*nq*nq) + r*nq*nq + q*nq + p] += tmp;
                     }
                 }
                 team_member.team_barrier();
@@ -238,7 +226,7 @@ std::vector<double> Kokkos_MixedDiv(
                     int k = tid % nm_n;
                     
                     for(int i = 0; i < nm_t; ++i) {
-                        r_p[i] = s_uq_2[e * ndof_u_1D + i*nm_t*nm_n + j*nm_n + k];
+                        r_p[i] = d_in[global_batch_offset + e * ndof_u_total + 2 * ndof_u_1D + i *nm_t*nm_n + j*nm_n + k];
                     }
                     for (int p = 0; p < nq; ++p) {
                         T tmp = 0.0;
@@ -281,7 +269,7 @@ std::vector<double> Kokkos_MixedDiv(
                         for(int k = 0; k < nm_n; ++k)
                             tmp += r_p[k] * s_dbasis_n[k*nq + r];
 
-                        s_uq_0[e * (nq*nq*nq) + r*nq*nq + q*nq + p] += tmp;
+                        s_accum[e * (nq*nq*nq) + r*nq*nq + q*nq + p] += tmp;
                     }
                 }
                 team_member.team_barrier();
@@ -290,7 +278,7 @@ std::vector<double> Kokkos_MixedDiv(
                 // PHASE 2: Apply Scalar Geometric Metric
                 // ==========================================
                 for(unsigned int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq * nq; tid += blockSize){
-                    s_uq_0[tid] *= d_G_scalar[tid % (nq * nq * nq)];
+                    s_accum[tid] *= d_G_scalar[tid % (nq * nq * nq)];
                 }
                 team_member.team_barrier();
 
@@ -305,7 +293,7 @@ std::vector<double> Kokkos_MixedDiv(
                     int q = tid % nq;
                     
                     for(int p = 0; p < nq; ++p) {
-                        r_p[p] = s_uq_0[e * nq*nq*nq + r * nq*nq + q * nq + p]; 
+                        r_p[p] = s_accum[e * nq*nq*nq + r * nq*nq + q * nq + p]; 
                     }
 
                     for (int i = 0; i < nm_p; ++i) {
@@ -353,21 +341,8 @@ std::vector<double> Kokkos_MixedDiv(
                         for(int q = 0; q < nq; ++q)
                             tmp += r_p[q] * s_basis_p[j*nq + q];
 
-                        s_uq_0[e * (nm_p*nm_p*nm_p) + i*(nm_p*nm_p) + j*nm_p + k] = tmp;
+                        d_out[eb * nelmtPerBatch * ndof_p_total + e * ndof_p_total + i * nm_t*nm_t + j * nm_t + k] = tmp;
                     }
-                }
-                team_member.team_barrier();
-
-                // ==========================================
-                // PHASE 4: Write to Scalar Output Space
-                // ==========================================
-                const int global_batch_offset_out = eb * nelmtPerBatch * ndof_p_total;
-
-                for(int tid = threadIdx; tid < c_nelmtPerBatch * ndof_p_total; tid += blockSize) {
-                    int e = tid / ndof_p_total;
-                    int dof = tid % ndof_p_total;
-
-                    d_out[global_batch_offset_out + e * ndof_p_total + dof] = s_uq_0[tid];
                 }
                 team_member.team_barrier();
 

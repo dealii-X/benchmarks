@@ -50,18 +50,12 @@ std::vector<double> Kokkos_MixedGrad(
         Timer kokkosTimer;
         double time_kokkos = std::numeric_limits<T>::max();
 
-        // Kokkos with shared memory - Exactly 5 workspaces of size nq^3 per element
         unsigned int ssize = nm_n * nq +
                              nm_t * nq +
                              nm_p * nq +
-                             5 * nelmtPerBatch * nq * nq * nq;
+                             3 * nelmtPerBatch * nq * nq * nq;
 
         const unsigned int shmem_size = ssize * sizeof(T);
-
-        // Calculate max size needed for thread-local register array
-        constexpr unsigned int max_p1 = (nq > nm_n) ? nq : nm_n;
-        constexpr unsigned int max_p2 = (nm_t > nm_p) ? nm_t : nm_p;
-        constexpr unsigned int max_rp = (max_p1 > max_p2) ? max_p1 : max_p2;
 
         typedef Kokkos::TeamPolicy<>::member_type member_type;
         Kokkos::TeamPolicy<> policy(numBlocks, threadsPerBlock);
@@ -74,7 +68,7 @@ std::vector<double> Kokkos_MixedGrad(
             KOKKOS_LAMBDA (member_type team_member){
             
             // Thread-local register blocking array
-            T r_p[max_rp]; 
+            T r_p[nq]; 
 
             // Shared memory access
             T *scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
@@ -84,11 +78,7 @@ std::vector<double> Kokkos_MixedGrad(
 
             T *s_wsp0    = s_basis_p + nm_p * nq;
             T *s_wsp1    = s_wsp0    + nelmtPerBatch * nq * nq * nq;
-            T *s_accum   = s_wsp1    + nelmtPerBatch * nq * nq * nq; 
-            T *s_out_0   = s_accum   + nelmtPerBatch * nq * nq * nq;
-            T *s_out_1   = s_out_0   + nelmtPerBatch * nq * nq * nq;
-            
-            T *s_out_2   = s_accum; 
+            T *s_accum   = s_wsp1    + nelmtPerBatch * nq * nq * nq;
 
             const unsigned int threadIdx = team_member.team_rank();
             const unsigned int blockSize = team_member.team_size();
@@ -178,7 +168,7 @@ std::vector<double> Kokkos_MixedGrad(
                         for(int k = 0; k < nm_p; ++k)
                             tmp += r_p[k] * s_basis_p[k*nq + r];
 
-                        s_accum[e * (nq*nq*nq) + p*nq*nq + q*nq + r] = tmp; 
+                        s_accum[e * (nq*nq*nq) + r*nq*nq + q*nq + p] = tmp; 
                     }
                 }
                 team_member.team_barrier();
@@ -204,14 +194,14 @@ std::vector<double> Kokkos_MixedGrad(
                     int q = tid % nq;
                     
                     for(int r = 0; r < nq; ++r) {
-                        r_p[r] = s_accum[e * (nq*nq*nq) + p*nq*nq + q*nq + r]; 
+                        r_p[r] = s_accum[e * (nq*nq*nq) + r*nq*nq + q*nq + p]; 
                     }
                     for (int k = 0; k < nm_t; ++k) {
                         T tmp = 0.0;
                         for(int r = 0; r < nq; ++r) {
                             tmp += r_p[r] * s_basis_t[k * nq + r];
                         }
-                        s_wsp1[e * (nq*nq*nm_t) + k*nq*nq + p*nq + q] = tmp;
+                        s_wsp0[e * (nq*nq*nm_t) + k*nq*nq + p*nq + q] = tmp;
                     }
                 }
                 team_member.team_barrier();
@@ -222,14 +212,14 @@ std::vector<double> Kokkos_MixedGrad(
                     int k = tid % nm_t;
                     
                     for(int q = 0; q < nq; ++q) {
-                        r_p[q] = s_wsp1[e * (nq*nq*nm_t) + k*nq*nq + p*nq + q]; 
+                        r_p[q] = s_wsp0[e * (nq*nq*nm_t) + k*nq*nq + p*nq + q]; 
                     }
                     for (int j = 0; j < nm_t; ++j) {
                         T tmp = 0.0;
                         for(int q = 0; q < nq; ++q)
                             tmp += r_p[q] * s_basis_t[j*nq + q];
 
-                        s_wsp0[e * (nq*nm_t*nm_t) + j*nq*nm_t + p*nm_t + k] = tmp;
+                        s_wsp1[e * (nq*nm_t*nm_t) + j*nq*nm_t + p*nm_t + k] = tmp;
                     }
                 }
                 team_member.team_barrier();
@@ -240,14 +230,14 @@ std::vector<double> Kokkos_MixedGrad(
                     int k = tid % nm_t;
                     
                     for(int p = 0; p < nq; ++p) {
-                        r_p[p] = s_wsp0[e * (nq*nm_t*nm_t) + j*nq*nm_t + p*nm_t + k];
+                        r_p[p] = s_wsp1[e * (nq*nm_t*nm_t) + j*nq*nm_t + p*nm_t + k];
                     }
                     for (int i = 0; i < nm_n; ++i) {
                         T tmp = 0.0;
                         for(int p = 0; p < nq; ++p)
-                            tmp += r_p[p] * s_dbasis_n[i*nq + p]; // DERIVATIVE
+                            tmp += r_p[p] * s_dbasis_n[i*nq + p];
 
-                        s_out_0[e * ndof_u_1D + i*nm_t*nm_t + j*nm_t + k] = tmp;
+                        d_out[global_batch_offset_out + e * ndof_u_total + 0 * ndof_u_1D + i*nm_t*nm_t + j*nm_t + k] = tmp;
                     }
                 }
                 team_member.team_barrier();
@@ -261,14 +251,14 @@ std::vector<double> Kokkos_MixedGrad(
                     int q = tid % nq;
                     
                     for(int r = 0; r < nq; ++r) {
-                        r_p[r] = s_accum[e * (nq*nq*nq) + p*nq*nq + q*nq + r]; 
+                        r_p[r] = s_accum[e * (nq*nq*nq) + r*nq*nq + q*nq + p]; 
                     }
                     for (int k = 0; k < nm_t; ++k) {
                         T tmp = 0.0;
                         for(int r = 0; r < nq; ++r) {
                             tmp += r_p[r] * s_basis_t[k * nq + r];
                         }
-                        s_wsp1[e * (nq*nq*nm_t) + k*nq*nq + p*nq + q] = tmp;
+                        s_wsp0[e * (nq*nq*nm_t) + k*nq*nq + p*nq + q] = tmp;
                     }
                 }
                 team_member.team_barrier();
@@ -279,14 +269,14 @@ std::vector<double> Kokkos_MixedGrad(
                     int k = tid % nm_t;
                     
                     for(int q = 0; q < nq; ++q) {
-                        r_p[q] = s_wsp1[e * (nq*nq*nm_t) + k*nq*nq + p*nq + q]; 
+                        r_p[q] = s_wsp0[e * (nq*nq*nm_t) + k*nq*nq + p*nq + q]; 
                     }
                     for (int j = 0; j < nm_n; ++j) {
                         T tmp = 0.0;
                         for(int q = 0; q < nq; ++q)
                             tmp += r_p[q] * s_dbasis_n[j*nq + q];
 
-                        s_wsp0[e * (nq*nm_n*nm_t) + j*nq*nm_t + p*nm_t + k] = tmp;
+                        s_wsp1[e * (nq*nm_n*nm_t) + j*nq*nm_t + p*nm_t + k] = tmp;
                     }
                 }
                 team_member.team_barrier();
@@ -297,14 +287,14 @@ std::vector<double> Kokkos_MixedGrad(
                     int k = tid % nm_t;
                     
                     for(int p = 0; p < nq; ++p) {
-                        r_p[p] = s_wsp0[e * (nq*nm_n*nm_t) + j*nq*nm_t + p*nm_t + k];
+                        r_p[p] = s_wsp1[e * (nq*nm_n*nm_t) + j*nq*nm_t + p*nm_t + k];
                     }
                     for (int i = 0; i < nm_t; ++i) {
                         T tmp = 0.0;
                         for(int p = 0; p < nq; ++p)
                             tmp += r_p[p] * s_basis_t[i*nq + p]; 
 
-                        s_out_1[e * ndof_u_1D + i*nm_n*nm_t + j*nm_t + k] = tmp;
+                        d_out[global_batch_offset_out + e * ndof_u_total + 1 * ndof_u_1D + i*nm_t*nm_n + j*nm_t + k] = tmp;
                     }
                 }
                 team_member.team_barrier();
@@ -318,14 +308,14 @@ std::vector<double> Kokkos_MixedGrad(
                     int q = tid % nq;
                     
                     for(int r = 0; r < nq; ++r) {
-                        r_p[r] = s_accum[e * (nq*nq*nq) + p*nq*nq + q*nq + r]; 
+                        r_p[r] = s_accum[e * (nq*nq*nq) + r*nq*nq + q*nq + p]; 
                     }
                     for (int k = 0; k < nm_n; ++k) {
                         T tmp = 0.0;
                         for(int r = 0; r < nq; ++r) {
                             tmp += r_p[r] * s_dbasis_n[k * nq + r];
                         }
-                        s_wsp1[e * (nq*nq*nm_n) + k*nq*nq + p*nq + q] = tmp;
+                        s_wsp0[e * (nq*nq*nm_n) + k*nq*nq + p*nq + q] = tmp;
                     }
                 }
                 team_member.team_barrier();
@@ -336,14 +326,14 @@ std::vector<double> Kokkos_MixedGrad(
                     int k = tid % nm_n;
                     
                     for(int q = 0; q < nq; ++q) {
-                        r_p[q] = s_wsp1[e * (nq*nq*nm_n) + k*nq*nq + p*nq + q]; 
+                        r_p[q] = s_wsp0[e * (nq*nq*nm_n) + k*nq*nq + p*nq + q]; 
                     }
                     for (int j = 0; j < nm_t; ++j) {
                         T tmp = 0.0;
                         for(int q = 0; q < nq; ++q)
                             tmp += r_p[q] * s_basis_t[j*nq + q];
 
-                        s_wsp0[e * (nq*nm_t*nm_n) + j*nq*nm_n + p*nm_n + k] = tmp;
+                        s_wsp1[e * (nq*nm_t*nm_n) + j*nq*nm_n + p*nm_n + k] = tmp;
                     }
                 }
                 team_member.team_barrier();
@@ -354,29 +344,15 @@ std::vector<double> Kokkos_MixedGrad(
                     int k = tid % nm_n;
                     
                     for(int p = 0; p < nq; ++p) {
-                        r_p[p] = s_wsp0[e * (nq*nm_t*nm_n) + j*nq*nm_n + p*nm_n + k];
+                        r_p[p] = s_wsp1[e * (nq*nm_t*nm_n) + j*nq*nm_n + p*nm_n + k];
                     }
                     for (int i = 0; i < nm_t; ++i) {
                         T tmp = 0.0;
                         for(int p = 0; p < nq; ++p)
                             tmp += r_p[p] * s_basis_t[i*nq + p]; 
 
-                        // Safe Aliasing: s_out_2 overwrites s_accum
-                        s_out_2[e * ndof_u_1D + i*nm_t*nm_n + j*nm_n + k] = tmp;
+                        d_out[global_batch_offset_out + e * ndof_u_total + 2 * ndof_u_1D + i*nm_t*nm_n + j*nm_n + k] = tmp;
                     }
-                }
-                team_member.team_barrier();
-
-                // ==========================================
-                // PHASE 4: Write to Global Output Space
-                // ==========================================
-                for(int tid = threadIdx; tid < c_nelmtPerBatch * ndof_u_1D; tid += blockSize) {
-                    int e = tid / ndof_u_1D;
-                    int dof = tid % ndof_u_1D;
-
-                    d_out[global_batch_offset_out + e * ndof_u_total + 0 * ndof_u_1D + dof] = s_out_0[tid];
-                    d_out[global_batch_offset_out + e * ndof_u_total + 1 * ndof_u_1D + dof] = s_out_1[tid];
-                    d_out[global_batch_offset_out + e * ndof_u_total + 2 * ndof_u_1D + dof] = s_out_2[tid];
                 }
                 team_member.team_barrier();
 

@@ -70,7 +70,7 @@ T MixedGrad(const unsigned int nq,
             T tmp = 0;
             for(unsigned int k=0; k<nm_p; ++k)
                 tmp += wsp1[p*nq*nm_p + q*nm_p + k] * basis_p[k*nq + r];
-            accum[p*nq*nq + q*nq + r] = tmp;
+            accum[r*nq*nq + q*nq + p] = tmp;
         }
 
         // ==========================================
@@ -93,7 +93,7 @@ T MixedGrad(const unsigned int nq,
         for(unsigned int p=0; p<nq; ++p){
             T tmp = 0;
             for(unsigned int r=0; r<nq; ++r)
-                tmp += accum[p*nq*nq + q*nq + r] * basis_t[k*nq + r];
+                tmp += accum[r*nq*nq + q*nq + p] * basis_t[k*nq + r];
             wsp1[p*nq*nm_t + q*nm_t + k] = tmp;
         }
 
@@ -121,7 +121,7 @@ T MixedGrad(const unsigned int nq,
         for(unsigned int p=0; p<nq; ++p){
             T tmp = 0;
             for(unsigned int r=0; r<nq; ++r)
-                tmp += accum[p*nq*nq + q*nq + r] * basis_t[k*nq + r];
+                tmp += accum[r*nq*nq + q*nq + p] * basis_t[k*nq + r];
             wsp1[p*nq*nm_t + q*nm_t + k] = tmp;
         }
 
@@ -149,7 +149,7 @@ T MixedGrad(const unsigned int nq,
         for(unsigned int p=0; p<nq; ++p){
             T tmp = 0;
             for(unsigned int r=0; r<nq; ++r)
-                tmp += accum[p*nq*nq + q*nq + r] * dbasis_n[k*nq + r];
+                tmp += accum[r*nq*nq + q*nq + p] * dbasis_n[k*nq + r];
             wsp1[p*nq*nm_n + q*nm_n + k]  = tmp;
         }
             

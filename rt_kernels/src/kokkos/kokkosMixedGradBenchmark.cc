@@ -88,7 +88,7 @@ int main(int argc, char **argv){
     unsigned int nq     = p + 2;
     unsigned int nelmt  = (argc > 2) ? atoi(argv[2]) : 2 << 15;
     
-    unsigned int nelmtPerBatch = std::max(1UL, shmemPerBlock / (5 * nq * nq * nq) / sizeof(T));
+    unsigned int nelmtPerBatch = std::max(1UL, shmemPerBlock / (3 * nq * nq * nq) / sizeof(T));
     unsigned int numBlocks     = (argc > 3) ? atoi(argv[3]) : std::max(1U, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch);
 
     unsigned int threadsPerBlock = nq * nq * std::max(1u, nelmtPerBatch);
