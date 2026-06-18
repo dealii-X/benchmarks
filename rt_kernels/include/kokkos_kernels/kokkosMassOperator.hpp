@@ -304,7 +304,7 @@ std::vector<double> Kokkos_Mass(
                 // PHASE 2: Apply Piola Geometry Metric
                 // ==========================================
 
-                for(unsigned int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize){
+                for(int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize){
 
                     int e = tid / (nq * nq);
                     int q = (tid / nq) % nq; 
@@ -315,7 +315,7 @@ std::vector<double> Kokkos_Mass(
                     T G00, G01, G02, G11, G12, G22;
                     T u0, u1, u2;
 
-                    for(unsigned int r = 0; r < nq; ++r){
+                    for(int r = 0; r < nq; ++r){
 
                         int G_idx = e_offset + r * nq*nq + q * nq + p;
 

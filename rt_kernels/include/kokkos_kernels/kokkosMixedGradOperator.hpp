@@ -83,13 +83,13 @@ std::vector<double> Kokkos_MixedGrad(
             const unsigned int threadIdx = team_member.team_rank();
             const unsigned int blockSize = team_member.team_size();
 
-            for(unsigned int tid = threadIdx; tid < nm_t * nq; tid += blockSize)
+            for(int tid = threadIdx; tid < nm_t * nq; tid += blockSize)
                 s_basis_t[tid] = d_basis_t[tid];
         
-            for(unsigned int tid = threadIdx; tid < nm_n * nq; tid += blockSize)
+            for(int tid = threadIdx; tid < nm_n * nq; tid += blockSize)
                 s_dbasis_n[tid] = d_dbasis_n[tid];
 
-            for(unsigned int tid = threadIdx; tid < nm_p * nq; tid += blockSize)
+            for(int tid = threadIdx; tid < nm_p * nq; tid += blockSize)
                 s_basis_p[tid] = d_basis_p[tid];
             
             team_member.team_barrier();
@@ -176,7 +176,7 @@ std::vector<double> Kokkos_MixedGrad(
                 // ==========================================
                 // PHASE 2: Apply Scalar Metric
                 // ==========================================
-                for(unsigned int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq * nq; tid += blockSize){
+                for(int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq * nq; tid += blockSize){
                     s_accum[tid] *= d_G_scalar[tid % (nq * nq * nq)];
                 }
                 team_member.team_barrier();

@@ -277,7 +277,7 @@ std::vector<double> Kokkos_MixedDiv(
                 // ==========================================
                 // PHASE 2: Apply Scalar Geometric Metric
                 // ==========================================
-                for(unsigned int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq * nq; tid += blockSize){
+                for(int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq * nq; tid += blockSize){
                     s_accum[tid] *= d_G_scalar[tid % (nq * nq * nq)];
                 }
                 team_member.team_barrier();
