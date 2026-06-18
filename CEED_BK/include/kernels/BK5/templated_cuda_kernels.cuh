@@ -27,7 +27,7 @@ __global__ void LaplaceOperator(
     T *s_wsp      = s_rqt + nelmtPerBatch * nq * nq * nq;
 
     //copy to shared memory
-    for(unsigned int tid = threadIdx.x; tid < nq * nq; tid += blockDim.x)
+    for(int tid = threadIdx.x; tid < nq * nq; tid += blockDim.x)
     {
         s_dbasis[tid] = d_dbasis[tid];
     }
@@ -41,20 +41,20 @@ __global__ void LaplaceOperator(
         //current nelmtPerBatch (edge case, last batch size can be less)
         int c_nelmtPerBatch = std::min(nelmtPerBatch, nelmt - eb * nelmtPerBatch);
 
-        for(unsigned int tid = threadIdx.x; tid < c_nelmtPerBatch * nq * nq * nq; tid += blockDim.x)
+        for(int tid = threadIdx.x; tid < c_nelmtPerBatch * nq * nq * nq; tid += blockDim.x)
         {
             s_wsp[tid] = d_in[eb * nelmtPerBatch * nq * nq * nq + tid];
         }
         __syncthreads();
 
-        for(unsigned int tid = threadIdx.x; tid < c_nelmtPerBatch * nq * nq; tid += blockDim.x){
+        for(int tid = threadIdx.x; tid < c_nelmtPerBatch * nq * nq; tid += blockDim.x){
             
             int e = tid / (nq * nq);
             int j = tid % (nq * nq) / nq;
             int k = tid % nq;
 
             //copy to register
-            for(unsigned int n = 0; n < nq; n++)
+            for(int n = 0; n < nq; n++)
             {
                 r_i[n] = s_wsp[e * nq*nq*nq + n * nq*nq + j * nq + k];
                 r_j[n] = s_dbasis[n * nq + j];
@@ -64,7 +64,7 @@ __global__ void LaplaceOperator(
             T Grr, Grs, Grt, Gss, Gst, Gtt;
             T qr, qs, qt;
 
-            for(unsigned int i = 0; i < nq; ++i){
+            for(int i = 0; i < nq; ++i){
 
                 qr = 0; qs = 0; qt = 0; 
     
@@ -77,7 +77,7 @@ __global__ void LaplaceOperator(
                 Gtt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 5 * nq*nq*nq + i * nq * nq + j * nq + k];
         
                 // Multiply by D
-                for(unsigned int n = 0; n < nq; n++){
+                for(int n = 0; n < nq; n++){
                     qr += s_dbasis[n * nq + i] * r_i[n];
                     qs += r_j[n] * s_wsp[e * nq*nq*nq + i * nq * nq + n * nq + k];
                     qt += r_k[n] * s_wsp[e * nq*nq*nq + i * nq * nq + j * nq + n];
@@ -91,30 +91,30 @@ __global__ void LaplaceOperator(
         }
         __syncthreads();
 
-        for(unsigned int tid = threadIdx.x; tid < c_nelmtPerBatch * nq * nq; tid += blockDim.x){
+        for(int tid = threadIdx.x; tid < c_nelmtPerBatch * nq * nq; tid += blockDim.x){
 
             int e = tid / (nq * nq);
             int j = tid % (nq * nq) / nq;
             int k = tid % nq;
 
             //copy to register
-            for(unsigned int n = 0; n < nq; n++)
+            for(int n = 0; n < nq; n++)
             {
                 r_i[n] = s_rqr[e * nq*nq*nq + n * nq * nq + j * nq + k];
                 r_j[n] = s_dbasis[j * nq + n];
                 r_k[n] = s_dbasis[k * nq + n];
             }
 
-            for(unsigned int i = 0; i < nq; ++i)
+            for(int i = 0; i < nq; ++i)
             {
                 T tmp0 = 0;
-                for(unsigned int n = 0; n < nq; ++n)
+                for(int n = 0; n < nq; ++n)
                     tmp0 += r_i[n] * s_dbasis[i * nq + n];
         
-                for(unsigned int n = 0; n < nq; ++n)                
+                for(int n = 0; n < nq; ++n)                
                     tmp0 += s_rqs[e * nq*nq*nq + i * nq * nq + n * nq + k] * r_j[n];
         
-                for(unsigned int n = 0; n < nq; ++n)
+                for(int n = 0; n < nq; ++n)
                     tmp0 += s_rqt[e * nq*nq*nq + i * nq * nq + j * nq + n] * r_k[n];
         
                 d_out[eb * nelmtPerBatch * nq * nq * nq + e  * nq * nq * nq + i * nq * nq + j * nq + k] = tmp0;

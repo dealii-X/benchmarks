@@ -22,7 +22,7 @@ template <typename T, const unsigned int nq>
         T *s_wsp1 = s_wsp0 + nelmtPerBatch * nq * nq * nq;
         
         //copy to shared memory
-        for(unsigned int i = threadIdx.x; i < nm * nq; i += blockDim.x )
+        for(int i = threadIdx.x; i < nm * nq; i += blockDim.x )
         {
             s_basis[i] = d_basis[i];
         }

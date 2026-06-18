@@ -63,7 +63,7 @@ std::vector<double> Kokkos_MassOperator(const unsigned int nelmt, const unsigned
                         unsigned int threadIdx = team_member.team_rank();
                         unsigned int blockSize = team_member.team_size();
 
-                        for(unsigned int tid = threadIdx; tid < nm*nq; tid += blockSize)
+                        for(int tid = threadIdx; tid < nm*nq; tid += blockSize)
                             s_basis[tid] = d_basis(tid);
 
                         

@@ -69,7 +69,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                         unsigned int blockSize = team_member.team_size();
                         
                         //copy to shared memory
-                        for(unsigned int tid = threadIdx; tid < nq * nq; tid += blockSize)
+                        for(int tid = threadIdx; tid < nq * nq; tid += blockSize)
                         {
                             s_dbasis[tid] = d_dbasis(tid);
                         }
@@ -94,14 +94,14 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                             team_member.team_barrier();
                             
                             
-                            for(unsigned int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize){
+                            for(int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize){
 
                                 int e = tid / (nq * nq);
                                 int q = tid % (nq * nq) / nq;
                                 int r = tid % nq;
 
                                 //copy to register
-                                for(unsigned int n = 0; n < nq; n++)
+                                for(int n = 0; n < nq; n++)
                                 {
                                     r_p[n] = s_wsp[e * nq*nq*nq + r * nq*nq + q * nq + n];
                                     r_q[n] = s_dbasis[n * nq + q];
@@ -111,7 +111,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                 T Grr, Grs, Grt, Gss, Gst, Gtt;
                                 T qr, qs, qt;
                             
-                                for(unsigned int p = 0; p < nq; ++p){
+                                for(int p = 0; p < nq; ++p){
                                 
                                     qr = 0; qs = 0; qt = 0; 
                                 
@@ -124,7 +124,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                                     Gtt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 5 * nq*nq*nq + p * nq * nq + q * nq + r];
                                 
                                     // Multiply by D
-                                    for(unsigned int n = 0; n < nq; n++){
+                                    for(int n = 0; n < nq; n++){
                                         qr += s_dbasis[n * nq + p] * r_p[n];
                                         qs += r_q[n] * s_wsp[e * nq*nq*nq + r * nq*nq + n * nq + p];
                                         qt += r_r[n] * s_wsp[e * nq*nq*nq + n * nq*nq + q * nq + p];
@@ -139,30 +139,30 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                             team_member.team_barrier();
 
                     
-                            for(unsigned int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize){
+                            for(int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize){
                             
                                 int e = tid / (nq * nq);
                                 int q = tid % (nq * nq) / nq;
                                 int r = tid % nq;
                             
                                 //copy to register
-                                for(unsigned int n = 0; n < nq; n++)
+                                for(int n = 0; n < nq; n++)
                                 {
                                     r_p[n] = s_rqr[e * nq*nq*nq + n * nq * nq + q * nq + r];
                                     r_q[n] = s_dbasis[q * nq + n];
                                     r_r[n] = s_dbasis[r * nq + n];
                                 }
                             
-                                for(unsigned int p = 0; p < nq; ++p)
+                                for(int p = 0; p < nq; ++p)
                                 {
                                     T tmp0 = 0;
-                                    for(unsigned int n = 0; n < nq; ++n)
+                                    for(int n = 0; n < nq; ++n)
                                         tmp0 += r_p[n] * s_dbasis[p * nq + n];
                                 
-                                    for(unsigned int n = 0; n < nq; ++n)                
+                                    for(int n = 0; n < nq; ++n)                
                                         tmp0 += s_rqs[e * nq*nq*nq + p * nq * nq + n * nq + r] * r_q[n];
                                 
-                                    for(unsigned int n = 0; n < nq; ++n)
+                                    for(int n = 0; n < nq; ++n)
                                         tmp0 += s_rqt[e * nq*nq*nq + p * nq * nq + q * nq + n] * r_r[n];
                                 
                                     d_out[eb * nelmtPerBatch * nq * nq * nq + e  * nq * nq * nq + p * nq * nq + q * nq + r] = tmp0;
