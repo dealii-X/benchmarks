@@ -13,7 +13,7 @@ DEAL_II_NAMESPACE_OPEN
 
 namespace Portable
 {
-  
+
   template <int dim, int fe_degree, int nq, typename number>
   class LaplaceOperator
   {
@@ -25,7 +25,7 @@ namespace Portable
     void
     vmult(LinearAlgebra::distributed::Vector<number, MemorySpace::Default> &dst,
           const LinearAlgebra::distributed::Vector<number, MemorySpace::Default>
-            &src) const ;
+            &src) const;
 
     void
     vmult_dummy(
@@ -39,27 +39,27 @@ namespace Portable
     Tvmult(
       LinearAlgebra::distributed::Vector<number, MemorySpace::Default> &dst,
       const LinearAlgebra::distributed::Vector<number, MemorySpace::Default>
-        &src) const ;
+        &src) const;
 
     void
     initialize_dof_vector(
       LinearAlgebra::distributed::Vector<number, MemorySpace::Default> &vec)
-      const ;
+      const;
 
     void
     setup_dirichlet_boundary_dofs_masks();
 
     types::global_dof_index
-    m() const ;
+    m() const;
 
     types::global_dof_index
-    n() const ;
+    n() const;
 
     const MatrixFree<dim, number> &
-    get_matrix_free() const ;
+    get_matrix_free() const;
 
     const std::shared_ptr<const Utilities::MPI::Partitioner> &
-    get_vector_partitioner() const ;
+    get_vector_partitioner() const;
 
     void
     compute_G_tensors();
@@ -146,22 +146,31 @@ namespace Portable
           {
             const auto &precomputed_data = matrix_free.get_data(color);
 
+            constexpr bool is_serial =
+              std::is_same<Kokkos::DefaultExecutionSpace,
+                           Kokkos::DefaultHostExecutionSpace>::value;
+
             unsigned int numBlocks       = numbers::invalid_unsigned_int;
             unsigned int threadsPerBlock = numbers::invalid_unsigned_int;
 
+            if (is_serial)
+              {
+                numBlocks       = 1u;
+                threadsPerBlock = 1u;
+              }
+
             Kokkos::fence();
 
-            BK3::Parallel::
-              KokkosKernel<dim, fe_degree + 1, nq, number>(
-                precomputed_data.shape_values,
-                precomputed_data.co_shape_gradients,
-                G_tensors[color],
-                src_device,
-                dst_device,
-                dirichlet_boundary_dofs_masks[color],
-                n_cells,
-                numBlocks,
-                threadsPerBlock);
+            BK3::Parallel::KokkosKernel<dim, fe_degree + 1, nq, number>(
+              precomputed_data.shape_values,
+              precomputed_data.co_shape_gradients,
+              G_tensors[color],
+              src_device,
+              dst_device,
+              dirichlet_boundary_dofs_masks[color],
+              n_cells,
+              numBlocks,
+              threadsPerBlock);
             Kokkos::fence();
           }
       }
@@ -172,7 +181,7 @@ namespace Portable
   }
 
 
-  template <int dim, int fe_degree,int nq, typename number>
+  template <int dim, int fe_degree, int nq, typename number>
   void
   LaplaceOperator<dim, fe_degree, nq, number>::vmult_dummy(
     LinearAlgebra::distributed::Vector<number, MemorySpace::Default>       &dst,
@@ -180,15 +189,12 @@ namespace Portable
     const bool ghost_exchange_on,
     const bool computation_on) const
   {
-
-
     if (ghost_exchange_on)
       src.update_ghost_values();
 
     if (computation_on)
       {
-
-    dst = 0.;
+        dst = 0.;
 
         DeviceVector<number> src_device(src.get_values(),
                                         src.locally_owned_size()),
@@ -208,19 +214,28 @@ namespace Portable
                 unsigned int numBlocks       = numbers::invalid_unsigned_int;
                 unsigned int threadsPerBlock = numbers::invalid_unsigned_int;
 
+                constexpr bool is_serial =
+                  std::is_same<Kokkos::DefaultExecutionSpace,
+                               Kokkos::DefaultHostExecutionSpace>::value;
+
+                if (is_serial)
+                  {
+                    numBlocks       = 1u;
+                    threadsPerBlock = 1u;
+                  }
+
                 Kokkos::fence();
 
-                BK3::Parallel::
-                  KokkosKernel<dim, fe_degree + 1, nq, number>(
-                    precomputed_data.shape_values,
-                    precomputed_data.co_shape_gradients,
-                    G_tensors[color],
-                    src_device,
-                    dst_device,
-                    dirichlet_boundary_dofs_masks[color],
-                    n_cells,
-                    numBlocks,
-                    threadsPerBlock);
+                BK3::Parallel::KokkosKernel<dim, fe_degree + 1, nq, number>(
+                  precomputed_data.shape_values,
+                  precomputed_data.co_shape_gradients,
+                  G_tensors[color],
+                  src_device,
+                  dst_device,
+                  dirichlet_boundary_dofs_masks[color],
+                  n_cells,
+                  numBlocks,
+                  threadsPerBlock);
                 Kokkos::fence();
               }
           }
@@ -303,7 +318,8 @@ namespace Portable
 
   template <int dim, int fe_degree, int nq, typename number>
   void
-  LaplaceOperator<dim, fe_degree, nq, number>::setup_dirichlet_boundary_dofs_masks()
+  LaplaceOperator<dim, fe_degree, nq, number>::
+    setup_dirichlet_boundary_dofs_masks()
   {
     dealii::MemorySpace::Default::kokkos_space::execution_space exec_space;
     const auto        &colored_graph = matrix_free.get_colored_graph();
