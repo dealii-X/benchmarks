@@ -82,15 +82,15 @@ int main(int argc, char **argv){
     unsigned int p      = (argc > 1) ? atoi(argv[1]) : 2u;    unsigned int nq = p + 2;
     unsigned int nelmt  = (argc > 2) ? atoi(argv[2]) : 2 << 15;
     
-    unsigned int nelmtPerBatch = std::max(1UL, shmemPerBlock / (5 * nq * nq * nq) / sizeof(T));
-    unsigned int numBlocks     = (argc > 3) ? atoi(argv[3]) : std::max(1U, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch);
+    unsigned int nelmtPerBatch = (argc > 3) ? atoi(argv[3]) : std::max(1UL, shmemPerBlock / (5 * nq * nq * nq) / sizeof(T));
+    unsigned int numBlocks     = (argc > 4) ? atoi(argv[4]) : std::max(1U, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch);
 
     unsigned int threadsPerBlock = nq * nq * std::max(1u, nelmtPerBatch);
-    threadsPerBlock              = (argc > 4) ? atoi(argv[4]) : threadsPerBlock;
+    threadsPerBlock              = (argc > 5) ? atoi(argv[5]) : threadsPerBlock;
     threadsPerBlock              = std::min(threadsPerBlock, 512u);
 
     
-    unsigned int ntests          = (argc > 5) ? atoi(argv[5]) : 10u;
+    unsigned int ntests          = (argc > 6) ? atoi(argv[6]) : 10u;
 
     std::cout.precision(8);
 
