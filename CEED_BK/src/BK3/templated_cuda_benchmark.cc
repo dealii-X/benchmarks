@@ -123,7 +123,7 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
 int main(int argc, char **argv){
 
     using T = double;
-    int shmemPerBlock = 10800;
+    int shmemPerBlock = 10000;
 
     unsigned int p                 = (argc > 1) ? atoi(argv[1]) : 2u; unsigned int nq = p + 2;
     unsigned int nelmt             = (argc > 2) ? atoi(argv[2]) : 2 << 18;
