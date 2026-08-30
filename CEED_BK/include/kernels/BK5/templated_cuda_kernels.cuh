@@ -39,7 +39,8 @@ __global__ void LaplaceOperator(
     while(eb < (nelmt + nelmtPerBatch - 1) / nelmtPerBatch)
     {   
         //current nelmtPerBatch (edge case, last batch size can be less)
-        int c_nelmtPerBatch = std::min(nelmtPerBatch, nelmt - eb * nelmtPerBatch);
+        int remaining = nelmt - eb * nelmtPerBatch;
+        int c_nelmtPerBatch = (nelmtPerBatch < remaining) ? nelmtPerBatch : remaining;
 
         for(int tid = threadIdx.x; tid < c_nelmtPerBatch * nq * nq * nq; tid += blockDim.x)
         {

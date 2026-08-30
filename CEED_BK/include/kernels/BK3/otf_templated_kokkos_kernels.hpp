@@ -132,8 +132,8 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
                 int eb = team_member.league_rank();
                 while (eb < (nelmt + nelmtPerBatch - 1) / nelmtPerBatch)
                 {
-                    const int c_nelmtPerBatch =
-                        std::min(nelmtPerBatch, nelmt - eb * nelmtPerBatch);
+                    int remaining = nelmt - eb * nelmtPerBatch;
+                    int c_nelmtPerBatch = (nelmtPerBatch < remaining) ? nelmtPerBatch : remaining;
 
                     // ----------------------------------------------------------
                     // step-1 : Copy from input to wsp0
