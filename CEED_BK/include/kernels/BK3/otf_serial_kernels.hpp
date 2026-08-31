@@ -24,9 +24,6 @@ T SumFactorization_OTF(
     const unsigned int nm2 = nq2 - 1;
     const unsigned int nquad = nq0 * nq1 * nq2;
 
-    // -------------------------------------------------------------------------
-    // Pre-allocate element-sized workspaces ONCE to avoid heap thrashing
-    // -------------------------------------------------------------------------
     std::vector<T> wsp0_vec(std::max(nm0 * nm1 * nm2, nquad));
     std::vector<T> wsp1_vec(nquad);
     std::vector<T> rqr_vec(nquad);
@@ -39,9 +36,7 @@ T SumFactorization_OTF(
     T* __restrict__ rqs  = rqs_vec.data();
     T* __restrict__ rqt  = rqt_vec.data();
 
-    // -------------------------------------------------------------------------
-    // Element Loop
-    // -------------------------------------------------------------------------
+
     for(unsigned int e = 0; e < nelmt; ++e){
 
         // step-1 : Copy from in to wsp0
@@ -54,10 +49,6 @@ T SumFactorization_OTF(
             }
         }
 
-        // ----------------------------------------------------------
-        // Interpolate to GL nodes (AXPY memory access pattern)
-        // ----------------------------------------------------------
-
         // step-2 : direction 0
         for(unsigned int p = 0; p < nq0; p++){
             // i = 0 (Init)
@@ -69,7 +60,7 @@ T SumFactorization_OTF(
                     }
                 }
             }
-            // i > 0 (Accumulate)
+
             for(unsigned int i = 1; i < nm0; i++){
                 const T b_val = basis0[i * nq0 + p];
                 for(unsigned int j = 0; j < nm1; j++){
@@ -83,14 +74,12 @@ T SumFactorization_OTF(
         // step-3 : direction 1
         for(unsigned int p = 0; p < nq0; p++){
             for(unsigned int q = 0; q < nq1; q++){
-                // j = 0 (Init)
                 {
                     const T b_val = basis1[0 * nq1 + q];
                     for(unsigned int k = 0; k < nm2; k++){
                         wsp0[p * nq1 * nm2 + q * nm2 + k] = wsp1[p * nm1 * nm2 + 0 * nm2 + k] * b_val;
                     }
                 }
-                // j > 0 (Accumulate)
                 for(unsigned int j = 1; j < nm1; j++){
                     const T b_val = basis1[j * nq1 + q];
                     for(unsigned int k = 0; k < nm2; k++){
@@ -129,13 +118,11 @@ T SumFactorization_OTF(
             for(unsigned int q = 0; q < nq1; ++q){
                 for(unsigned int r = 0; r < nq2; ++r){
 
-                    // step-5 : Multiply by D (Reference gradients)
                     T qr = 0.0, qs = 0.0, qt = 0.0;
                     for(unsigned int n = 0; n < nq0; ++n) qr += wsp1[n * nq1 * nq2 + q * nq2 + r] * dbasis0[n * nq0 + p];
                     for(unsigned int n = 0; n < nq1; ++n) qs += wsp1[p * nq1 * nq2 + n * nq2 + r] * dbasis1[n * nq1 + q];
                     for(unsigned int n = 0; n < nq2; ++n) qt += wsp1[p * nq1 * nq2 + q * nq2 + n] * dbasis2[n * nq2 + r];
 
-                    // step-6 : Build Jacobian J from physical coordinates
                     T J00 = 0.0, J01 = 0.0, J02 = 0.0;
                     T J10 = 0.0, J11 = 0.0, J12 = 0.0;
                     T J20 = 0.0, J21 = 0.0, J22 = 0.0;

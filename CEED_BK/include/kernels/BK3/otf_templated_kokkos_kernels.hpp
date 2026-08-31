@@ -10,32 +10,7 @@
 namespace BK3{
 namespace Parallel{
 
-/*
- * On-the-fly BK3 Laplace operator.
- *
- * Compared with the original kernel:
- *   - G is not stored or loaded.
- *   - The input is the physical coordinate field at the GL quadrature points.
- *   - At every quadrature point we build J, its cofactor matrix C, and det(J).
- *   - The geometric action is applied as
- *         (w/detJ) C (C^T g)
- *     without ever forming G = (w/detJ) C C^T.
- *   - The existing sum-factorization / team / scratch structure is otherwise
- *     kept intact.
- *
- * coord_q layout:
- *   coord_q[((e*3 + c)*q^3) + p*q*q + q*nq + r]
- *   c = 0 -> x, c = 1 -> y, c = 2 -> z.
- *
- * weights layout:
- *   weights[p], p = 0,...,q-1.
- *
- * IMPORTANT:
- *   coord_q is assumed to contain the physical coordinates evaluated at the
- *   GL quadrature points. If the only available coordinates are the GLL
- *   nodal coordinates, an additional tensor-product interpolation stage is
- *   required to construct coord_q.
- */
+
 template <typename T, const unsigned int nq>
 std::vector<double> Kokkos_LaplaceOperator_OTF(
     const unsigned int nelmt,
@@ -114,12 +89,11 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
 
                 T *s_rqr = s_wsp1 + nelmtPerBatch * nq * nq * nq;
                 T *s_rqs = s_rqr  + nelmtPerBatch * nq * nq * nq;
-                T *s_rqt = s_wsp0; // same alias as original kernel
+                T *s_rqt = s_wsp0;
 
                 const unsigned int threadIdx = team_member.team_rank();
                 const unsigned int blockSize = team_member.team_size();
 
-                // Copy 1D data to shared memory.
                 for (unsigned int tid = threadIdx; tid < nm * nq; tid += blockSize)
                     s_basis[tid] = d_basis[tid];
 
@@ -259,12 +233,6 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
 
                         for (int p = 0; p < nq; ++p)
                         {
-                            // --------------------------------------------------
-                            // 5a. Reference-space gradient of u.
-                            // Keep the original qr/qs/qt definitions so the new
-                            // kernel has the same component ordering as the old
-                            // G-action.
-                            // --------------------------------------------------
                             T qr = 0.0;
                             T qs = 0.0;
                             T qt = 0.0;
@@ -278,18 +246,6 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
                                     e * nq * nq * nq + n * nq * nq + q * nq + p];
                             }
 
-                            // --------------------------------------------------
-                            // 5b. Read the physical coordinates at this
-                            // quadrature line and build J.
-                            //
-                            // coord layout per element:
-                            //   x[p,q,r], y[p,q,r], z[p,q,r]
-                            //
-                            // The nine entries are generated directly from the
-                            // q-point coordinate field, using the same dbasis
-                            // lines already held in registers/shared memory.
-                            // --------------------------------------------------
-
                             const unsigned int coord_base = (eb * nelmtPerBatch + e) * 3u * nq * nq * nq;
                             const unsigned int xbase = coord_base;
                             const unsigned int ybase = coord_base + nq * nq * nq;
@@ -301,7 +257,6 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
 
                             for (int n = 0; n < nq; ++n)
                             {
-                                // x derivatives
                                 const T x_r = d_coord[xbase + n * nq * nq + q * nq + r];
                                 const T x_s = d_coord[xbase + p * nq * nq + n * nq + r];
                                 const T x_t = d_coord[xbase + p * nq * nq + q * nq + n];
@@ -310,7 +265,6 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
                                 J01 += r_q[n] * x_s;
                                 J02 += r_r[n] * x_t;
 
-                                // y derivatives
                                 const T y_r = d_coord[ybase + n * nq * nq + q * nq + r];
                                 const T y_s = d_coord[ybase + p * nq * nq + n * nq + r];
                                 const T y_t = d_coord[ybase + p * nq * nq + q * nq + n];
@@ -318,8 +272,7 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
                                 J10 += s_dbasis[n * nq + p] * y_r;
                                 J11 += r_q[n] * y_s;
                                 J12 += r_r[n] * y_t;
-
-                                // z derivatives
+                                
                                 const T z_r = d_coord[zbase + n * nq * nq + q * nq + r];
                                 const T z_s = d_coord[zbase + p * nq * nq + n * nq + r];
                                 const T z_t = d_coord[zbase + p * nq * nq + q * nq + n];
