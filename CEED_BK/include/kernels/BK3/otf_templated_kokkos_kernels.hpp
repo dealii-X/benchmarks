@@ -90,7 +90,7 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
                 T *s_rqr = s_wsp1 + nelmtPerBatch * nq * nq * nq;
                 T *s_rqs = s_rqr  + nelmtPerBatch * nq * nq * nq;
                 T *s_rqt = s_wsp0;
-
+             
                 const unsigned int threadIdx = team_member.team_rank();
                 const unsigned int blockSize = team_member.team_size();
 
@@ -202,6 +202,7 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
                     }
                     team_member.team_barrier();
 
+
                     // ----------------------------------------------------------
                     // step-5 : metric action, ON THE FLY
                     //
@@ -218,14 +219,27 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
                     // C is never stored in global/shared memory.
                     // It exists only as scalar register temporaries.
                     // ----------------------------------------------------------
+
+
                     for (int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize)
                     {
                         const int e = tid / (nq * nq);
                         const int q = tid % (nq * nq) / nq;
                         const int r = tid % nq;
 
+                        const unsigned int coord_base = (eb * nelmtPerBatch + e) * 3u * nq * nq * nq;
+                        const unsigned int xbase = coord_base;
+                        const unsigned int ybase = coord_base + nq * nq * nq;
+                        const unsigned int zbase = coord_base + 2u * nq * nq * nq;
+
+                        T r_xr[nq], r_yr[nq], r_zr[nq];
+
                         for (int n = 0; n < nq; ++n)
                         {
+                            r_xr[n] = d_coord[xbase + n * nq * nq + q * nq + r];
+                            r_yr[n] = d_coord[ybase + n * nq * nq + q * nq + r];
+                            r_zr[n] = d_coord[zbase + n * nq * nq + q * nq + r];
+
                             r_p[n] = s_wsp1[e * nq * nq * nq + r * nq * nq + q * nq + n];
                             r_q[n] = s_dbasis[n * nq + q];
                             r_r[n] = s_dbasis[n * nq + r];
@@ -240,16 +254,9 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
                             for (int n = 0; n < nq; ++n)
                             {
                                 qr += s_dbasis[n * nq + p] * r_p[n];
-                                qs += r_q[n] * s_wsp1[
-                                    e * nq * nq * nq + r * nq * nq + n * nq + p];
-                                qt += r_r[n] * s_wsp1[
-                                    e * nq * nq * nq + n * nq * nq + q * nq + p];
+                                qs += r_q[n] * s_wsp1[e * nq * nq * nq + r * nq * nq + n * nq + p];
+                                qt += r_r[n] * s_wsp1[e * nq * nq * nq + n * nq * nq + q * nq + p];
                             }
-
-                            const unsigned int coord_base = (eb * nelmtPerBatch + e) * 3u * nq * nq * nq;
-                            const unsigned int xbase = coord_base;
-                            const unsigned int ybase = coord_base + nq * nq * nq;
-                            const unsigned int zbase = coord_base + 2u * nq * nq * nq;
 
                             T J00 = 0.0, J01 = 0.0, J02 = 0.0;
                             T J10 = 0.0, J11 = 0.0, J12 = 0.0;
@@ -257,33 +264,30 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
 
                             for (int n = 0; n < nq; ++n)
                             {
-                                const T x_r = d_coord[xbase + n * nq * nq + q * nq + r];
                                 const T x_s = d_coord[xbase + p * nq * nq + n * nq + r];
                                 const T x_t = d_coord[xbase + p * nq * nq + q * nq + n];
 
-                                J00 += s_dbasis[n * nq + p] * x_r;
+                                J00 += s_dbasis[n * nq + p] * r_xr[n];
                                 J01 += r_q[n] * x_s;
                                 J02 += r_r[n] * x_t;
 
-                                const T y_r = d_coord[ybase + n * nq * nq + q * nq + r];
                                 const T y_s = d_coord[ybase + p * nq * nq + n * nq + r];
                                 const T y_t = d_coord[ybase + p * nq * nq + q * nq + n];
 
-                                J10 += s_dbasis[n * nq + p] * y_r;
+                                J10 += s_dbasis[n * nq + p] * r_yr[n];
                                 J11 += r_q[n] * y_s;
                                 J12 += r_r[n] * y_t;
-                                
-                                const T z_r = d_coord[zbase + n * nq * nq + q * nq + r];
+
                                 const T z_s = d_coord[zbase + p * nq * nq + n * nq + r];
                                 const T z_t = d_coord[zbase + p * nq * nq + q * nq + n];
 
-                                J20 += s_dbasis[n * nq + p] * z_r;
+                                J20 += s_dbasis[n * nq + p] * r_zr[n];
                                 J21 += r_q[n] * z_s;
                                 J22 += r_r[n] * z_t;
                             }
 
                             // --------------------------------------------------
-                            // 5c. Cofactor matrix C = det(J) J^{-T}
+                            // Cofactor matrix C = det(J) J^{-T}
                             // --------------------------------------------------
                             const T C00 = J11 * J22 - J12 * J21;
                             const T C01 = J02 * J21 - J01 * J22;
@@ -301,13 +305,7 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
                             const T scale = (d_weights[p] * d_weights[q] * d_weights[r]) / detJ;
 
                             // --------------------------------------------------
-                            // 5d. Direct factored action C (C^T g).
-                            //
-                            // Preserve the component ordering of the original
-                            // code exactly: its metric multiply uses
-                            //   [qt, qs, qr]^T
-                            // as the input vector to G, then stores the three
-                            // outputs into [rqr,rqs,rqt].
+                            // Direct factored action C (C^T g)
                             // --------------------------------------------------
                             const T t0 = C00 * qt + C10 * qs + C20 * qr;
                             const T t1 = C01 * qt + C11 * qs + C21 * qr;
