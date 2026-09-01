@@ -10,7 +10,7 @@ namespace Parallel{
 
 
 template <typename T, const unsigned int nq>
-std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsigned int nelmtPerBatch, 
+std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelmtPerBatch, 
     const unsigned int numBlocks, const unsigned int threadsPerBlock, const T *__restrict__ basis, const T *__restrict__ dbasis,
     const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out, const unsigned int ntests)
     {   
@@ -96,7 +96,7 @@ std::vector<double> Kokkos_LaplaceOperator(const unsigned int nelmt, const unsig
                     */
 
                     //element batch iteration
-                    int eb = team_member.league_rank();
+                    size_t eb = team_member.league_rank();
                     while(eb < (nelmt + nelmtPerBatch - 1) / nelmtPerBatch)
                     {   
                         //current nelmtPerBatch (edge case, last batch size can be less)

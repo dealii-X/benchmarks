@@ -6,7 +6,7 @@
 #include <benchmark_printer.hpp>
 
 template<typename T, const unsigned int nq>
-void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch, 
+void run_test(size_t nelmt, const unsigned int nelmtPerBatch, 
     const unsigned int numBlocks, const unsigned int threadsPerBlock, const unsigned int ntests)
 {   
     const unsigned int nm = nq - 1;
@@ -51,11 +51,11 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
 
 
     //Initialize coord_q as the same stretched 3D grid used by the OTF kernel
-    for(unsigned int e = 0; e < nelmt; ++e){
-        unsigned int coord_base = e * 3 * nquad;
-        unsigned int xbase = coord_base;
-        unsigned int ybase = coord_base + nquad;
-        unsigned int zbase = coord_base + 2 * nquad;
+    for(size_t e = 0; e < nelmt; ++e){
+        size_t coord_base = e * 3 * nquad;
+        size_t xbase = coord_base;
+        size_t ybase = coord_base + nquad;
+        size_t zbase = coord_base + 2 * nquad;
 
         for(unsigned int p = 0; p < nq; ++p){
             for(unsigned int q = 0; q < nq; ++q){
@@ -70,12 +70,12 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
     }
 
 
-    for(unsigned int e = 0; e < nelmt; ++e){
-        unsigned int coord_base = e * 3 * nquad;
-        unsigned int xbase = coord_base;
-        unsigned int ybase = coord_base + nquad;
-        unsigned int zbase = coord_base + 2 * nquad;
-        unsigned int Gbase = e * 6 * nquad;
+    for(size_t e = 0; e < nelmt; ++e){
+        size_t coord_base = e * 3 * nquad;
+        size_t xbase = coord_base;
+        size_t ybase = coord_base + nquad;
+        size_t zbase = coord_base + 2 * nquad;
+        size_t Gbase = e * 6 * nquad;
 
         for(unsigned int p = 0; p < nq; ++p){
             for(unsigned int q = 0; q < nq; ++q){
@@ -184,16 +184,16 @@ int main(int argc, char **argv){
 
     for (int istep = 0; istep < NumSample; ++istep)
     {
-        int dof = static_cast<int>(std::llround(DOFmin * std::pow(log_step, istep)));
+        size_t dof = static_cast<size_t>(std::llround(DOFmin * std::pow(log_step, istep)));
 
         for (int nq = 3; nq <= 10; ++nq) {
             int nm = nq - 1;
 
-            unsigned int nelmt = dof / (nm * nm * nm);
+            size_t nelmt = dof / (nm * nm * nm);
             if (nelmt == 0) continue;
 
             unsigned int nelmtPerBatch = std::max(1UL, shmemPerBlock / (4 * nq * nq * nq) / sizeof(T));
-            unsigned int numBlocks = std::max(1U, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch / 2);
+            unsigned int numBlocks = std::max((size_t)1, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch);
             unsigned int threadsPerBlock = nq * nq * std::max(1u, nelmtPerBatch);
 
             switch (nq) {

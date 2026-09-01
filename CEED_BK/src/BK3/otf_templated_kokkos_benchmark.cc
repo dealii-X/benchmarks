@@ -7,7 +7,7 @@
 #include <benchmark_printer.hpp>
 
 template<typename T, const unsigned int nq>
-void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch, 
+void run_test(size_t nelmt, const unsigned int nelmtPerBatch, 
     const unsigned int numBlocks, const unsigned int threadsPerBlock, const unsigned int ntests)
 {   
     const unsigned int nm = nq - 1;
@@ -23,18 +23,18 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
     T* out = new T[nelmt * nm * nm * nm];
 
     // Initialize the input array with varying data so the derivative is non-zero
-    for(unsigned int i = 0; i < nelmt * nm * nm * nm; ++i){
+    for(size_t i = 0; i < nelmt * nm * nm * nm; ++i){
         in[i] = std::sin((T)i); 
     }
     std::fill(out, out + nelmt * nm * nm * nm, (T)0.0);
     std::fill(weights, weights + nq, (T)1.0);
 
     // Initialize coord_q as a stretched 3D grid to ensure positive det(J)
-    for(unsigned int e = 0; e < nelmt; ++e){
-        unsigned int coord_base = e * 3 * nquad;
-        unsigned int xbase = coord_base;
-        unsigned int ybase = coord_base + nquad;
-        unsigned int zbase = coord_base + 2 * nquad;
+    for(size_t e = 0; e < nelmt; ++e){
+        size_t coord_base = e * 3 * nquad;
+        size_t xbase = coord_base;
+        size_t ybase = coord_base + nquad;
+        size_t zbase = coord_base + 2 * nquad;
         
         for(unsigned int p = 0; p < nq; ++p){
             for(unsigned int q = 0; q < nq; ++q){
@@ -96,12 +96,12 @@ int main(int argc, char **argv){
 
     Kokkos::initialize(argc, argv);
 
-    unsigned int p                 = (argc > 1) ? atoi(argv[1]) : 2u; 
+    unsigned int p                 = (argc > 1) ? atoi(argv[1]) : 2u;
     unsigned int nq                = p + 2;
-    unsigned int nelmt             = (argc > 2) ? atoi(argv[2]) : 2 << 16;
+    size_t nelmt                   = (argc > 2) ? std::stoull(argv[2]) : (1ULL << 16);
     
     unsigned int nelmtPerBatch     = (argc > 3) ? atoi(argv[3]) : std::max(1UL, shmemPerBlock / (4 * nq * nq * nq) / sizeof(T));
-    unsigned int numBlocks         = (argc > 4) ? atoi(argv[4]) : std::max(1U, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch / 2);
+    unsigned int numBlocks         = (argc > 4) ? atoi(argv[4]) : std::max((size_t)1, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch);
 
     unsigned int threadsPerBlock   = nq * nq * std::max(1u, nelmtPerBatch);
 

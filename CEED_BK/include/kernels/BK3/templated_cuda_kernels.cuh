@@ -10,7 +10,7 @@ namespace Parallel{
 
 template<typename T, const unsigned int nq>
 __global__ void LaplaceOperator(
-    const unsigned int nelmt, const unsigned int nelmtPerBatch, const T*__restrict__ d_basis, const T *__restrict__ d_dbasis, 
+    size_t nelmt, const unsigned int nelmtPerBatch, const T*__restrict__ d_basis, const T *__restrict__ d_dbasis, 
     const T *__restrict__ d_G, const T *__restrict__ d_in, T *__restrict__ d_out)
 {
     const unsigned int nm = nq - 1;
@@ -49,7 +49,7 @@ __global__ void LaplaceOperator(
     */
 
     //element batch iteration
-    int eb = blockIdx.x;
+    size_t eb = blockIdx.x;
     while(eb < (nelmt + nelmtPerBatch - 1) / nelmtPerBatch)
     {   
         //current nelmtPerBatch (edge case, last batch size can be less)

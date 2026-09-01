@@ -13,7 +13,7 @@ namespace Parallel{
 
 template <typename T, const unsigned int nq>
 std::vector<double> Kokkos_LaplaceOperator_OTF(
-    const unsigned int nelmt,
+    const size_t nelmt,
     const unsigned int nelmtPerBatch,
     const unsigned int numBlocks,
     const unsigned int threadsPerBlock,
@@ -103,7 +103,7 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
                 team_member.team_barrier();
 
                 // element batch iteration
-                int eb = team_member.league_rank();
+                size_t eb = team_member.league_rank();
                 while (eb < (nelmt + nelmtPerBatch - 1) / nelmtPerBatch)
                 {
                     int remaining = nelmt - eb * nelmtPerBatch;
@@ -227,10 +227,10 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
                         const int q = tid % (nq * nq) / nq;
                         const int r = tid % nq;
 
-                        const unsigned int coord_base = (eb * nelmtPerBatch + e) * 3u * nq * nq * nq;
-                        const unsigned int xbase = coord_base;
-                        const unsigned int ybase = coord_base + nq * nq * nq;
-                        const unsigned int zbase = coord_base + 2u * nq * nq * nq;
+                        const size_t coord_base = (eb * nelmtPerBatch + e) * 3u * nq * nq * nq;
+                        const size_t xbase = coord_base;
+                        const size_t ybase = coord_base + nq * nq * nq;
+                        const size_t zbase = coord_base + 2u * nq * nq * nq;
 
                         T r_xr[nq], r_yr[nq], r_zr[nq];
 
