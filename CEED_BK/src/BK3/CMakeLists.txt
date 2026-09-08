@@ -5,7 +5,7 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/BK3)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/BK3)
 
 set(BK3_CUDA_BENCHMARKS templated_cuda_benchmark)
-set(BK3_KOKKOS_BENCHMARKS templated_kokkos_benchmark templated_batched_kokkos_benchmark otf_templated_kokkos_benchmark otf_templated_batched_kokkos_benchmark)
+set(BK3_KOKKOS_BENCHMARKS templated_kokkos_benchmark templated_batched_kokkos_benchmark otf_templated_kokkos_benchmark otf_templated_batched_kokkos_benchmark otf2_templated_kokkos_benchmark)
 
 if(Kokkos_ENABLE_CUDA)
     foreach(benchmark IN LISTS BK3_CUDA_BENCHMARKS)
