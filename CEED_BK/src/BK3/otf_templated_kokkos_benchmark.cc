@@ -52,7 +52,7 @@ void run_test(size_t nelmt, const unsigned int nelmtPerBatch,
     // Initialization of basis functions (varying data)
     for(unsigned int p = 0u; p < nq; p++){
         for(unsigned int i = 0u; i < nm; i++){
-            basis[p * nm + i] = std::cos((T)(p * nm + i));
+            basis[p * nm + i] = std::cos((p * nm + i));
         }
     }
 
@@ -61,7 +61,7 @@ void run_test(size_t nelmt, const unsigned int nelmtPerBatch,
     {
         for(unsigned int p = 0u; p < nq; p++)
         {
-            dbasis[i * nq + p] = std::cos((T)(i * nq + p));
+            dbasis[i * nq + p] = std::cos((i * nq + p));
         }
     }
 
