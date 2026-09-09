@@ -102,7 +102,6 @@ std::vector<double> Kokkos_LaplaceOperator_OTF2(
                     for (unsigned int i = 0; i < nm; ++i) {
                         for (unsigned int j = 0; j < nm; ++j) {
                             for (unsigned int k = 0; k < nm; ++k) {
-                                unsigned int idx = i * nm * nm + j * nm + k;
                                     r_wsp0[i][j][k] = d_in(e, i, j, k);
                             }
 
@@ -259,9 +258,9 @@ std::vector<double> Kokkos_LaplaceOperator_OTF2(
                                 
                                 for (unsigned int n = 0; n < nq; ++n)
                                 {
-                                    r_wsp0[r][q][n] += rqr_val * r_dbasis[p * nq + n];
-                                    r_wsp0[r][n][p] += rqs_val * r_dbasis[q * nq + n];
-                                    r_wsp0[n][q][p] += rqt_val * r_dbasis[r * nq + n];
+                                    r_wsp0[r][q][n] += rqr_val * r_dbasis[n * nq + p];
+                                    r_wsp0[r][n][p] += rqs_val * r_dbasis[n * nq + q];
+                                    r_wsp0[n][q][p] += rqt_val * r_dbasis[n * nq + r];
                                 }
                             }
                         }
