@@ -15,8 +15,8 @@ std::vector<double> Kokkos_LaplaceOperator_OTF2(
     const size_t nelmt,
     const unsigned int numBlocks,
     const unsigned int threadsPerBlock,
-    Kokkos::View<T**> d_basis,
-    Kokkos::View<T**> d_dbasis,
+    Kokkos::View<T**, Kokkos::LayoutRight> d_basis,
+    Kokkos::View<T**, Kokkos::LayoutRight> d_dbasis,
     Kokkos::View<T*>  d_weights,
     Kokkos::View<T*****> d_coord,
     Kokkos::View<T****> d_in,
@@ -90,7 +90,8 @@ std::vector<double> Kokkos_LaplaceOperator_OTF2(
                 while (eb < totalBatches)
                 {
                     size_t e = eb * nelmtPerBlock + threadIdx;
-
+                    if(e < nelmt)
+                    {
                     T r_wsp0[nq][nq][nq] = {};
                     T r_wsp1[nq][nq][nq] = {};
 
@@ -219,16 +220,16 @@ std::vector<double> Kokkos_LaplaceOperator_OTF2(
                                     
                                     // Jacobian
                                     J00 += r_dbasis[n * nq + p] * d_coord(e, 0, n, q, r);
-                                    J10 += r_dbasis[n * nq + p] * d_coord(e, 0, p, n, r);
-                                    J20 += r_dbasis[n * nq + p] * d_coord(e, 0, p, q, n);
-                                    
-                                    J01 += r_dbasis[n * nq + q] * d_coord(e, 0, n, q, r);
-                                    J11 += r_dbasis[n * nq + q] * d_coord(e, 0, p, n, r);
-                                    J21 += r_dbasis[n * nq + q] * d_coord(e, 0, p, q, n);
-                                    
-                                    J02 += r_dbasis[n * nq + r] * d_coord(e, 0, n, q, r);
-                                    J12 += r_dbasis[n * nq + r] * d_coord(e, 0, p, n, r);
-                                    J22 += r_dbasis[n * nq + r] * d_coord(e, 0, p, q, n);
+                                    J10 += r_dbasis[n * nq + p] * d_coord(e, 1, n, q, r);
+                                    J20 += r_dbasis[n * nq + p] * d_coord(e, 2, n, q, r);
+
+                                    J01 += r_dbasis[n * nq + q] * d_coord(e, 0, p, n, r);
+                                    J11 += r_dbasis[n * nq + q] * d_coord(e, 1, p, n, r);
+                                    J21 += r_dbasis[n * nq + q] * d_coord(e, 2, p, n, r);
+
+                                    J02 += r_dbasis[n * nq + r] * d_coord(e, 0, p, q, n);
+                                    J12 += r_dbasis[n * nq + r] * d_coord(e, 1, p, q, n);
+                                    J22 += r_dbasis[n * nq + r] * d_coord(e, 2, p, q, n);
                                 }
                                 
                                 // 3. Cofactor matrix C = det(J) J^{-T}
@@ -258,9 +259,9 @@ std::vector<double> Kokkos_LaplaceOperator_OTF2(
                                 
                                 for (unsigned int n = 0; n < nq; ++n)
                                 {
-                                    r_wsp0[r][q][n] += rqr_val * r_dbasis[n * nq + p];
-                                    r_wsp0[r][n][p] += rqs_val * r_dbasis[n * nq + q];
-                                    r_wsp0[n][q][p] += rqt_val * r_dbasis[n * nq + r];
+                                    r_wsp0[r][q][n] += rqr_val * r_dbasis[p * nq + n];
+                                    r_wsp0[r][n][p] += rqs_val * r_dbasis[q * nq + n];
+                                    r_wsp0[n][q][p] += rqt_val * r_dbasis[r * nq + n];
                                 }
                             }
                         }
@@ -276,10 +277,12 @@ std::vector<double> Kokkos_LaplaceOperator_OTF2(
                         {
                             for (unsigned int p = 0; p < nq; ++p)
                             {
+                                T tmp = 0.0;
                                 for (unsigned int r = 0; r < nq; ++r)
                                 {
-                                    r_wsp1[k][q][p] += r_basis[k * nq + r] * r_wsp0[r][q][p];
+                                    tmp += r_basis[k * nq + r] * r_wsp0[r][q][p];
                                 }
+                                r_wsp1[k][q][p] = tmp;
                             }
                         }
                     }
@@ -337,7 +340,7 @@ std::vector<double> Kokkos_LaplaceOperator_OTF2(
                             }
                         }
                     }
-                    
+                    }  //nelmt check
                     eb += team_member.league_size();
                 }
             });

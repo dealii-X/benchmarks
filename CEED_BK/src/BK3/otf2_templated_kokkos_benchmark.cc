@@ -15,8 +15,8 @@ void run_test(size_t nelmt, const unsigned int numBlocks, const unsigned int thr
     const unsigned int nquad = nq * nq * nq;
 
     // 1. Allocate Kokkos Views instead of raw pointers
-    Kokkos::View<T**>       d_basis("basis", nq, nm);
-    Kokkos::View<T**>       d_dbasis("dbasis", nq, nq);
+    Kokkos::View<T**,Kokkos::LayoutRight>       d_basis("basis", nm, nq);
+    Kokkos::View<T**,Kokkos::LayoutRight>       d_dbasis("dbasis", nq, nq);
     Kokkos::View<T*>        d_weights("weights", nq);
     Kokkos::View<T*****>    d_coord("coord", nelmt, 3, nq, nq, nq);
     Kokkos::View<T****>     d_in("in", nelmt, nm, nm, nm);
@@ -24,8 +24,8 @@ void run_test(size_t nelmt, const unsigned int numBlocks, const unsigned int thr
 
     // 2. Initialize d_in with Kokkos::sin in parallel (mapping flat index to 4D)
     Kokkos::parallel_for("init_in", 
-        Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {nelmt, nm, nm, nm}),
-        KOKKOS_LAMBDA(size_t e, unsigned int i, unsigned int j, unsigned int k) {
+        Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {(int64_t)nelmt, (int64_t)nm, (int64_t)nm, (int64_t)nm}),
+        KOKKOS_LAMBDA(int64_t e, int64_t i, int64_t j, int64_t k) {
             size_t flat_idx = ((e * nm + i) * nm + j) * nm + k;
             d_in(e, i, j, k) = Kokkos::sin(flat_idx);
         });
@@ -36,8 +36,8 @@ void run_test(size_t nelmt, const unsigned int numBlocks, const unsigned int thr
 
     // 4. Initialize d_coord as a stretched 3D grid
     Kokkos::parallel_for("init_coord", 
-        Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {nelmt, nq, nq, nq}),
-        KOKKOS_LAMBDA(size_t e, unsigned int p, unsigned int q, unsigned int r) {
+        Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {(int64_t)nelmt, (int64_t)nq, (int64_t)nq, (int64_t)nq}),
+        KOKKOS_LAMBDA(int64_t e, int64_t p, int64_t q, int64_t r) {
             d_coord(e, 0, p, q, r) = (T)p + 0.1 * (T)q + 0.1 * (T)r;
             d_coord(e, 1, p, q, r) = 0.1 * (T)p + (T)q + 0.1 * (T)r;
             d_coord(e, 2, p, q, r) = 0.1 * (T)p + 0.1 * (T)q + (T)r;
@@ -45,15 +45,15 @@ void run_test(size_t nelmt, const unsigned int numBlocks, const unsigned int thr
 
     // 5. Initialize basis functions with Kokkos::cos
     Kokkos::parallel_for("init_basis", 
-        Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {nq, nm}),
-        KOKKOS_LAMBDA(unsigned int p, unsigned int i) {
-            d_basis(p, i) = Kokkos::cos((p * nm + i));
+        Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {(int64_t)nm, (int64_t)nq}),
+        KOKKOS_LAMBDA(int64_t i, int64_t p) {
+            d_basis(i, p) = Kokkos::cos((i * nq + p));
         });
 
     // 6. Initialize dbasis functions with Kokkos::cos
     Kokkos::parallel_for("init_dbasis", 
-        Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {nq, nq}),
-        KOKKOS_LAMBDA(unsigned int i, unsigned int p) {
+        Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {(int64_t)nq, (int64_t)nq}),
+        KOKKOS_LAMBDA(int64_t i, int64_t p) {
             d_dbasis(i, p) = Kokkos::cos((i * nq + p));
         });
 
@@ -62,8 +62,8 @@ void run_test(size_t nelmt, const unsigned int numBlocks, const unsigned int thr
 
     // ------------------------- Kokkos OTF2 Kernel ---------------------------------------------------
     {
-        std::vector<double> results = BK3::Parallel::Kokkos_LaplaceOperator_OTF<T, nq>(
-            nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, 
+        std::vector<double> results = BK3::Parallel::Kokkos_LaplaceOperator_OTF2<T, nq>(
+            nelmt, numBlocks, threadsPerBlock, 
             d_basis, d_dbasis, d_weights, d_coord, d_in, d_out, ntests);
             
         auto DOFs = results[0]; 
@@ -74,7 +74,7 @@ void run_test(size_t nelmt, const unsigned int numBlocks, const unsigned int thr
         uint64_t nQuad = (uint64_t)nquad * nelmt;
         
         T bw = 1.0e-9 * (2 * nDOF + 3 * nQuad) * sizeof(T) / time;
-        printer("BK3_OTF2", nq - 2, nelmt, numBlocks, threadsPerBlock, nDOF, time, DOFs, bw, std::sqrt(sum));
+        printer("BK3_OTF2", nq - 2, nelmt, threadsPerBlock, numBlocks, threadsPerBlock, nDOF, time, DOFs, bw, std::sqrt(sum));
     }
 }
 
