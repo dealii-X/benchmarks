@@ -16,8 +16,7 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
 
     // Allocation of arrays
     T* basis = new T[nm * nq];
-    T* dbasis = new T[nm * nq];
-    T* dbasis_geo = new T[nq * nq];
+    T* dbasis = new T[nq * nq];
 
     T* G = new T[nelmt * 6 * nquad];
     T* in = new T[nelmt * ncomp * nm * nm * nm];
@@ -39,7 +38,7 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
     }
 
     // Initialization of dbasis functions
-    for(unsigned int i = 0u; i < nm; i++)
+    for(unsigned int i = 0u; i < nq; i++)
     {
         for(unsigned int p = 0u; p < nq; p++)
         {

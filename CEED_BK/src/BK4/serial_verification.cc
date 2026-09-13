@@ -15,7 +15,7 @@ void run_test(const unsigned int nq, const unsigned int nelmt){
 
     //Allocation of arrays
     T* basis = new T[nm * nq];
-    T* dbasis = new T[nm * nq];
+    T* dbasis = new T[nq * nq];
 
     T* weights = new T[nq];
     T* G = new T[nelmt * 6 * nquad];
@@ -38,7 +38,7 @@ void run_test(const unsigned int nq, const unsigned int nelmt){
         }
     }
 
-    for(unsigned int i = 0u; i < nm; i++)
+    for(unsigned int i = 0u; i < nq; i++)
     {
         for(unsigned int p = 0u; p < nq; p++)
         {
