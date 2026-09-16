@@ -4,22 +4,8 @@
 
 namespace Parallel {
 
-enum class Layout{RowMajor, ColMajor};
-
-template<typename T, Layout L, size_t rows, size_t cols>
-__device__ auto matrixView(T* data) {
-    return [=](const size_t i, const size_t j) -> T& {
-        if (L == Layout::RowMajor) {
-            return data[i * cols + j];
-        } else {
-            return data[j * rows + i];
-        }
-    };
-}
-
-
-template<int M, int N, int K, Layout Layout_A, Layout Layout_B, Layout Layout_C>
-__device__ void f64_m8n8k4_tiled_gemm(double *s_A, double *s_B, double *s_C)
+template<int M, int N, int K, typename FetchA, typename FetchB, typename StoreC>
+__device__ void f64_m8n8k4_tiled_gemm(FetchA get_A, FetchB get_B, StoreC set_C)
 {   
     constexpr int m = 8;
     constexpr int n = 8;
@@ -32,59 +18,48 @@ __device__ void f64_m8n8k4_tiled_gemm(double *s_A, double *s_B, double *s_C)
     constexpr int num_tiles_n = (N + n - 1) / n;
     constexpr int num_tiles_k = (K + k - 1) / k;
 
-    double r_b[num_tiles_k][num_tiles_n] = {0};
+    double r_b[num_tiles_k][num_tiles_n] = {0.0};
 
-    auto s_B_view = matrixView<double, Layout_B, K, N>(s_B);
-
-    //copy s_B from shared memory to register
+    // 1. Copy Matrix B from shared memory to registers via Lambda
     {
-    int base_row = laneid % 4;
-    int base_col = laneid >> 2;
-    
-    int row = base_row;
-    int col = base_col;
-    
-    #pragma unroll
-    for(int i = 0; i < num_tiles_k; i++){
-        row = base_row + i * k;
-
+        int base_row = laneid % 4;
+        int base_col = laneid >> 2;
+        
         #pragma unroll
-        for(int j = 0; j < num_tiles_n; j++){
-            col = base_col + j * n;
-            if(row < K && col < N){
-                r_b[i][j] = s_B_view(row, col);
-            } 
-            else{
-                r_b[i][j] = 0.0;
+        for(int i = 0; i < num_tiles_k; i++){
+            int row = base_row + i * k;
+
+            #pragma unroll
+            for(int j = 0; j < num_tiles_n; j++){
+                int col = base_col + j * n;
+                if(row < K && col < N){
+                    r_b[i][j] = get_B(row, col);
+                } 
+                else{
+                    r_b[i][j] = 0.0;
+                }
             }
         }
+        __syncwarp();
     }
-    __syncwarp();
-    }
 
-
-    auto s_A_view = matrixView<double, Layout_A, M, K>(s_A);
-
-    double r_a[num_tiles_m][num_tiles_k] = {0};
-    double r_c[num_tiles_m][num_tiles_n][2] = {0};
+    double r_a[num_tiles_m][num_tiles_k] = {0.0};
+    double r_c[num_tiles_m][num_tiles_n][2] = {0.0};
         
-    //copy s_A from shared memory to register
+    // 2. Copy Matrix A from shared memory to registers via Lambda
     {
         const int base_row = laneid >> 2;
         const int base_col = laneid % 4;
 
-        int row = base_row;
-        int col = base_col;
-
         #pragma unroll
         for(int i = 0; i < num_tiles_m; i++){
-            row = base_row + i * m;
+            int row = base_row + i * m;
     
             #pragma unroll
             for(int j = 0; j < num_tiles_k; j++){
-                col = base_col + j * k;
+                int col = base_col + j * k;
                 if(row < M && col < K){
-                    r_a[i][j] = s_A_view(row, col);
+                    r_a[i][j] = get_A(row, col);
                 }
                 else{
                     r_a[i][j] = 0.0;
@@ -94,7 +69,7 @@ __device__ void f64_m8n8k4_tiled_gemm(double *s_A, double *s_B, double *s_C)
         __syncwarp();
     }
 
-    //tiled GEMM
+    // 3. Tiled Tensor Core MMA Computation
     #pragma unroll
     for(int i = 0; i < num_tiles_m; i++){
         #pragma unroll
@@ -105,35 +80,33 @@ __device__ void f64_m8n8k4_tiled_gemm(double *s_A, double *s_B, double *s_C)
                 asm volatile(
                     "mma.sync.aligned.m8n8k4.row.col.f64.f64.f64.f64 "
                     "{%0, %1}, {%2}, {%3}, {%0, %1}; \n"
-                    :"+d"(r_c[i][j][0]), "+d"(r_c[i][j][1])
-                    :"d"(r_a[i][t]),
-                     "d"(r_b[t][j])
+                    : "+d"(r_c[i][j][0]), "+d"(r_c[i][j][1])
+                    : "d"(r_a[i][t]),
+                      "d"(r_b[t][j])
                 );
             }
         }
     }
 
-    auto s_C_view = matrixView<double, Layout_C, M, N>(s_C);
-
+    // 4. Copy accumulator results to destination memory via Lambda
     {
-        //copy from register to shared memory s_C
         const int base_row = laneid >> 2;
         const int base_col = (laneid % 4) * 2;
         
-        int row = base_row;
-        int col = base_col;
         #pragma unroll
         for(int i = 0; i < num_tiles_m; ++i){
-            row = base_row + i * m;
+            int row = base_row + i * m;
             #pragma unroll
             for(int j = 0; j < num_tiles_n; ++j){
-                col = base_col + j * n;
+                int col = base_col + j * n;
+                
                 if(row < M && col < N){
-                    s_C_view(row, col) = r_c[i][j][0];
+                    set_C(row, col) = r_c[i][j][0];
                 }
-                col += 1;
-                if(row < M && col < N){
-                    s_C_view(row, col) = r_c[i][j][1];
+                
+                int col_next = col + 1;
+                if(row < M && col_next < N){
+                    set_C(row, col_next) = r_c[i][j][1];
                 }
             }
         }
@@ -205,49 +178,98 @@ void __global__ f64_m8n8k4_mma(
         // --- Component 0 (x-direction) ---
 
         //s_wsp1(eijk) . s_basis(kr) = s_wsp0(eijr)
-        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nm * nm, nq, nm, Layout::RowMajor, Layout::RowMajor, Layout::RowMajor>(s_wsp1, s_basis, s_wsp0);
+        {
+            auto v_s_wsp1 = [=] __device__  (const int row, const int col) -> double& {
+                const int e   = row / (nm * nm);
+                const int i   = (row / nm) % nm;
+                const int j   = row % nm;
 
-        //s_wsp0(eijr) -> s_wsp1(eirj)
-        for(int tid = threadIdx.x; tid < nelmtPerBatch * nm * nq; tid += blockDim.x){
-            int e = tid / (nm * nq);
-            int j = (tid / nq) % nm;
-            int r = tid % nq;
-        
-            double r_tmp[nm];
+                const int k = col;
 
-            for (int i = 0; i < nm; ++i) {
-                r_tmp[i] = s_wsp0[e * (nq*nm*nm) + i*nq*nm + j*nq + r];
-            }
+                return s_wsp1[e * (nm * nm * nm) + i * (nm * nm) + j * nm + k];
+            };
 
-            for (int i = 0; i < nm; ++i) {
-                s_wsp1[e * (nq*nm*nm) + i*nq*nm + r*nm + j] = r_tmp[i];
-            }
+            auto v_s_basis = [=] __device__  (const int row, const int col) -> double& {
+                return s_basis[row * nq + col];
+            };
+
+            auto v_s_wsp0 = [=] __device__  (const int row, const int col) -> double& {
+                const int e = row / (nm * nm);
+                const int i = (row / nm) % nm;
+                const int j = row % nm;
+
+                const int r = col;
+
+                return s_wsp0[e * (nm * nm * nq) + i * (nm * nq) + j * nq + r];
+            };
+
+            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nm * nm, nq, nm>(v_s_wsp1, v_s_basis, v_s_wsp0);
         }
-        __syncwarp();
 
-        //s_wsp1(eirj) . s_basis(jq) = s_wsp0(eirq)
-        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nm * nq, nq, nm, Layout::RowMajor, Layout::RowMajor, Layout::RowMajor>(s_wsp1, s_basis, s_wsp0);
 
-        //s_wsp0(eirq) -> s_wsp1(erqi)
-        for(int tid = threadIdx.x; tid < nelmtPerBatch * nq * nq; tid += blockDim.x){
-            int e = tid / (nq * nq);
-            int r = (tid / nq) % nq;
-            int q = tid % nq;
-        
-            double r_tmp[nm];
+        //s_wsp0(eijr) . s_basis(jq) = s_wsp1(eirq)
+        {
+            auto v_s_wsp0 = [=] __device__  (const int row, const int col) -> double& {
+                const int e = row / (nm * nq);
 
-            for (int i = 0; i < nm; ++i) {
-                r_tmp[i] = s_wsp0[e * (nq*nq*nm) + i*nq*nq + r*nq + q];
-            }
+                const int i = (row / nq) % nm;
+                const int r = row % nq;
+                const int j = col;
+            
+                return s_wsp0[e * (nm * nm * nq) + i * (nm * nq) + j * nq + r];
+            };
 
-            for (int i = 0; i < nm; ++i) {
-                s_wsp1[e * (nq*nq*nm) + r*nq*nm + q*nm + i] = r_tmp[i];
-            }
+            auto v_s_basis = [=] __device__  (const int row, const int col) -> double& {
+                const int j = row;
+                const int q = col;
+            
+                return s_basis[j * nq + q];
+            };
+
+            auto v_s_wsp1 = [=] __device__  (const int row, const int col) -> double& {
+                const int e = row / (nm * nq);
+                const int i = (row / nq) % nm;
+                const int r = row % nq;
+
+                const int q = col;
+            
+                return s_wsp1[e * (nm * nq * nq) + i * (nq * nq) + r * nq + q];
+            };
+
+            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nm * nq, nq, nm>(v_s_wsp0, v_s_basis, v_s_wsp1);
         }
-        __syncwarp();
 
-        //s_wsp1(erqi) . s_basis(ip) = s_wsp0(erqp)
-        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nm, Layout::RowMajor, Layout::RowMajor, Layout::RowMajor>(s_wsp1, s_basis, s_wsp0);
+        //s_wsp1(eirq) . s_basis(ip) = s_wsp0(erqp)
+        {
+            auto v_s_wsp1 = [=] __device__  (const int row, const int col) -> double& {
+                const int e = row / (nq * nq);
+                const int r = (row / nq) % nq;
+                const int q = row % nq;
+
+                const int i = col;
+                    
+                return s_wsp1[e * (nm * nq * nq) + i * (nq * nq) + r * nq + q];
+            };
+        
+            auto v_s_basis = [=] __device__  (const int row, const int col) -> double& {
+                const int i = row;
+                const int p = col;
+            
+                return s_basis[i * nq + p];
+            };
+        
+            auto v_s_wsp0 = [=] __device__  (const int row, const int col) -> double& {
+                const int e = row / (nq * nq);
+                const int r = (row / nq) % nq;
+                const int q = row % nq;
+
+                const int p = col;
+            
+                return s_wsp0[e * (nq * nq * nq) + r * (nq * nq) + q * nq + p];
+            };
+        
+            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nm>(v_s_wsp1, v_s_basis, v_s_wsp0);
+        }
 
 
         // ==========================================
@@ -255,8 +277,9 @@ void __global__ f64_m8n8k4_mma(
         // ==========================================
         /*
         //s_wsp0(erqp) . s_dbasis(ip) = s_rqr(erqi)
-        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nm, nq, Layout::RowMajor, Layout::ColMajor, Layout::RowMajor>(s_wsp1, s_dbasis, s_rqr);
+        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nq, Layout::RowMajor, Layout::ColMajor, Layout::RowMajor>(s_wsp1, s_dbasis, s_rqr);
 
+        // begin rqs
         //s_wsp0(erqp) -> s_wsp1(erpq)
         for(int tid = threadIdx.x; tid < nelmtPerBatch * nq * nq; tid += blockDim.x){
             int e = tid / (nq * nq);
@@ -276,9 +299,12 @@ void __global__ f64_m8n8k4_mma(
         __syncwarp();
 
         //s_wsp1(erpq) . s_dbasis(jq) = s_rqs(erpj)
-        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nm, nq, Layout::RowMajor, Layout::ColMajor, Layout::RowMajor>(s_wsp1, s_dbasis, s_rqs);
+        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nq, Layout::RowMajor, Layout::ColMajor, Layout::RowMajor>(s_wsp1, s_dbasis, s_rqs);
 
-        //s_wsp0(erpq) -> s_wsp1(epqr)
+        //end rqs
+
+        //begin rqt
+        //s_wsp1(erpq) -> s_wsp0(epqr)
         for(int tid = threadIdx.x; tid < nelmtPerBatch * nq * nq; tid += blockDim.x){
             int e = tid / (nq * nq);
             int p = (tid / nq) % nq;
@@ -287,19 +313,20 @@ void __global__ f64_m8n8k4_mma(
             double r_tmp[nq];
 
             for (int r = 0; r < nq; ++r) {
-                r_tmp[r] = s_wsp0[e * (nq*nq*nq) + r * (nq*nq) + p * nq + q];
+                r_tmp[r] = s_wsp1[e * (nq*nq*nq) + r * (nq*nq) + p * nq + q];
             }
 
             for (int r = 0; r < nq; ++r) {
-                s_wsp1[e * (nq*nq*nq) + p * (nq*nq) + q * nq + r] = r_tmp[r];
+                s_wsp0[e * (nq*nq*nq) + p * (nq*nq) + q * nq + r] = r_tmp[r];
             }
         }
         __syncwarp();
 
-        //s_wsp1(epqr) . s_dbasis(kr) = s_rqt(epqk)
-        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nm, nq, Layout::RowMajor, Layout::ColMajor, Layout::RowMajor>(s_wsp1, s_dbasis, s_rqt);
+        //s_wsp0(epqr) . s_dbasis(kr) = s_rqt(epqk)
+        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nm, nq, Layout::RowMajor, Layout::ColMajor, Layout::RowMajor>(s_wsp0, s_dbasis, s_rqt);
+        
+        //end rqt
         */
-
         // ==========================================
         // PHASE 3: Apply G
         // ==========================================
@@ -351,7 +378,12 @@ void __global__ f64_m8n8k4_mma(
         __syncwarp();
 
 
-                        
+        //Divergence
+
+        //s_rqr(epqr) -> s_rqr(eqrp)
+        //s_rqr * d_basis + s_rqs * d_basis + s_rqt * d_basis = s_wsp0
+
+
         for(int tid = threadIdx.x; tid < nelmtPerBatch * nq * nq; tid += blockDim.x){
         
             int e = tid / (nq * nq);
@@ -390,49 +422,102 @@ void __global__ f64_m8n8k4_mma(
 
         // --- Component 0 (x-direction) ---
         //s_wsp0(erqp) . s_basis(ip) = s_wsp1(erqi)
-        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nm, nq, Layout::RowMajor, Layout::ColMajor, Layout::RowMajor>(s_wsp0, s_basis, s_wsp1);
+        {
+            auto v_s_wsp0 = [=] __device__  (const int row, const int col) -> double& {
+                const int e = row / (nq * nq);
+                const int r = (row / nq) % nq;
+                const int q = row % nq;
 
-        //s_wsp1(erqi) -> s_wsp0(eriq)
-        for(int tid = threadIdx.x; tid < nelmtPerBatch * nq * nq; tid += blockDim.x){
-            int e = tid / (nq * nq);
-            int r = (tid / nq) % nq;
-            int q = tid % nq;
+                const int p = col;
+            
+                return s_wsp0[e * (nq * nq * nq) + r * (nq * nq) + q * nq + p];
+            };
         
-            double r_tmp[nm];
+            auto v_s_basis = [=] __device__  (const int row, const int col) -> double& {
+                const int p = row;
+                const int i = col;
+
+                return s_basis[i * nq + p];
+            };
         
-            for (int i = 0; i < nm; ++i) {
-                r_tmp[i] = s_wsp1[e * (nq*nq*nm) + r * (nq*nm) + q * nm + i];
-            }
+            auto v_s_wsp1 = [=] __device__  (const int row, const int col) -> double& {
+                const int e = row / (nq * nq);
+                const int r = (row / nq) % nq;
+                const int q = row % nq;
+
+                const int i = col;
+            
+                return s_wsp1[e * (nq * nq * nm) + r * (nq * nm) + q * nm + i];
+            };
         
-            for (int i = 0; i < nm; ++i) {
-                s_wsp0[e * (nq*nq*nm) + r * (nq*nm) + i * nq + q] = r_tmp[i];
-            }
+            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nm, nq>(v_s_wsp0, v_s_basis, v_s_wsp1);
         }
-        __syncwarp();
 
-        //s_wsp0(eriq) . s_basis(jq) = s_wsp1(erij)
-        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nm, nm, nq, Layout::RowMajor, Layout::ColMajor, Layout::RowMajor>(s_wsp0, s_basis, s_wsp1);
 
-        //s_wsp1(erij) -> s_wsp0(eijr)
-        for(int tid = threadIdx.x; tid < nelmtPerBatch * nm * nm; tid += blockDim.x){
-            int e = tid / (nm * nm);
-            int i = (tid / nm) % nm;
-            int j = tid % nm;
-        
-            double r_tmp[nq];
-        
-            for (int r = 0; r < nq; ++r) {
-                r_tmp[r] = s_wsp1[e * (nq * nm * nm) + r * (nm * nm) + i * nm + j];
-            }
+        //s_wsp1(erqi) . s_basis(jq) = s_wsp0(erij)
+        {
+            auto v_s_wsp1 = [=] __device__  (const int row, const int col) -> double& {
+                const int e = row / (nq * nm);
+                const int r = (row / nm) % nq;
+                const int i = row % nm;
 
-            for (int r = 0; r < nq; ++r) {
-                s_wsp0[e * (nq * nm * nm) + i * (nm * nq) + j * nq + r] = r_tmp[r];
-            }
+                const int q = col;
+
+                return s_wsp1[e * (nq * nq * nm) + r * (nq * nm) + q * nm + i];
+            };
+
+            auto v_s_basis = [=] __device__  (const int row, const int col) -> double& {
+                const int q = row;
+                const int j = col;
+
+                return s_basis[j * nq + q];
+            };
+
+            auto v_s_wsp0 = [=] __device__  (const int row, const int col) -> double& {
+                const int e = row / (nq * nm);
+                const int r = (row / nm) % nq;
+                const int i = row % nm;
+
+                const int j = col;
+
+                return s_wsp0[e * (nq * nm * nm) + r * (nm * nm) + i * nm + j];
+            };
+
+            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nm, nm, nq>(v_s_wsp1, v_s_basis, v_s_wsp0);
         }
-        __syncwarp();
 
-        //s_wsp0(eijr) . s_basis(kr) = s_wsp1(eijk)
-        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nm * nm, nm, nq, Layout::RowMajor, Layout::ColMajor, Layout::RowMajor>(s_wsp0, s_basis, s_wsp1);
+        //s_wsp0(erij) . s_basis(kr) = s_wsp1(eijk)
+        {
+            auto v_s_wsp0 = [=] __device__  (const int row, const int col) -> double& {
+                const int e = row / (nm * nm);
+                const int i = (row / nm) % nm;
+                const int j = row % nm;
+
+                const int r = col;
+                    
+                return s_wsp0[e * (nq * nm * nm) + r * (nm * nm) + i * nm + j];
+            };
+
+            auto v_s_basis = [=] __device__  (const int row, const int col) -> double& {
+                const int r = row;
+                const int k = col;
+            
+                return s_basis[k * nq + r];
+            };
+        
+            auto v_s_wsp1 = [=] __device__  (const int row, const int col) -> double& {
+                const int e = row / (nm * nm);
+                const int i = (row / nm) % nm;
+                const int j = row % nm;
+
+                const int k = col;
+            
+                return s_wsp1[e * (nm * nm * nm) + i * (nm * nm) + j * nm + k];
+            };
+        
+            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nm * nm, nm, nq>(v_s_wsp0, v_s_basis, v_s_wsp1);
+        }
+
 
 
 
