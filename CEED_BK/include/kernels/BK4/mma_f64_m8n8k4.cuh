@@ -211,9 +211,9 @@ void __global__ f64_m8n8k4_mma(
         {
             auto v_s_wsp0 = [=] __device__  (const int row, const int col) -> double& {
                 const int e = row / (nm * nq);
-
                 const int i = (row / nq) % nm;
                 const int r = row % nq;
+
                 const int j = col;
             
                 return s_wsp0[e * (nm * nm * nq) + i * (nm * nq) + j * nq + r];
@@ -275,108 +275,142 @@ void __global__ f64_m8n8k4_mma(
         // ==========================================
         // PHASE 2: Apply Grad on Quad. Pts.
         // ==========================================
-        /*
-        //s_wsp0(erqp) . s_dbasis(ip) = s_rqr(erqi)
-        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nq, Layout::RowMajor, Layout::ColMajor, Layout::RowMajor>(s_wsp1, s_dbasis, s_rqr);
+        
+        //s_wsp0(erqp) . s_dbasis(ip) = s_rqr(eiqr)
+{
+            auto v_s_wsp0 = [=] __device__ (const int row, const int col) -> double& {
+                const int e = row / (nq * nq);
+                const int r = (row / nq) % nq;
+                const int q = row % nq;
 
-        // begin rqs
-        //s_wsp0(erqp) -> s_wsp1(erpq)
-        for(int tid = threadIdx.x; tid < nelmtPerBatch * nq * nq; tid += blockDim.x){
-            int e = tid / (nq * nq);
-            int r = (tid / nq) % nq;
-            int q = tid % nq;
+                const int p = col;
+            
+                return s_wsp0[e * (nq * nq * nq) + r * (nq * nq) + q * nq + p];
+            };
         
-            double r_tmp[nq];
+            auto v_s_dbasis = [=] __device__ (const int row, const int col) -> double& {
+                const int p = col;
+                const int i = row;
+
+                return s_dbasis[i * nq + p];
+            };
+
+            auto v_s_rqr = [=] __device__ (const int row, const int col) -> double& {
+                const int e = row / (nq * nq);
+                const int r = (row / nq) % nq; 
+                const int q = row % nq;        
+                
+                const int i = col;             
+            
+                return s_rqr[e * (nq * nq * nq) + i * (nq * nq) + q * nq + r];
+            };
         
-            for (int p = 0; p < nq; ++p) {
-                r_tmp[p] = s_wsp0[e * (nq*nq*nq) + r * (nq*nq) + q * nq + p];
-            }
-        
-            for (int p = 0; p < nq; ++p) {
-                s_wsp1[e * (nq*nq*nq) + r * (nq*nq) + p * nq + q] = r_tmp[p];
-            }
+            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nq>(v_s_wsp0, v_s_dbasis, v_s_rqr);
         }
-        __syncwarp();
 
-        //s_wsp1(erpq) . s_dbasis(jq) = s_rqs(erpj)
-        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nq, Layout::RowMajor, Layout::ColMajor, Layout::RowMajor>(s_wsp1, s_dbasis, s_rqs);
-
-        //end rqs
-
-        //begin rqt
-        //s_wsp1(erpq) -> s_wsp0(epqr)
-        for(int tid = threadIdx.x; tid < nelmtPerBatch * nq * nq; tid += blockDim.x){
-            int e = tid / (nq * nq);
-            int p = (tid / nq) % nq;
-            int q = tid % nq;
-
-            double r_tmp[nq];
-
-            for (int r = 0; r < nq; ++r) {
-                r_tmp[r] = s_wsp1[e * (nq*nq*nq) + r * (nq*nq) + p * nq + q];
-            }
-
-            for (int r = 0; r < nq; ++r) {
-                s_wsp0[e * (nq*nq*nq) + p * (nq*nq) + q * nq + r] = r_tmp[r];
-            }
-        }
-        __syncwarp();
-
-        //s_wsp0(epqr) . s_dbasis(kr) = s_rqt(epqk)
-        f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nm, nq, Layout::RowMajor, Layout::ColMajor, Layout::RowMajor>(s_wsp0, s_dbasis, s_rqt);
         
-        //end rqt
-        */
+        //s_wsp0(erqp) . s_dbasis(jq) = s_rqs(epjr)
+        {
+            auto v_s_wsp0 = [=] __device__ (const int row, const int col) -> double& {
+                const int e = row / (nq * nq);
+                const int r = (row / nq) % nq;
+                const int p = row % nq;
+
+                const int q = col;
+                return s_wsp0[e * (nq * nq * nq) + r * (nq * nq) + q * nq + p];
+            };
+
+            auto v_s_dbasis = [=] __device__ (const int row, const int col) -> double& {
+                const int q = col;
+                const int j = row;
+
+                return s_dbasis[j * nq + q];
+            };
+
+            auto v_s_rqs = [=] __device__ (const int row, const int col) -> double& {
+                const int e = row / (nq * nq);
+                const int r = (row / nq) % nq; 
+                const int p = row % nq;        
+
+                const int j = col;             
+                return s_rqs[e * (nq * nq * nq) + p * (nq * nq) + j * nq + r];
+            };
+
+            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nq>(v_s_wsp0, v_s_dbasis, v_s_rqs);
+        }
+
+        //s_wsp0(erqp) . s_dbasis(kr) = s_rqt(epqk)
+        {
+            auto v_s_wsp0 = [=] __device__ (const int row, const int col) -> double& {
+                const int e = row / (nq * nq);
+                const int p = (row / nq) % nq;
+                const int q = row % nq;
+
+                const int r = col;
+                return s_wsp0[e * (nq * nq * nq) + r * (nq * nq) + q * nq + p];
+            };
+
+            auto v_s_dbasis = [=] __device__ (const int row, const int col) -> double& {
+                const int r = col;
+                const int k = row;
+                return s_dbasis[k * nq + r];
+            };
+
+            auto v_s_rqt = [=] __device__ (const int row, const int col) -> double& {
+                const int e = row / (nq * nq);
+                const int p = (row / nq) % nq; 
+                const int q = row % nq;        
+
+                const int k = col;             
+
+                return s_rqt[e * (nq * nq * nq) + p * (nq * nq) + q * nq + k];
+            };
+
+            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nq>(v_s_wsp0, v_s_dbasis, v_s_rqt);
+        }
+        
+
+        
         // ==========================================
         // PHASE 3: Apply G
         // ==========================================
-        double r_p[nq], r_q[nq], r_r[nq];
 
-        for(int tid = threadIdx.x; tid < nelmtPerBatch * nq * nq; tid += blockDim.x){
+        for(int tid = threadIdx.x; tid < nelmtPerBatch * nq * nq; tid += blockDim.x) {
+            const int e = tid / (nq * nq);
+            const int q = (tid / nq) % nq;
+            const int r = tid % nq;
 
-            int e = tid / (nq * nq);
-            int q = tid % (nq * nq) / nq;
-            int r = tid % nq;
+            T r_p[nq], r_q[nq], r_r[nq];
 
-
-            //copy to register
-            for(int n = 0; n < nq; n++)
-            {
-                r_p[n] = s_wsp0[e * nq*nq*nq + r * nq*nq + q * nq + n];
-                r_q[n] = s_dbasis[n * nq + q];
-                r_r[n] = s_dbasis[n * nq + r];
+            for(int p = 0; p < nq; ++p) {
+                const size_t idx = e * (nq * nq * nq) + p * (nq * nq) + q * nq + r;
+                r_p[p] = s_rqr[idx];
+                r_q[p] = s_rqs[idx];
+                r_r[p] = s_rqt[idx];
             }
-                            
-            T Grr, Grs, Grt, Gss, Gst, Gtt;
-            T qr, qs, qt;
-                            
-            for(int p = 0; p < nq; ++p){
-            
-                qr = 0; qs = 0; qt = 0; 
-            
-                //Load Geometric Factors, coalesced access
-                Grr = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 0 * nq*nq*nq + p * nq * nq + q * nq + r];
-                Grs = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 1 * nq*nq*nq + p * nq * nq + q * nq + r];
-                Grt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 2 * nq*nq*nq + p * nq * nq + q * nq + r];
-                Gss = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 3 * nq*nq*nq + p * nq * nq + q * nq + r];
-                Gst = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 4 * nq*nq*nq + p * nq * nq + q * nq + r];
-                Gtt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 5 * nq*nq*nq + p * nq * nq + q * nq + r];
-            
-                // Multiply by D
-                for(int n = 0; n < nq; n++){
-                    qr += s_dbasis[n * nq + p] * r_p[n];
-                    qs += r_q[n] * s_wsp0[e * nq*nq*nq + r * nq*nq + n * nq + p];
-                    qt += r_r[n] * s_wsp0[e * nq*nq*nq + n * nq*nq + q * nq + p];
-                }
-            
-                // Apply chain rule
-                s_rqr[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grr * qt + Grs * qs + Grt * qr;
-                s_rqs[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grs * qt + Gss * qs + Gst * qr;
-                s_rqt[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grt * qt + Gst * qs + Gtt * qr;
+
+            for(int p = 0; p < nq; ++p) {
+                const size_t g_base = eb * nelmtPerBatch * 6 * nq * nq * nq + e * 6 * nq * nq * nq + p * nq * nq + q * nq + r;
+                
+                const T Grr = d_G[g_base + 0 * nq * nq * nq];
+                const T Grs = d_G[g_base + 1 * nq * nq * nq];
+                const T Grt = d_G[g_base + 2 * nq * nq * nq];
+                const T Gss = d_G[g_base + 3 * nq * nq * nq];
+                const T Gst = d_G[g_base + 4 * nq * nq * nq];
+                const T Gtt = d_G[g_base + 5 * nq * nq * nq];
+
+                const T qr = r_p[p];
+                const T qs = r_q[p];
+                const T qt = r_r[p];
+
+                const size_t idx = e * (nq * nq * nq) + p * (nq * nq) + q * nq + r;
+                
+                s_rqr[idx] = Grr * qt + Grs * qs + Grt * qr;
+                s_rqs[idx] = Grs * qt + Gss * qs + Gst * qr;
+                s_rqt[idx] = Grt * qt + Gst * qs + Gtt * qr;
             }
         }
         __syncwarp();
-
 
         //Divergence
 
@@ -389,7 +423,9 @@ void __global__ f64_m8n8k4_mma(
             int e = tid / (nq * nq);
             int q = tid % (nq * nq) / nq;
             int r = tid % nq;
-        
+            
+            T r_p[nq], r_q[nq], r_r[nq];
+
             //copy to register
             for(int n = 0; n < nq; n++)
             {
