@@ -92,6 +92,16 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
     printer.print_header();
 
     // ------------------------- Mass Operator Kernel Launch --------------------------------------
+
+    //set max shmem per block
+    size_t shmem_bytes = 99 * 1000; // 227 KB for Hopper
+
+    cudaFuncSetAttribute(
+        Parallel::f64_m8n8k4_mma<nq, nm, nelmtPerBatch>, 
+        cudaFuncAttributeMaxDynamicSharedMemorySize, 
+        shmem_bytes
+    );
+
     double time = std::numeric_limits<double>::max();
     Timer timer;
 
@@ -150,8 +160,19 @@ int main(int argc, char **argv){
         case 8:  run_test<T, 8,  7,  std::max(1UL, shmemPerBlock / (4 * 8*8*8) / sizeof(T))>(nelmt, ntests); break;
         case 9:  run_test<T, 9,  8,  std::max(1UL, shmemPerBlock / (4 * 9*9*9) / sizeof(T))>(nelmt, ntests); break;
         case 10: run_test<T, 10, 9,  std::max(1UL, shmemPerBlock / (4 * 10*10*10) / sizeof(T))>(nelmt, ntests); break;
+        case 11: run_test<T, 11, 10,  std::max(1UL, shmemPerBlock / (4 * 11*11*11) / sizeof(T))>(nelmt, ntests); break;
+        case 12: run_test<T, 12, 11,  std::max(1UL, shmemPerBlock / (4 * 12*12*12) / sizeof(T))>(nelmt, ntests); break;
+        case 13: run_test<T, 13, 12,  std::max(1UL, shmemPerBlock / (4 * 13*13*13) / sizeof(T))>(nelmt, ntests); break;
+        case 14: run_test<T, 14, 13,  std::max(1UL, shmemPerBlock / (4 * 14*14*14) / sizeof(T))>(nelmt, ntests); break;
+        case 15: run_test<T, 15, 14,  std::max(1UL, shmemPerBlock / (4 * 15*15*15) / sizeof(T))>(nelmt, ntests); break;
+        case 16: run_test<T, 16, 15,  std::max(1UL, shmemPerBlock / (4 * 16*16*16) / sizeof(T))>(nelmt, ntests); break;
+        case 17: run_test<T, 17, 16,  std::max(1UL, shmemPerBlock / (4 * 17*17*17) / sizeof(T))>(nelmt, ntests); break;
+        case 18: run_test<T, 18, 17,  std::max(1UL, shmemPerBlock / (4 * 18*18*18) / sizeof(T))>(nelmt, ntests); break;
+
+
+
         default:
-            std::cerr << "Error: Unsupported p value. Please use a value between 1 and 8." << std::endl;
+            std::cerr << "Error: Unsupported p value. Please use a value between 1 and 16." << std::endl;
             break;
     }
 
