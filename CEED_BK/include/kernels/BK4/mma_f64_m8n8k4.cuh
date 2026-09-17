@@ -1,51 +1,63 @@
 #ifndef MMA_F64_M8N8K4_MASS_CUH
 #define MMA_F64_M8N8K4_MASS_CUH
 
-
 namespace Parallel {
 
-template<int M, int N, int K, bool Accumulate = false, typename FetchA, typename FetchB, typename StoreC>
-__device__ void f64_m8n8k4_tiled_gemm(FetchA get_A, FetchB get_B, StoreC set_C)
+template<int num_tiles_k, int num_tiles_n>
+struct RegMatrixB {
+    double r_b[num_tiles_k][num_tiles_n];
+};
+
+template<int N, int K, typename FetchB>
+__device__ RegMatrixB<(K + 3) / 4, (N + 7) / 8> load_matrix_B_to_regs(FetchB get_B) {
+    constexpr int k = 4;
+    constexpr int n = 8;
+    constexpr int num_tiles_k = (K + k - 1) / k;
+    constexpr int num_tiles_n = (N + n - 1) / n;
+    
+    RegMatrixB<num_tiles_k, num_tiles_n> B_regs;
+
+    const int laneid = threadIdx.x % warpSize;
+    int base_row = laneid % 4;
+    int base_col = laneid >> 2;
+
+    #pragma unroll
+    for(int i = 0; i < num_tiles_k; i++){
+        int row = base_row + i * k;
+        #pragma unroll
+        for(int j = 0; j < num_tiles_n; j++){
+            int col = base_col + j * n;
+            if(row < K && col < N) {
+                B_regs.r_b[i][j] = get_B(row, col);
+            } else {
+                B_regs.r_b[i][j] = 0.0;
+            }
+        }
+    }
+    return B_regs;
+}
+
+template<int M, int N, int K, bool Accumulate = false, typename FetchA, typename StoreC>
+__device__ void f64_m8n8k4_tiled_gemm(
+    FetchA get_A, 
+    const RegMatrixB<(K + 3) / 4, (N + 7) / 8>& B_regs, 
+    StoreC set_C, 
+    const int valid_M = M)
 {   
     constexpr int m = 8;
     constexpr int n = 8;
     constexpr int k = 4;
 
-    const int tid = threadIdx.x;
-    const int laneid = tid % warpSize;
+    const int laneid = threadIdx.x % warpSize;
 
     constexpr int num_tiles_m = (M + m - 1) / m;
     constexpr int num_tiles_n = (N + n - 1) / n;
     constexpr int num_tiles_k = (K + k - 1) / k;
 
-    double r_b[num_tiles_k][num_tiles_n] = {0.0};
-
-    // 1. Copy Matrix B from shared memory to registers via Lambda
-    {
-        int base_row = laneid % 4;
-        int base_col = laneid >> 2;
-        
-        #pragma unroll
-        for(int i = 0; i < num_tiles_k; i++){
-            int row = base_row + i * k;
-
-            #pragma unroll
-            for(int j = 0; j < num_tiles_n; j++){
-                int col = base_col + j * n;
-                if(row < K && col < N){
-                    r_b[i][j] = get_B(row, col);
-                } 
-                else{
-                    r_b[i][j] = 0.0;
-                }
-            }
-        }
-    }
-
     double r_a[num_tiles_m][num_tiles_k] = {0.0};
     double r_c[num_tiles_m][num_tiles_n][2] = {0.0};
         
-    // 2. Copy Matrix A from shared memory to registers via Lambda
+    // 1. Copy Matrix A from shared memory to registers
     {
         const int base_row = laneid >> 2;
         const int base_col = laneid % 4;
@@ -53,11 +65,11 @@ __device__ void f64_m8n8k4_tiled_gemm(FetchA get_A, FetchB get_B, StoreC set_C)
         #pragma unroll
         for(int i = 0; i < num_tiles_m; i++){
             int row = base_row + i * m;
-    
             #pragma unroll
             for(int j = 0; j < num_tiles_k; j++){
                 int col = base_col + j * k;
-                if(row < M && col < K){
+                // Mask out-of-bounds M accesses!
+                if(row < valid_M && col < K){
                     r_a[i][j] = get_A(row, col);
                 }
                 else{
@@ -67,7 +79,7 @@ __device__ void f64_m8n8k4_tiled_gemm(FetchA get_A, FetchB get_B, StoreC set_C)
         }
     }
 
-    // 3. Tiled Tensor Core MMA Computation
+    // 2. Tiled Tensor Core MMA Computation
     #pragma unroll
     for(int i = 0; i < num_tiles_m; i++){
         #pragma unroll
@@ -80,13 +92,13 @@ __device__ void f64_m8n8k4_tiled_gemm(FetchA get_A, FetchB get_B, StoreC set_C)
                     "{%0, %1}, {%2}, {%3}, {%0, %1}; \n"
                     : "+d"(r_c[i][j][0]), "+d"(r_c[i][j][1])
                     : "d"(r_a[i][t]),
-                      "d"(r_b[t][j])
+                      "d"(B_regs.r_b[t][j])
                 );
             }
         }
     }
 
-    // 4. Copy accumulator results to destination memory via Lambda
+    // 3. Copy accumulator results to destination memory
     {
         const int base_row = laneid >> 2;
         const int base_col = (laneid % 4) * 2;
@@ -98,13 +110,13 @@ __device__ void f64_m8n8k4_tiled_gemm(FetchA get_A, FetchB get_B, StoreC set_C)
             for(int j = 0; j < num_tiles_n; ++j){
                 int col = base_col + j * n;
                 
-                if(row < M && col < N){
+                if(row < valid_M && col < N){
                     if constexpr (Accumulate) set_C(row, col) += r_c[i][j][0];
                     else                      set_C(row, col)  = r_c[i][j][0];
                 }
                 
                 int col_next = col + 1;
-                if(row < M && col_next < N){
+                if(row < valid_M && col_next < N){
                     if constexpr (Accumulate) set_C(row, col_next) += r_c[i][j][1];
                     else                      set_C(row, col_next)  = r_c[i][j][1];
                 }
@@ -114,6 +126,9 @@ __device__ void f64_m8n8k4_tiled_gemm(FetchA get_A, FetchB get_B, StoreC set_C)
 }
 
 
+// =========================================================================
+// MAIN KERNEL
+// =========================================================================
 template<const unsigned int nq, const unsigned int nm, const unsigned int nelmtPerBatch>
 void __global__ f64_m8n8k4_mma(
     const unsigned int nelmt,
@@ -121,259 +136,224 @@ void __global__ f64_m8n8k4_mma(
     const double *__restrict__ d_G, double *__restrict__ d_in, double * __restrict__ d_out, const unsigned int ntests) 
 {
     using T = double;
-
-    // Total DoFs per element for a Raviart-Thomas vector
     constexpr unsigned int ndof_1D = nm * nm * nm;
 
     extern __shared__ T scratch[];
-    T *s_basis    = scratch;
+    T *s_basis  = scratch;
     T *s_dbasis = s_basis  + nq * nm;
 
-    T *s_wsp0    = s_dbasis + nq * nq;
-    T *s_wsp1    = s_wsp0    + nelmtPerBatch * nq * nq * nq;
+    T *s_wsp0   = s_dbasis + nq * nq;
+    T *s_wsp1   = s_wsp0   + nelmtPerBatch * nq * nq * nq;
 
-    T *s_rqr     = s_wsp1   + nelmtPerBatch * nq * nq * nq;
-    T *s_rqs     = s_rqr    + nelmtPerBatch * nq * nq * nq;
-    T *s_rqt     = s_wsp1;
+    T *s_rqr    = s_wsp1   + nelmtPerBatch * nq * nq * nq;
+    T *s_rqs    = s_rqr    + nelmtPerBatch * nq * nq * nq;
+    T *s_rqt    = s_wsp1;
 
-    //copy to shared memory
-    for(unsigned int tid = threadIdx.x; tid < nm * nq; tid += blockDim.x)
-    {
+    const int warpid    = threadIdx.x / warpSize;
+    const int num_warps = blockDim.x / warpSize;
+
+    // copy to shared memory
+    for(unsigned int tid = threadIdx.x; tid < nm * nq; tid += blockDim.x) {
         s_basis[tid] = d_basis[tid];
     }
-
-
-    for(unsigned int tid = threadIdx.x; tid < nq * nq; tid += blockDim.x)
-    {
+    for(unsigned int tid = threadIdx.x; tid < nq * nq; tid += blockDim.x) {
         s_dbasis[tid] = d_dbasis[tid];
     }
-    __syncwarp();
+    __syncthreads();
 
 
-
-    //element batch iteration
+    // Element batch iteration
     unsigned int eb = blockIdx.x;
 
     while(eb < (nelmt + nelmtPerBatch - 1) / nelmtPerBatch)
     {
-
         for(int c = 0; c < 3; ++c)
         {
         const size_t comp_offset  = c * nelmt * nm * nm * nm;
         const size_t batch_offset = eb * nelmtPerBatch * nm * nm * nm;
 
-        //step-1 : Copy from in to the wsp0
-        for(int i = threadIdx.x; i < nelmtPerBatch * nm * nm * nm; i += blockDim.x)
-        {
+        // step-1 : Copy from in to the wsp0
+        for(int i = threadIdx.x; i < nelmtPerBatch * nm * nm * nm; i += blockDim.x) {
             s_wsp1[i] = d_in[comp_offset + batch_offset + i];
         }
-        __syncwarp();
+        __syncthreads();
 
 
         // ==========================================
         // PHASE 1: Interpolate to Quadrature Nodes
         // ==========================================
+        
+        // HOIST: Load s_basis into registers for ALL Phase 1 loops
+        auto v_s_basis_P1 = [=] __device__ (const int row, const int col) -> double& {
+            return s_basis[row * nq + col];
+        };
+        auto B_basis_P1 = load_matrix_B_to_regs<nq, nm>(v_s_basis_P1);
 
-        // --- Component 0 (x-direction) ---
-
-        //s_wsp1(eijk) . s_basis(kr) = s_wsp0(eijr)
+        const int M1_0 = nelmtPerBatch * nm * nm;
+        for(int m_offset = warpid * 8; m_offset < M1_0; m_offset += num_warps * 8)
         {
             auto v_s_wsp1 = [=] __device__  (const int row, const int col) -> double& {
-                const int e   = row / (nm * nm);
-                const int i   = (row / nm) % nm;
-                const int j   = row % nm;
-
-                const int k = col;
-
+                const int r_idx = m_offset + row;
+                const int e   = r_idx / (nm * nm);
+                const int i   = (r_idx / nm) % nm;
+                const int j   = r_idx % nm;
+                const int k   = col;
                 return s_wsp1[e * (nm * nm * nm) + i * (nm * nm) + j * nm + k];
             };
 
-            auto v_s_basis = [=] __device__  (const int row, const int col) -> double& {
-                return s_basis[row * nq + col];
-            };
-
             auto v_s_wsp0 = [=] __device__  (const int row, const int col) -> double& {
-                const int e = row / (nm * nm);
-                const int i = (row / nm) % nm;
-                const int j = row % nm;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nm * nm);
+                const int i = (r_idx / nm) % nm;
+                const int j = r_idx % nm;
                 const int r = col;
-
                 return s_wsp0[e * (nm * nm * nq) + i * (nm * nq) + j * nq + r];
             };
 
-            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nm * nm, nq, nm>(v_s_wsp1, v_s_basis, v_s_wsp0);
+            f64_m8n8k4_tiled_gemm<8, nq, nm>(v_s_wsp1, B_basis_P1, v_s_wsp0, M1_0 - m_offset);
         }
+        __syncthreads();
 
-
-        //s_wsp0(eijr) . s_basis(jq) = s_wsp1(eirq)
+        const int M1_1 = nelmtPerBatch * nm * nq;
+        for(int m_offset = warpid * 8; m_offset < M1_1; m_offset += num_warps * 8)
         {
             auto v_s_wsp0 = [=] __device__  (const int row, const int col) -> double& {
-                const int e = row / (nm * nq);
-                const int i = (row / nq) % nm;
-                const int r = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nm * nq);
+                const int i = (r_idx / nq) % nm;
+                const int r = r_idx % nq;
                 const int j = col;
-            
                 return s_wsp0[e * (nm * nm * nq) + i * (nm * nq) + j * nq + r];
             };
 
-            auto v_s_basis = [=] __device__  (const int row, const int col) -> double& {
-                const int j = row;
-                const int q = col;
-            
-                return s_basis[j * nq + q];
-            };
-
             auto v_s_wsp1 = [=] __device__  (const int row, const int col) -> double& {
-                const int e = row / (nm * nq);
-                const int i = (row / nq) % nm;
-                const int r = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nm * nq);
+                const int i = (r_idx / nq) % nm;
+                const int r = r_idx % nq;
                 const int q = col;
-            
                 return s_wsp1[e * (nm * nq * nq) + i * (nq * nq) + r * nq + q];
             };
 
-            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nm * nq, nq, nm>(v_s_wsp0, v_s_basis, v_s_wsp1);
+            f64_m8n8k4_tiled_gemm<8, nq, nm>(v_s_wsp0, B_basis_P1, v_s_wsp1, M1_1 - m_offset);
         }
+        __syncthreads();
 
-        //s_wsp1(eirq) . s_basis(ip) = s_wsp0(erqp)
+        const int M1_2 = nelmtPerBatch * nq * nq;
+        for(int m_offset = warpid * 8; m_offset < M1_2; m_offset += num_warps * 8)
         {
             auto v_s_wsp1 = [=] __device__  (const int row, const int col) -> double& {
-                const int e = row / (nq * nq);
-                const int r = (row / nq) % nq;
-                const int q = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int r = (r_idx / nq) % nq;
+                const int q = r_idx % nq;
                 const int i = col;
-                    
                 return s_wsp1[e * (nm * nq * nq) + i * (nq * nq) + r * nq + q];
-            };
-        
-            auto v_s_basis = [=] __device__  (const int row, const int col) -> double& {
-                const int i = row;
-                const int p = col;
-            
-                return s_basis[i * nq + p];
             };
         
             auto v_s_wsp0 = [=] __device__  (const int row, const int col) -> double& {
-                const int e = row / (nq * nq);
-                const int r = (row / nq) % nq;
-                const int q = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int r = (r_idx / nq) % nq;
+                const int q = r_idx % nq;
                 const int p = col;
-            
                 return s_wsp0[e * (nq * nq * nq) + r * (nq * nq) + q * nq + p];
             };
         
-            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nm>(v_s_wsp1, v_s_basis, v_s_wsp0);
+            f64_m8n8k4_tiled_gemm<8, nq, nm>(v_s_wsp1, B_basis_P1, v_s_wsp0, M1_2 - m_offset);
         }
+        __syncthreads();
 
 
         // ==========================================
         // PHASE 2: Apply Grad on Quad. Pts.
         // ==========================================
         
-        //s_wsp0(erqp) . s_dbasis(ip) = s_rqr(eiqr)
-{
+        // HOIST: Load s_dbasis into registers for ALL Phase 2 loops
+        auto v_s_dbasis_P2 = [=] __device__ (const int row, const int col) -> double& {
+            return s_dbasis[row * nq + col];
+        };
+        auto B_dbasis_P2 = load_matrix_B_to_regs<nq, nq>(v_s_dbasis_P2);
+
+        const int M2_0 = nelmtPerBatch * nq * nq;
+        for(int m_offset = warpid * 8; m_offset < M2_0; m_offset += num_warps * 8)
+        {
             auto v_s_wsp0 = [=] __device__ (const int row, const int col) -> double& {
-                const int e = row / (nq * nq);
-                const int r = (row / nq) % nq;
-                const int q = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int r = (r_idx / nq) % nq;
+                const int q = r_idx % nq;
                 const int p = col;
-            
                 return s_wsp0[e * (nq * nq * nq) + r * (nq * nq) + q * nq + p];
-            };
-        
-            auto v_s_dbasis = [=] __device__ (const int row, const int col) -> double& {
-                const int p = col;
-                const int i = row;
-
-                return s_dbasis[i * nq + p];
             };
 
             auto v_s_rqr = [=] __device__ (const int row, const int col) -> double& {
-                const int e = row / (nq * nq);
-                const int r = (row / nq) % nq; 
-                const int q = row % nq;        
-                
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int r = (r_idx / nq) % nq; 
+                const int q = r_idx % nq;        
                 const int i = col;             
-            
                 return s_rqr[e * (nq * nq * nq) + i * (nq * nq) + q * nq + r];
             };
         
-            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nq>(v_s_wsp0, v_s_dbasis, v_s_rqr);
+            f64_m8n8k4_tiled_gemm<8, nq, nq>(v_s_wsp0, B_dbasis_P2, v_s_rqr, M2_0 - m_offset);
         }
-
+        __syncthreads();
         
-        //s_wsp0(erqp) . s_dbasis(jq) = s_rqs(epjr)
+        const int M2_1 = nelmtPerBatch * nq * nq;
+        for(int m_offset = warpid * 8; m_offset < M2_1; m_offset += num_warps * 8)
         {
             auto v_s_wsp0 = [=] __device__ (const int row, const int col) -> double& {
-                const int e = row / (nq * nq);
-                const int r = (row / nq) % nq;
-                const int p = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int r = (r_idx / nq) % nq;
+                const int p = r_idx % nq;
                 const int q = col;
                 return s_wsp0[e * (nq * nq * nq) + r * (nq * nq) + q * nq + p];
             };
 
-            auto v_s_dbasis = [=] __device__ (const int row, const int col) -> double& {
-                const int q = col;
-                const int j = row;
-
-                return s_dbasis[j * nq + q];
-            };
-
             auto v_s_rqs = [=] __device__ (const int row, const int col) -> double& {
-                const int e = row / (nq * nq);
-                const int r = (row / nq) % nq; 
-                const int p = row % nq;        
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int r = (r_idx / nq) % nq; 
+                const int p = r_idx % nq;        
                 const int j = col;             
                 return s_rqs[e * (nq * nq * nq) + p * (nq * nq) + j * nq + r];
             };
 
-            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nq>(v_s_wsp0, v_s_dbasis, v_s_rqs);
+            f64_m8n8k4_tiled_gemm<8, nq, nq>(v_s_wsp0, B_dbasis_P2, v_s_rqs, M2_1 - m_offset);
         }
+        __syncthreads();
 
-        //s_wsp0(erqp) . s_dbasis(kr) = s_rqt(epqk)
+        const int M2_2 = nelmtPerBatch * nq * nq;
+        for(int m_offset = warpid * 8; m_offset < M2_2; m_offset += num_warps * 8)
         {
             auto v_s_wsp0 = [=] __device__ (const int row, const int col) -> double& {
-                const int e = row / (nq * nq);
-                const int p = (row / nq) % nq;
-                const int q = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int p = (r_idx / nq) % nq;
+                const int q = r_idx % nq;
                 const int r = col;
                 return s_wsp0[e * (nq * nq * nq) + r * (nq * nq) + q * nq + p];
             };
 
-            auto v_s_dbasis = [=] __device__ (const int row, const int col) -> double& {
-                const int r = col;
-                const int k = row;
-                return s_dbasis[k * nq + r];
-            };
-
             auto v_s_rqt = [=] __device__ (const int row, const int col) -> double& {
-                const int e = row / (nq * nq);
-                const int p = (row / nq) % nq; 
-                const int q = row % nq;        
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int p = (r_idx / nq) % nq; 
+                const int q = r_idx % nq;        
                 const int k = col;             
-
                 return s_rqt[e * (nq * nq * nq) + p * (nq * nq) + q * nq + k];
             };
 
-            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nq>(v_s_wsp0, v_s_dbasis, v_s_rqt);
+            f64_m8n8k4_tiled_gemm<8, nq, nq>(v_s_wsp0, B_dbasis_P2, v_s_rqt, M2_2 - m_offset);
         }
+        __syncthreads();
         
 
-        
         // ==========================================
         // PHASE 3: Apply G
         // ==========================================
-
         for(int tid = threadIdx.x; tid < nelmtPerBatch * nq * nq; tid += blockDim.x) {
             const int e = tid / (nq * nq);
             const int q = (tid / nq) % nq;
@@ -409,235 +389,197 @@ void __global__ f64_m8n8k4_mma(
                 s_rqt[idx] = Grt * qt + Gst * qs + Gtt * qr;
             }
         }
-        __syncwarp();
+        __syncthreads(); 
+
 
         // ==========================================
         // PHASE 4: Apply Divergence
         // ==========================================
+        
+        // HOIST: Load transposed s_dbasis into registers for ALL Phase 4 loops
+        auto v_s_dbasis_T_P4 = [=] __device__ (const int row, const int col) -> double& {
+            return s_dbasis[col * nq + row]; 
+        };
+        auto B_dbasis_T_P4 = load_matrix_B_to_regs<nq, nq>(v_s_dbasis_T_P4);
 
-        //s_rqr(epqr) . s_dbasis(ip) = s_wsp0(eiqr)
+        const int M4_0 = nelmtPerBatch * nq * nq;
+        for(int m_offset = warpid * 8; m_offset < M4_0; m_offset += num_warps * 8)
         {
             auto v_s_rqr = [=] __device__ (int row, int col) -> double& {
-                const int e = row / (nq * nq);
-                const int q = (row / nq) % nq;
-                const int r = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int q = (r_idx / nq) % nq;
+                const int r = r_idx % nq;
                 const int n = col;
-
                 return s_rqr[e * (nq*nq*nq) + n * (nq*nq) + q * nq + r];
             };
 
-            auto v_dbasis = [=] __device__ (int row, int col) -> double& {
-                const int r = row;
-                const int k = col;
-
-                return s_dbasis[k * nq + r];
-            };
-
             auto v_s_wsp0 = [=] __device__ (int row, int col) -> double& {
-                const int e = row / (nq * nq);
-                const int q = (row / nq) % nq;
-                const int r = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int q = (r_idx / nq) % nq;
+                const int r = r_idx % nq;
                 const int p = col;
-
                 return s_wsp0[e * (nq*nq*nq) + r * (nq*nq) + q * nq + p];
             };
 
-            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nq>(v_s_rqr, v_dbasis, v_s_wsp0);
+            f64_m8n8k4_tiled_gemm<8, nq, nq>(v_s_rqr, B_dbasis_T_P4, v_s_wsp0, M4_0 - m_offset);
         }
-        __syncwarp();
+        __syncthreads();
             
-        //s_rqs(epqr) . s_dbasis(jq) = s_wsp0(epjr)
+        const int M4_1 = nelmtPerBatch * nq * nq;
+        for(int m_offset = warpid * 8; m_offset < M4_1; m_offset += num_warps * 8)
         {
             auto v_s_rqs = [=] __device__ (int row, int col) -> double& {
-                const int e = row / (nq * nq);
-                const int p = (row / nq) % nq;
-                const int r = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int p = (r_idx / nq) % nq;
+                const int r = r_idx % nq;
                 const int n = col;
-
                 return s_rqs[e * (nq*nq*nq) + p * (nq*nq) + n * nq + r];
             };
 
-            auto v_s_dbasis = [=] __device__ (int row, int col) -> double& {
-                const int n = row;
-                const int q = col;
-
-                return s_dbasis[q * nq + n];
-            };
-
             auto v_s_wsp0 = [=] __device__ (int row, int col) -> double& {
-                const int e = row / (nq * nq);
-                const int p = (row / nq) % nq;
-                const int r = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int p = (r_idx / nq) % nq;
+                const int r = r_idx % nq;
                 const int q = col;
-
                 return s_wsp0[e * (nq*nq*nq) + r * (nq*nq) + q * nq + p];
             };
 
-            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nq, true>(v_s_rqs, v_s_dbasis, v_s_wsp0);
+            // Notice: Accumulate = true
+            f64_m8n8k4_tiled_gemm<8, nq, nq, true>(v_s_rqs, B_dbasis_T_P4, v_s_wsp0, M4_1 - m_offset);
         }
-        __syncwarp();
+        __syncthreads();
         
-        //s_rqt(epqr) . s_dbasis(kr) = s_wsp0(epqk)
+        const int M4_2 = nelmtPerBatch * nq * nq;
+        for(int m_offset = warpid * 8; m_offset < M4_2; m_offset += num_warps * 8)
         {
             auto v_s_rqt = [=] __device__ (int row, int col) -> double& {
-                const int e = row / (nq * nq);
-                const int p = (row / nq) % nq;
-                const int q = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int p = (r_idx / nq) % nq;
+                const int q = r_idx % nq;
                 const int n = col;
-
                 return s_rqt[e * (nq*nq*nq) + p * (nq*nq) + q * nq + n];
             };
 
-            auto v_s_dbasis = [=] __device__ (int row, int col) -> double& {
-                const int n = row;
-                const int r = col;
-
-                return s_dbasis[r * nq + n];
-            };
-
             auto v_s_wsp0 = [=] __device__ (int row, int col) -> double& {
-                const int e = row / (nq * nq);
-                const int p = (row / nq) % nq;
-                const int q = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int p = (r_idx / nq) % nq;
+                const int q = r_idx % nq;
                 const int r = col;
-
                 return s_wsp0[e * (nq*nq*nq) + r * (nq*nq) + q * nq + p];
             };
-
-            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nq, nq, true>(v_s_rqt, v_s_dbasis, v_s_wsp0);
+            
+            // Notice: Accumulate = true
+            f64_m8n8k4_tiled_gemm<8, nq, nq, true>(v_s_rqt, B_dbasis_T_P4, v_s_wsp0, M4_2 - m_offset);
         }
+        __syncthreads();
 
-        
+
         // ==========================================
         // PHASE 5: Project back to Nodes
         // ==========================================
 
-        // --- Component 0 (x-direction) ---
-        //s_wsp0(erqp) . s_basis(ip) = s_wsp1(erqi)
+        // HOIST: Load transposed s_basis into registers for ALL Phase 5 loops
+        auto v_s_basis_T_P5 = [=] __device__ (const int row, const int col) -> double& {
+            return s_basis[col * nq + row]; 
+        };
+        auto B_basis_T_P5 = load_matrix_B_to_regs<nm, nq>(v_s_basis_T_P5);
+
+        const int M5_0 = nelmtPerBatch * nq * nq;
+        for(int m_offset = warpid * 8; m_offset < M5_0; m_offset += num_warps * 8)
         {
             auto v_s_wsp0 = [=] __device__  (const int row, const int col) -> double& {
-                const int e = row / (nq * nq);
-                const int r = (row / nq) % nq;
-                const int q = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int r = (r_idx / nq) % nq;
+                const int q = r_idx % nq;
                 const int p = col;
-            
                 return s_wsp0[e * (nq * nq * nq) + r * (nq * nq) + q * nq + p];
             };
         
-            auto v_s_basis = [=] __device__  (const int row, const int col) -> double& {
-                const int p = row;
-                const int i = col;
-
-                return s_basis[i * nq + p];
-            };
-        
             auto v_s_wsp1 = [=] __device__  (const int row, const int col) -> double& {
-                const int e = row / (nq * nq);
-                const int r = (row / nq) % nq;
-                const int q = row % nq;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nq);
+                const int r = (r_idx / nq) % nq;
+                const int q = r_idx % nq;
                 const int i = col;
-            
                 return s_wsp1[e * (nq * nq * nm) + r * (nq * nm) + q * nm + i];
             };
         
-            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nq, nm, nq>(v_s_wsp0, v_s_basis, v_s_wsp1);
+            f64_m8n8k4_tiled_gemm<8, nm, nq>(v_s_wsp0, B_basis_T_P5, v_s_wsp1, M5_0 - m_offset);
         }
+        __syncthreads();
 
-
-        //s_wsp1(erqi) . s_basis(jq) = s_wsp0(erij)
+        const int M5_1 = nelmtPerBatch * nq * nm;
+        for(int m_offset = warpid * 8; m_offset < M5_1; m_offset += num_warps * 8)
         {
             auto v_s_wsp1 = [=] __device__  (const int row, const int col) -> double& {
-                const int e = row / (nq * nm);
-                const int r = (row / nm) % nq;
-                const int i = row % nm;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nm);
+                const int r = (r_idx / nm) % nq;
+                const int i = r_idx % nm;
                 const int q = col;
-
                 return s_wsp1[e * (nq * nq * nm) + r * (nq * nm) + q * nm + i];
             };
 
-            auto v_s_basis = [=] __device__  (const int row, const int col) -> double& {
-                const int q = row;
-                const int j = col;
-
-                return s_basis[j * nq + q];
-            };
-
             auto v_s_wsp0 = [=] __device__  (const int row, const int col) -> double& {
-                const int e = row / (nq * nm);
-                const int r = (row / nm) % nq;
-                const int i = row % nm;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nq * nm);
+                const int r = (r_idx / nm) % nq;
+                const int i = r_idx % nm;
                 const int j = col;
-
                 return s_wsp0[e * (nq * nm * nm) + r * (nm * nm) + i * nm + j];
             };
 
-            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nq * nm, nm, nq>(v_s_wsp1, v_s_basis, v_s_wsp0);
+            f64_m8n8k4_tiled_gemm<8, nm, nq>(v_s_wsp1, B_basis_T_P5, v_s_wsp0, M5_1 - m_offset);
         }
+        __syncthreads();
 
-        //s_wsp0(erij) . s_basis(kr) = s_wsp1(eijk)
+        const int M5_2 = nelmtPerBatch * nm * nm;
+        for(int m_offset = warpid * 8; m_offset < M5_2; m_offset += num_warps * 8)
         {
             auto v_s_wsp0 = [=] __device__  (const int row, const int col) -> double& {
-                const int e = row / (nm * nm);
-                const int i = (row / nm) % nm;
-                const int j = row % nm;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nm * nm);
+                const int i = (r_idx / nm) % nm;
+                const int j = r_idx % nm;
                 const int r = col;
-                    
                 return s_wsp0[e * (nq * nm * nm) + r * (nm * nm) + i * nm + j];
-            };
-
-            auto v_s_basis = [=] __device__  (const int row, const int col) -> double& {
-                const int r = row;
-                const int k = col;
-            
-                return s_basis[k * nq + r];
             };
         
             auto v_s_wsp1 = [=] __device__  (const int row, const int col) -> double& {
-                const int e = row / (nm * nm);
-                const int i = (row / nm) % nm;
-                const int j = row % nm;
-
+                const int r_idx = m_offset + row;
+                const int e = r_idx / (nm * nm);
+                const int i = (r_idx / nm) % nm;
+                const int j = r_idx % nm;
                 const int k = col;
-            
                 return s_wsp1[e * (nm * nm * nm) + i * (nm * nm) + j * nm + k];
             };
         
-            f64_m8n8k4_tiled_gemm<nelmtPerBatch * nm * nm, nm, nq>(v_s_wsp0, v_s_basis, v_s_wsp1);
+            f64_m8n8k4_tiled_gemm<8, nm, nq>(v_s_wsp0, B_basis_T_P5, v_s_wsp1, M5_2 - m_offset);
         }
-
-
+        __syncthreads();
 
 
         // ==========================================
         // PHASE 6: Write to Output
         // ==========================================
         for(int tid = threadIdx.x; tid < nelmtPerBatch * ndof_1D; tid += blockDim.x) {
-    
             int e = tid / ndof_1D;
             int dof = tid % ndof_1D;
-
             d_out[comp_offset + batch_offset + e * nm*nm*nm + dof] = s_wsp1[tid];
         }
-        __syncwarp();
+        __syncthreads();
         
-        } //component loop
+        } // component loop
         eb += gridDim.x;
     }   
 }
 
-
-
-
-} //namespace Parallel
-#endif //MMA_F64_M8N8K4_MASS_OPERATOR_CUH
+} // namespace Parallel
+#endif // MMA_F64_M8N8K4_MASS_CUH

@@ -35,8 +35,12 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
     constexpr unsigned int ndof_total = ndof_1D + ndof_1D + ndof_1D;
     
     const unsigned int padded_nelmt = ((nelmt + nelmtPerBatch - 1) / nelmtPerBatch) * nelmtPerBatch;
-    constexpr unsigned int threadsPerBlock = 32; 
     const unsigned int numBlocks = std::max(1U, (padded_nelmt / nelmtPerBatch));
+
+    const unsigned int total_m_tiles = (nelmtPerBatch * nm * nm + 7) / 8;
+    
+    const unsigned int num_warps = std::min(16U, std::max(1U, total_m_tiles));
+    const unsigned int threadsPerBlock = num_warps * 32;
 
     size_t shmem_size = (nm * nq + nq * nq + 4 * nelmtPerBatch * nq * nq * nq) * sizeof(T);
 
