@@ -91,10 +91,6 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
     CUDA_CHECK(cudaMemcpy(d_in, in, (size_t)padded_nelmt * ndof_total * sizeof(T), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(d_out,out,(size_t)padded_nelmt * ndof_total * sizeof(T), cudaMemcpyHostToDevice));
 
-
-    BenchmarkPrinter<T> printer;
-    printer.print_header();
-
     // ------------------------- Mass Operator Kernel Launch --------------------------------------
 
     //set max shmem per block
@@ -136,6 +132,7 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
 
     T DOFs = 1.0e-9 * nDOF / time;
 
+    BenchmarkPrinter<T> printer;
     printer("MMA_fp64", nq - 2, nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, nDOF, time, (double)DOFs, bw, std::sqrt(sum));
 
     delete[] basis; delete[] dbasis; delete[] G; delete[] in; delete[] out;
@@ -143,41 +140,60 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
 }
 
 
-
 int main(int argc, char **argv){
 
     using T = double;
     constexpr size_t shmemPerBlock = 10000;
 
-    unsigned int p         = (argc > 1) ? atoi(argv[1]) : 2u;    unsigned int nq     = p + 2;
-    unsigned int nelmt     = (argc > 2) ? atoi(argv[2]) : 1 << 16;
-    unsigned int ntests    = (argc > 3) ? atoi(argv[3]) : 10u;
+    // Optional argument for number of tests, defaulting to 10 to match Kokkos code
+    unsigned int ntests = (argc > 1) ? atoi(argv[1]) : 10u;
 
     std::cout.precision(8);
+    
+    BenchmarkPrinter<T> printer;
+    printer.print_header();
 
-    switch(nq) {
-        case 3:  run_test<T, 3,  2,  std::max(1UL, shmemPerBlock / (4 * 3*3*3) / sizeof(T))>(nelmt, ntests); break;
-        case 4:  run_test<T, 4,  3,  std::max(1UL, shmemPerBlock / (4 * 4*4*4) / sizeof(T))>(nelmt, ntests); break;
-        case 5:  run_test<T, 5,  4,  std::max(1UL, shmemPerBlock / (4 * 5*5*5) / sizeof(T))>(nelmt, ntests); break;
-        case 6:  run_test<T, 6,  5,  std::max(1UL, shmemPerBlock / (4 * 6*6*6) / sizeof(T))>(nelmt, ntests); break;
-        case 7:  run_test<T, 7,  6,  std::max(1UL, shmemPerBlock / (4 * 7*7*7) / sizeof(T))>(nelmt, ntests); break;
-        case 8:  run_test<T, 8,  7,  std::max(1UL, shmemPerBlock / (4 * 8*8*8) / sizeof(T))>(nelmt, ntests); break;
-        case 9:  run_test<T, 9,  8,  std::max(1UL, shmemPerBlock / (4 * 9*9*9) / sizeof(T))>(nelmt, ntests); break;
-        case 10: run_test<T, 10, 9,  std::max(1UL, shmemPerBlock / (4 * 10*10*10) / sizeof(T))>(nelmt, ntests); break;
-        case 11: run_test<T, 11, 10,  std::max(1UL, shmemPerBlock / (4 * 11*11*11) / sizeof(T))>(nelmt, ntests); break;
-        case 12: run_test<T, 12, 11,  std::max(1UL, shmemPerBlock / (4 * 12*12*12) / sizeof(T))>(nelmt, ntests); break;
-        case 13: run_test<T, 13, 12,  std::max(1UL, shmemPerBlock / (4 * 13*13*13) / sizeof(T))>(nelmt, ntests); break;
-        case 14: run_test<T, 14, 13,  std::max(1UL, shmemPerBlock / (4 * 14*14*14) / sizeof(T))>(nelmt, ntests); break;
-        case 15: run_test<T, 15, 14,  std::max(1UL, shmemPerBlock / (4 * 15*15*15) / sizeof(T))>(nelmt, ntests); break;
-        case 16: run_test<T, 16, 15,  std::max(1UL, shmemPerBlock / (4 * 16*16*16) / sizeof(T))>(nelmt, ntests); break;
-        case 17: run_test<T, 17, 16,  std::max(1UL, shmemPerBlock / (4 * 17*17*17) / sizeof(T))>(nelmt, ntests); break;
-        case 18: run_test<T, 18, 17,  std::max(1UL, shmemPerBlock / (4 * 18*18*18) / sizeof(T))>(nelmt, ntests); break;
+    constexpr int NumSample = 20;
+    constexpr double DOFmin = 1e4;
+    constexpr double DOFmax = 1e8;
 
+    const double log_step = std::pow(DOFmax / DOFmin, 1.0 / (NumSample - 1));
 
+    for (int istep = 0; istep < NumSample; ++istep)
+    {
+        size_t dof = static_cast<size_t>(std::llround(DOFmin * std::pow(log_step, istep)));
 
-        default:
-            std::cerr << "Error: Unsupported p value. Please use a value between 1 and 16." << std::endl;
-            break;
+        // Match the Kokkos test span, you can easily change 10 up to 18 if you want higher degrees
+        for (int nq = 3; nq <= 10; ++nq) {
+            int nm = nq - 1;
+
+            size_t nelmt = dof / (nm * nm * nm);
+            if (nelmt == 0) continue;
+
+            // Template deduction handles compile-time resolution for NelmtPerBatch. 
+            // 4*nq*nq*nq matches your original calculation.
+            switch(nq) {
+                case 3:  run_test<T, 3,  2,  std::max(1UL, shmemPerBlock / (4 * 3*3*3) / sizeof(T))>(nelmt, ntests); break;
+                case 4:  run_test<T, 4,  3,  std::max(1UL, shmemPerBlock / (4 * 4*4*4) / sizeof(T))>(nelmt, ntests); break;
+                case 5:  run_test<T, 5,  4,  std::max(1UL, shmemPerBlock / (4 * 5*5*5) / sizeof(T))>(nelmt, ntests); break;
+                case 6:  run_test<T, 6,  5,  std::max(1UL, shmemPerBlock / (4 * 6*6*6) / sizeof(T))>(nelmt, ntests); break;
+                case 7:  run_test<T, 7,  6,  std::max(1UL, shmemPerBlock / (4 * 7*7*7) / sizeof(T))>(nelmt, ntests); break;
+                case 8:  run_test<T, 8,  7,  std::max(1UL, shmemPerBlock / (4 * 8*8*8) / sizeof(T))>(nelmt, ntests); break;
+                case 9:  run_test<T, 9,  8,  std::max(1UL, shmemPerBlock / (4 * 9*9*9) / sizeof(T))>(nelmt, ntests); break;
+                case 10: run_test<T, 10, 9,  std::max(1UL, shmemPerBlock / (4 * 10*10*10) / sizeof(T))>(nelmt, ntests); break;
+                
+                case 11: run_test<T, 11, 10, std::max(1UL, shmemPerBlock / (4 * 11*11*11) / sizeof(T))>(nelmt, ntests); break;
+                case 12: run_test<T, 12, 11, std::max(1UL, shmemPerBlock / (4 * 12*12*12) / sizeof(T))>(nelmt, ntests); break;
+                case 13: run_test<T, 13, 12, std::max(1UL, shmemPerBlock / (4 * 13*13*13) / sizeof(T))>(nelmt, ntests); break;
+                case 14: run_test<T, 14, 13, std::max(1UL, shmemPerBlock / (4 * 14*14*14) / sizeof(T))>(nelmt, ntests); break;
+                case 15: run_test<T, 15, 14, std::max(1UL, shmemPerBlock / (4 * 15*15*15) / sizeof(T))>(nelmt, ntests); break;
+                case 16: run_test<T, 16, 15, std::max(1UL, shmemPerBlock / (4 * 16*16*16) / sizeof(T))>(nelmt, ntests); break;
+                case 17: run_test<T, 17, 16, std::max(1UL, shmemPerBlock / (4 * 17*17*17) / sizeof(T))>(nelmt, ntests); break;
+                case 18: run_test<T, 18, 17, std::max(1UL, shmemPerBlock / (4 * 18*18*18) / sizeof(T))>(nelmt, ntests); break;
+
+                default: break;
+            }
+        }
     }
 
     return 0;
