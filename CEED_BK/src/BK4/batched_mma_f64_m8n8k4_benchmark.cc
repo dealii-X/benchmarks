@@ -167,7 +167,7 @@ int main(int argc, char **argv){
         for (int nq = 3; nq <= 10; ++nq) {
             int nm = nq - 1;
 
-            size_t nelmt = dof / (nm * nm * nm);
+            size_t nelmt = dof / (3 * nm * nm * nm);
             if (nelmt == 0) continue;
 
             // Template deduction handles compile-time resolution for NelmtPerBatch. 
