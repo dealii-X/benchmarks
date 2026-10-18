@@ -33,13 +33,14 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
 {   
     constexpr unsigned int ndof_1D = nm * nm * nm;
     constexpr unsigned int ndof_total = ndof_1D + ndof_1D + ndof_1D;
+    const unsigned int ncomp = 3; // 3D Vector field has 3 components
     
     const unsigned int padded_nelmt = ((nelmt + nelmtPerBatch - 1) / nelmtPerBatch) * nelmtPerBatch;
     const unsigned int numBlocks = std::max(1U, (padded_nelmt / nelmtPerBatch));
 
     const unsigned int total_m_tiles = (nelmtPerBatch * nm * nm + 7) / 8;
     
-    const unsigned int num_warps = std::min(32U, std::max(1U, total_m_tiles));
+    const unsigned int num_warps = std::min(16U, std::max(1U, total_m_tiles));
     const unsigned int threadsPerBlock = num_warps * 32;
 
     size_t shmem_size = (nm * nq + nq * nq + 4 * nelmtPerBatch * nq * nq * nq) * sizeof(T);
@@ -98,7 +99,7 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
     // ------------------------- Mass Operator Kernel Launch --------------------------------------
 
     //set max shmem per block
-    size_t shmem_bytes = 99 * 1000; // 227 KB for Hopper
+    size_t shmem_bytes = 100 * 1000; // 227 KB for Hopper
 
     cudaFuncSetAttribute(
         Parallel::f64_m8n8k4_mma<nq, nm, nelmtPerBatch>, 
@@ -130,12 +131,11 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
         sum += out[i] * out[i];
     }
 
-    uint64_t nDOF  = (uint64_t)ndof_total * nelmt; 
+    uint64_t nDOF = (uint64_t)ncomp * nm * nm * nm * nelmt; 
     uint64_t nQuad = (uint64_t)nq * nq * nq * nelmt;
-    T bw = 1.0e-9 * (6 * nDOF + 6 * nQuad) * sizeof(T) / time;
+    T bw = 1.0e-9 * (2 * nDOF + 6 * nQuad) * sizeof(T) / time;
 
     T DOFs = 1.0e-9 * nDOF / time;
-
     printer("MMA_fp64", nq - 2, nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, nDOF, time, (double)DOFs, bw, std::sqrt(sum));
 
     delete[] basis; delete[] dbasis; delete[] G; delete[] in; delete[] out;
@@ -147,7 +147,6 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
 int main(int argc, char **argv){
 
     using T = double;
-    constexpr size_t shmemPerBlock = 10000;
 
     unsigned int p         = (argc > 1) ? atoi(argv[1]) : 2u;    unsigned int nq     = p + 2;
     unsigned int nelmt     = (argc > 2) ? atoi(argv[2]) : 1 << 16;
@@ -156,22 +155,22 @@ int main(int argc, char **argv){
     std::cout.precision(8);
 
     switch(nq) {
-        case 3:  run_test<T, 3,  2,  std::max(1UL, shmemPerBlock / (4 * 3*3*3) / sizeof(T))>(nelmt, ntests); break;
-        case 4:  run_test<T, 4,  3,  std::max(1UL, shmemPerBlock / (4 * 4*4*4) / sizeof(T))>(nelmt, ntests); break;
-        case 5:  run_test<T, 5,  4,  std::max(1UL, shmemPerBlock / (4 * 5*5*5) / sizeof(T))>(nelmt, ntests); break;
-        case 6:  run_test<T, 6,  5,  std::max(1UL, shmemPerBlock / (4 * 6*6*6) / sizeof(T))>(nelmt, ntests); break;
-        case 7:  run_test<T, 7,  6,  std::max(1UL, shmemPerBlock / (4 * 7*7*7) / sizeof(T))>(nelmt, ntests); break;
-        case 8:  run_test<T, 8,  7,  std::max(1UL, shmemPerBlock / (4 * 8*8*8) / sizeof(T))>(nelmt, ntests); break;
-        case 9:  run_test<T, 9,  8,  std::max(1UL, shmemPerBlock / (4 * 9*9*9) / sizeof(T))>(nelmt, ntests); break;
-        case 10: run_test<T, 10, 9,  std::max(1UL, shmemPerBlock / (4 * 10*10*10) / sizeof(T))>(nelmt, ntests); break;
-        case 11: run_test<T, 11, 10,  std::max(1UL, shmemPerBlock / (4 * 11*11*11) / sizeof(T))>(nelmt, ntests); break;
-        case 12: run_test<T, 12, 11,  std::max(1UL, shmemPerBlock / (4 * 12*12*12) / sizeof(T))>(nelmt, ntests); break;
-        case 13: run_test<T, 13, 12,  std::max(1UL, shmemPerBlock / (4 * 13*13*13) / sizeof(T))>(nelmt, ntests); break;
-        case 14: run_test<T, 14, 13,  std::max(1UL, shmemPerBlock / (4 * 14*14*14) / sizeof(T))>(nelmt, ntests); break;
-        case 15: run_test<T, 15, 14,  std::max(1UL, shmemPerBlock / (4 * 15*15*15) / sizeof(T))>(nelmt, ntests); break;
-        case 16: run_test<T, 16, 15,  std::max(1UL, shmemPerBlock / (4 * 16*16*16) / sizeof(T))>(nelmt, ntests); break;
-        case 17: run_test<T, 17, 16,  std::max(1UL, shmemPerBlock / (4 * 17*17*17) / sizeof(T))>(nelmt, ntests); break;
-        case 18: run_test<T, 18, 17,  std::max(1UL, shmemPerBlock / (4 * 18*18*18) / sizeof(T))>(nelmt, ntests); break;
+        case 3:  run_test<T, 3,  2, 16>(nelmt, ntests); break;
+        case 4:  run_test<T, 4,  3, 4>(nelmt, ntests); break;
+        case 5:  run_test<T, 5,  4, 4>(nelmt, ntests); break;
+        case 6:  run_test<T, 6,  5, 2>(nelmt, ntests); break;
+        case 7:  run_test<T, 7,  6, 1>(nelmt, ntests); break;
+        case 8:  run_test<T, 8,  7, 1>(nelmt, ntests); break;
+        case 9:  run_test<T, 9,  8, 1>(nelmt, ntests); break;
+        case 10: run_test<T, 10, 9, 1>(nelmt, ntests); break;
+        case 11: run_test<T, 11, 10, 1>(nelmt, ntests); break;
+        case 12: run_test<T, 12, 11, 1>(nelmt, ntests); break;
+        case 13: run_test<T, 13, 12, 1>(nelmt, ntests); break;
+        case 14: run_test<T, 14, 13, 1>(nelmt, ntests); break;
+        case 15: run_test<T, 15, 14, 1>(nelmt, ntests); break;
+        case 16: run_test<T, 16, 15, 1>(nelmt, ntests); break;
+        case 17: run_test<T, 17, 16, 1>(nelmt, ntests); break;
+        case 18: run_test<T, 18, 17, 1>(nelmt, ntests); break;
 
 
 

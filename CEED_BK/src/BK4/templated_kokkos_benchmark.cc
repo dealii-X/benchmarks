@@ -51,7 +51,7 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
     {
         G[i] = std::cos((i));
     }
-
+    
     BenchmarkPrinter<T> printer;
     printer.print_header();
 
@@ -65,7 +65,7 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
         
         uint64_t nDOF = (uint64_t)ncomp * nm * nm * nm * nelmt; 
         uint64_t nQuad = (uint64_t)nq * nq * nq * nelmt;
-        T bw = 1.0e-9 * (6 * nDOF + 6 * nQuad) * sizeof(T) / time;
+        T bw = 1.0e-9 * (2 * nDOF + 6 * nQuad) * sizeof(T) / time;
         printer("BK4", nq - 2, nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, nDOF, time, DOFs, bw, std::sqrt(sum));
     }
 
@@ -101,6 +101,8 @@ int main(int argc, char **argv){
         case 8: run_test<T, 8>(nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, ntests); break;
         case 9: run_test<T, 9>(nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, ntests); break;
         case 10: run_test<T, 10>(nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, ntests); break;
+        case 15: run_test<T, 15>(nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, ntests); break;
+
         default:
             std::cerr << "Error: Unsupported p value. Please use a value between 1 and 8." << std::endl;
             break;

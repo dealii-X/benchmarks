@@ -39,7 +39,7 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
 
     const unsigned int total_m_tiles = (nelmtPerBatch * nm * nm + 7) / 8;
     
-    const unsigned int num_warps = std::min(32U, std::max(1U, total_m_tiles));
+    const unsigned int num_warps = std::min(16U, std::max(1U, total_m_tiles));
     const unsigned int threadsPerBlock = num_warps * 32;
 
     size_t shmem_size = (nm * nq + nq * nq + 4 * nelmtPerBatch * nq * nq * nq) * sizeof(T);
@@ -94,7 +94,7 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
     // ------------------------- Mass Operator Kernel Launch --------------------------------------
 
     //set max shmem per block
-    size_t shmem_bytes = 99 * 1000; // 227 KB for Hopper
+    size_t shmem_bytes = 100 * 1000; // 227 KB for Hopper
 
     cudaFuncSetAttribute(
         Parallel::f64_m8n8k4_mma<nq, nm, nelmtPerBatch>, 
@@ -143,10 +143,8 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
 int main(int argc, char **argv){
 
     using T = double;
-    constexpr size_t shmemPerBlock = 10000;
 
-    // Optional argument for number of tests, defaulting to 10 to match Kokkos code
-    unsigned int ntests = (argc > 1) ? atoi(argv[1]) : 10u;
+    unsigned int ntests = (argc > 1) ? atoi(argv[1]) : 5u;
 
     std::cout.precision(8);
     
@@ -163,33 +161,29 @@ int main(int argc, char **argv){
     {
         size_t dof = static_cast<size_t>(std::llround(DOFmin * std::pow(log_step, istep)));
 
-        // Match the Kokkos test span, you can easily change 10 up to 18 if you want higher degrees
-        for (int nq = 3; nq <= 10; ++nq) {
+        for (int nq = 3; nq <= 18; ++nq) {
             int nm = nq - 1;
 
             size_t nelmt = dof / (3 * nm * nm * nm);
             if (nelmt == 0) continue;
 
-            // Template deduction handles compile-time resolution for NelmtPerBatch. 
-            // 4*nq*nq*nq matches your original calculation.
             switch(nq) {
-                case 3:  run_test<T, 3,  2,  std::max(1UL, shmemPerBlock / (4 * 3*3*3) / sizeof(T))>(nelmt, ntests); break;
-                case 4:  run_test<T, 4,  3,  std::max(1UL, shmemPerBlock / (4 * 4*4*4) / sizeof(T))>(nelmt, ntests); break;
-                case 5:  run_test<T, 5,  4,  std::max(1UL, shmemPerBlock / (4 * 5*5*5) / sizeof(T))>(nelmt, ntests); break;
-                case 6:  run_test<T, 6,  5,  std::max(1UL, shmemPerBlock / (4 * 6*6*6) / sizeof(T))>(nelmt, ntests); break;
-                case 7:  run_test<T, 7,  6,  std::max(1UL, shmemPerBlock / (4 * 7*7*7) / sizeof(T))>(nelmt, ntests); break;
-                case 8:  run_test<T, 8,  7,  std::max(1UL, shmemPerBlock / (4 * 8*8*8) / sizeof(T))>(nelmt, ntests); break;
-                case 9:  run_test<T, 9,  8,  std::max(1UL, shmemPerBlock / (4 * 9*9*9) / sizeof(T))>(nelmt, ntests); break;
-                case 10: run_test<T, 10, 9,  std::max(1UL, shmemPerBlock / (4 * 10*10*10) / sizeof(T))>(nelmt, ntests); break;
-                
-                case 11: run_test<T, 11, 10, std::max(1UL, shmemPerBlock / (4 * 11*11*11) / sizeof(T))>(nelmt, ntests); break;
-                case 12: run_test<T, 12, 11, std::max(1UL, shmemPerBlock / (4 * 12*12*12) / sizeof(T))>(nelmt, ntests); break;
-                case 13: run_test<T, 13, 12, std::max(1UL, shmemPerBlock / (4 * 13*13*13) / sizeof(T))>(nelmt, ntests); break;
-                case 14: run_test<T, 14, 13, std::max(1UL, shmemPerBlock / (4 * 14*14*14) / sizeof(T))>(nelmt, ntests); break;
-                case 15: run_test<T, 15, 14, std::max(1UL, shmemPerBlock / (4 * 15*15*15) / sizeof(T))>(nelmt, ntests); break;
-                case 16: run_test<T, 16, 15, std::max(1UL, shmemPerBlock / (4 * 16*16*16) / sizeof(T))>(nelmt, ntests); break;
-                case 17: run_test<T, 17, 16, std::max(1UL, shmemPerBlock / (4 * 17*17*17) / sizeof(T))>(nelmt, ntests); break;
-                case 18: run_test<T, 18, 17, std::max(1UL, shmemPerBlock / (4 * 18*18*18) / sizeof(T))>(nelmt, ntests); break;
+                case 3:  run_test<T, 3,  2, 16>(nelmt, ntests); break;
+                case 4:  run_test<T, 4,  3, 4>(nelmt, ntests); break;
+                case 5:  run_test<T, 5,  4, 4>(nelmt, ntests); break;
+                case 6:  run_test<T, 6,  5, 2>(nelmt, ntests); break;
+                case 7:  run_test<T, 7,  6, 1>(nelmt, ntests); break;
+                case 8:  run_test<T, 8,  7, 1>(nelmt, ntests); break;
+                case 9:  run_test<T, 9,  8, 1>(nelmt, ntests); break;
+                case 10: run_test<T, 10, 9, 1>(nelmt, ntests); break;
+                case 11: run_test<T, 11, 10, 1>(nelmt, ntests); break;
+                case 12: run_test<T, 12, 11, 1>(nelmt, ntests); break;
+                case 13: run_test<T, 13, 12, 1>(nelmt, ntests); break;
+                case 14: run_test<T, 14, 13, 1>(nelmt, ntests); break;
+                case 15: run_test<T, 15, 14, 1>(nelmt, ntests); break;
+                case 16: run_test<T, 16, 15, 1>(nelmt, ntests); break;
+                case 17: run_test<T, 17, 16, 1>(nelmt, ntests); break;
+                case 18: run_test<T, 18, 17, 1>(nelmt, ntests); break;
 
                 default: break;
             }
