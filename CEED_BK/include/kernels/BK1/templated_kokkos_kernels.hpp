@@ -35,7 +35,7 @@ std::vector<double> Kokkos_MassOperator(const unsigned int nelmt, const unsigned
 
 
             Timer kokkosTimer;
-            double time_kokkos = std::numeric_limits<T>::max();
+            double time_kokkos = std::numeric_limits<double>::max();
 
             //Kokkos with shared memory
             const unsigned int ssize = 2 * nelmtPerBatch * nq*nq*nq + nm*nq;         

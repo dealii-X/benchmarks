@@ -30,7 +30,7 @@ std::vector<double> Kokkos_LaplaceOperator_OTF2(
 
     {
         Timer kokkosTimer;
-        double time_kokkos = std::numeric_limits<T>::max();
+        double time_kokkos = std::numeric_limits<double>::max();
 
         const unsigned int ssize = nm * nq + nq * nq;
         const unsigned int shmem_size = ssize * sizeof(T);
