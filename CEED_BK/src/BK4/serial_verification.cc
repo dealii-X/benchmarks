@@ -17,7 +17,6 @@ void run_test(const unsigned int nq, const unsigned int nelmt){
     T* basis = new T[nm * nq];
     T* dbasis = new T[nq * nq];
 
-    T* weights = new T[nq];
     T* G = new T[nelmt * 6 * nquad];
     T* in = new T[nelmt * ndof_total];
     T* out = new T[nelmt * ndof_total];
