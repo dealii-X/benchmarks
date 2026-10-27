@@ -11,8 +11,8 @@ namespace Parallel{
 
 template <typename T, const unsigned int nq>
 std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelmtPerBatch, 
-    const unsigned int numBlocks, const unsigned int threadsPerBlock, const T *__restrict__ basis, const T *__restrict__ dbasis,
-    const T* __restrict__ G, const T* __restrict__ in, T* __restrict__ out, const unsigned int ntests)
+    const unsigned int numBlocks, const unsigned int threadsPerBlock, const T * basis, const T * dbasis,
+    const T*  G, const T*  in, T*  out, const unsigned int ntests)
     {   
         const unsigned int nm = nq - 1;
 

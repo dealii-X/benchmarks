@@ -17,12 +17,12 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
     const unsigned int nelmtPerBatch,
     const unsigned int numBlocks,
     const unsigned int threadsPerBlock,
-    const T *__restrict__ basis,
-    const T *__restrict__ dbasis,
-    const T *__restrict__ weights,
-    const T *__restrict__ coord_q,
-    const T *__restrict__ in,
-    T* __restrict__ out,
+    const T* basis,
+    const T* dbasis,
+    const T* weights,
+    const T* coord_q,
+    const T* in,
+    T* out,
     const unsigned int ntests)
 {
     const unsigned int nm = nq - 1;

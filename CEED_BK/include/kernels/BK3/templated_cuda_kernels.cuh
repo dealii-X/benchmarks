@@ -10,8 +10,8 @@ namespace Parallel{
 
 template<typename T, const unsigned int nq>
 __global__ void LaplaceOperator(
-    size_t nelmt, const unsigned int nelmtPerBatch, const T*__restrict__ d_basis, const T *__restrict__ d_dbasis, 
-    const T *__restrict__ d_G, const T *__restrict__ d_in, T *__restrict__ d_out)
+    size_t nelmt, const unsigned int nelmtPerBatch, const T* d_basis, const T * d_dbasis, 
+    const T * d_G, const T * d_in, T * d_out)
 {
     const unsigned int nm = nq - 1;
 
