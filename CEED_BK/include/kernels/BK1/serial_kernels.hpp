@@ -2,6 +2,7 @@
 #define BK1_SERIALKERNELS_HPP
 
 #include <numeric>
+#include <vector>
 
 namespace BK1{
 namespace Serial{
@@ -13,14 +14,14 @@ T SumFactorization(const unsigned int nq0, const unsigned nq1, const unsigned in
     const unsigned int nm0 = nq0 - 1;
     const unsigned int nm1 = nq1 - 1;
     const unsigned int nm2 = nq2 - 1;
-    
+
     //Intermediate Arrays
-    T* wsp0 = new T[nq0 * nq1 * nq2];
-    T* wsp1 = new T[nq0 * nq1 * nq2];
+    std::vector<T> wsp0(nq0 * nq1 * nq2);
+    std::vector<T> wsp1(nq0 * nq1 * nq2);
 
     for(unsigned int e = 0; e < nelmt; ++e){
-        std::fill(wsp0, wsp0 + nq0 * nq1 * nq2, (T)0);
-        std::fill(wsp1, wsp1 + nq0 * nq1 * nq2, (T)0);
+        std::fill(wsp0.begin(), wsp0.end(), T(0.0));
+        std::fill(wsp1.begin(), wsp1.end(), T(0.0));
 
         //step-1 : Copy from in to the wsp0
         for(unsigned int i = 0; i < nm0; i++){
@@ -41,7 +42,7 @@ T SumFactorization(const unsigned int nq0, const unsigned nq1, const unsigned in
                 }
             }
         }
-        std::fill(wsp0, wsp0 + nq0 * nq1 * nq2, (T)0);
+        std::fill(wsp0.begin(), wsp0.end(), T(0.0));
 
         //step-3 : direction 1
         for(unsigned int q = 0; q < nq1; q++){
@@ -53,7 +54,7 @@ T SumFactorization(const unsigned int nq0, const unsigned nq1, const unsigned in
                 }
             }
         }
-        std::fill(wsp1, wsp1 + nq0 * nq1 * nq2, (T)0);
+        std::fill(wsp1.begin(), wsp1.end(), T(0.0));
 
 
         //step-4 : direction 2
@@ -66,7 +67,7 @@ T SumFactorization(const unsigned int nq0, const unsigned nq1, const unsigned in
                 }
             }
         }
-        std::fill(wsp0, wsp0 + nq0 * nq1 * nq2, (T)0);
+        std::fill(wsp0.begin(), wsp0.end(), T(0.0));
 
         //Reverse Operations
 
@@ -78,19 +79,18 @@ T SumFactorization(const unsigned int nq0, const unsigned nq1, const unsigned in
                 }
             }
         }
-  
 
         //step-6 : direction 2
         for(unsigned int k = 0; k < nm2; k++){
             for(unsigned int q = 0; q < nq1; q++){
-                for(unsigned int p = 0; p < nq0; p++){ 
+                for(unsigned int p = 0; p < nq0; p++){
                     for(unsigned int r = 0; r < nq2; r++){
                         wsp0[q * nq0 * nm2 + p * nm2 + k] += wsp1[p * nq1 * nq2 + q * nq2 + r] * basis2[k * nq2 + r];
                     }
                 }
             }
         }
-        std::fill(wsp1, wsp1 + nq0 * nq1 * nq2, (T)0);
+        std::fill(wsp1.begin(), wsp1.end(), T(0.0));
 
         //step-7 : direction 1
         for(unsigned int j = 0; j < nm1; j++){
@@ -102,7 +102,7 @@ T SumFactorization(const unsigned int nq0, const unsigned nq1, const unsigned in
                 }
             }
         }
-        std::fill(wsp0, wsp0 + nq0 * nq1 * nq2, (T)0);
+        std::fill(wsp0.begin(), wsp0.end(), T(0.0));
 
 
         //step-8 : direction 0

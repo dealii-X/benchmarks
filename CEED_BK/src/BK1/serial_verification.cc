@@ -7,19 +7,18 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
         const unsigned int nm0 = nq0 - 1;
         const unsigned int nm1 = nq1 - 1;
         const unsigned int nm2 = nq2 - 1;
-        
+
         //Allocation of arrays
         T* basis0 = new T[nm0 * nq0];
         T* basis1 = new T[nm1 * nq1];
         T* basis2 = new T[nm2 * nq2];
         T* JxW = new T[nelmt * nq0 * nq1 * nq2];
-        T* in = new T[nelmt * nm0 * nm1 * nm2];
+        T* in  = new T[nelmt * nm0 * nm1 * nm2];
         T* out = new T[nelmt * nm0 * nm1 * nm2];
 
-
         //Initialize the input and output arrays
-        std::fill(JxW, JxW + nelmt * nq0 * nq1 * nq2, (T)1.0f);
-        std::fill(in, in + nelmt * nm0 * nm1 * nm2, (T)3.0f);
+        std::fill(JxW, JxW + nelmt * nq0 * nq1 * nq2, T(1.0));
+        std::fill(in, in + nelmt * nm0 * nm1 * nm2, T(3.0));
 
         //Initialization of basis functions
         for(unsigned int p = 0u; p < nq0; p++)
@@ -46,12 +45,12 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
 
         //---------------------------Serial Kernels--------------------------------------------------------
-        std::fill(in, in + nelmt * nm0 * nm1 * nm2, (T)3.0f);
+        std::fill(in, in + nelmt * nm0 * nm1 * nm2, T(3.0));
         T SerialSumFact = BK1::Serial::SumFactorization<T>(nq0, nq1, nq2, nelmt, basis0, basis1, basis2, JxW, in, out);
 
         std::cout << "Serial norm = " << std::sqrt(SerialSumFact) << "\n";
 
-        delete[] basis0; delete[] basis1; delete[] basis2; delete[] JxW; delete[] in;
+        delete[] basis0; delete[] basis1; delete[] basis2; delete[] JxW; delete[] in; delete[] out;
     }
 
 
@@ -62,6 +61,6 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
     std::cout.precision(8);
     run_test<double>(nq, nq, nq, nelmt);
-    
+
     return 0;
 }
