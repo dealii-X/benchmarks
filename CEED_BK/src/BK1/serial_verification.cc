@@ -45,7 +45,6 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
 
         //---------------------------Serial Kernels--------------------------------------------------------
-        std::fill(in, in + nelmt * nm0 * nm1 * nm2, T(3.0));
         T SerialSumFact = BK1::Serial::SumFactorization<T>(nq0, nq1, nq2, nelmt, basis0, basis1, basis2, JxW, in, out);
 
         std::cout << "Serial norm = " << std::sqrt(SerialSumFact) << "\n";
