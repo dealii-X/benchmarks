@@ -94,7 +94,7 @@ void run_test(const unsigned int nelmt, const unsigned int ntests)
     // ------------------------- Mass Operator Kernel Launch --------------------------------------
 
     //set max shmem per block
-    size_t shmem_bytes = 100 * 1000; // 227 KB for Hopper
+    size_t shmem_bytes = 225 * 1000; // 227 KB for Hopper
 
     cudaFuncSetAttribute(
         Parallel::f64_m8n8k4_mma<nq, nm, nelmtPerBatch>, 

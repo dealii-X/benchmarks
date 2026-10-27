@@ -94,7 +94,7 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
     // ------------------------- BK4 Vector Laplace Operator Kernel ------------------------------------
     {
         //set max shmem per block
-        size_t shmem_bytes = 100 * 1000; // 227 KB for Hopper
+        size_t shmem_bytes = 225 * 1000; // 227 KB for Hopper
 
         cudaFuncSetAttribute(
             BK4::Parallel::LaplaceOperator<T, nq>, 
