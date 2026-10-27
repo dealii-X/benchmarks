@@ -53,12 +53,11 @@ int main(int argc, char **argv){
     using T = double;
     int shmemPerBlock = 10800;
 
-    Kokkos::initialize(argc, argv);
-
+    Kokkos::ScopeGuard guard(argc, argv);
 
     unsigned int p                 = (argc > 1) ? atoi(argv[1]) : 2u;    unsigned int nq = p + 2;
     unsigned int nelmt             = (argc > 2) ? atoi(argv[2]) : 2 << 18;
-    
+
     unsigned int nelmtPerBatch     = (argc > 3) ? atoi(argv[3]) : std::max(1UL, shmemPerBlock / (2 * nq * nq * nq) / sizeof(T));
     unsigned int numBlocks         = (argc > 4) ? atoi(argv[4]) : std::max(1U, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch / 2);
 
@@ -68,7 +67,7 @@ int main(int argc, char **argv){
     unsigned int ntests            = (argc > 6) ? atoi(argv[6]) : 10u;
 
     std::cout.precision(8);
-    
+
     switch(nq) {
         case 3: run_test<T, 3>(nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, ntests); break;
         case 4: run_test<T, 4>(nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, ntests); break;
@@ -80,9 +79,8 @@ int main(int argc, char **argv){
         case 10: run_test<T, 10>(nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, ntests); break;
         default:
             std::cerr << "Error: Unsupported p value. Please use a value between 1 and 8." << std::endl;
-            break;
+            return 1;
     }
 
-    Kokkos::finalize();
     return 0;
 }
