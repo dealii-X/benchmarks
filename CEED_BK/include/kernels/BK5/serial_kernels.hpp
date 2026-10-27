@@ -76,12 +76,14 @@ T SumFactorization( const unsigned int nq0, const unsigned int nq1, const unsign
     }
 
     //return element-wise square of in array and apply sum reduction
-    return std::transform_reduce(out, out + nelmt * nq0 * nq1 * nq2,
+    auto result = std::transform_reduce(out, out + nelmt * nq0 * nq1 * nq2,
                           out, T{},
                           [](T lhs, T rhs){return rhs + lhs;},
                           [](T val1, T val2){return val1 * val2;});
-    
+
     delete[] rqr; delete[] rqs; delete[] rqt;
+
+    return result;
 }
 
 }  //namespace Serial
