@@ -1,9 +1,6 @@
 #ifndef BK1_TEMPLATED_CUDA_KERNELS_CUH
 #define BK1_TEMPLATED_CUDA_KERNELS_CUH
 
-#include <timer.hpp>
-#include <vector>
-
 namespace BK1{
 namespace Parallel{
 
