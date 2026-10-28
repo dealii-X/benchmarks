@@ -138,8 +138,7 @@ int main(int argc, char **argv){
         case 10: run_test<T, 10>(nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, ntests); break;
         default:
             std::cerr << "Error: Unsupported p value. Please use a value between 1 and 8." << std::endl;
-            break;
-
-    return 0;
+            return 1;
     }
+    return 0;
 }

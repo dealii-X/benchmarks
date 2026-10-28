@@ -57,7 +57,7 @@ std::vector<double> Kokkos_LaplaceOperator_OTF(
         Kokkos::View<T*> d_out("d_out", nelmt * nm * nm * nm);
 
         Timer kokkosTimer;
-        double time_kokkos = std::numeric_limits<T>::max();
+        double time_kokkos = std::numeric_limits<double>::max();
 
         // Keep the original scratch layout.  No extra q^3 geometry arrays are
         // introduced: coordinates remain in d_coord, while C is register-local.

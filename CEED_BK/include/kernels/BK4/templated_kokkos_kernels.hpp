@@ -42,7 +42,7 @@ std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelm
             Kokkos::View<T*> d_out("d_out", nelmt * ncomp * nm * nm * nm);
 
             Timer kokkosTimer;
-            double time_kokkos = std::numeric_limits<T>::max();
+            double time_kokkos = std::numeric_limits<double>::max();
 
             //Kokkos with shared memory
             unsigned int ssize = nm * nq + nq * nq + 4 * nelmtPerBatch * nq * nq * nq;          

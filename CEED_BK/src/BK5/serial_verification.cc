@@ -46,16 +46,16 @@ void run_test(const unsigned int nq0, const unsigned int nq1, const unsigned int
 
     std::cout << "SerialSumFact norm = " << std::sqrt(SerialSumFact) << "\n";
 
-    delete[] dbasis0; delete[] dbasis1; delete[] dbasis2; delete[] G; delete[] in;
+    delete[] dbasis0; delete[] dbasis1; delete[] dbasis2; delete[] G; delete[] in; delete[] out;
 }
 
 
 int main(int argc, char **argv){
     unsigned int p                  = (argc > 1) ? atoi(argv[1]) : 3u; unsigned int nq = p + 1;
     unsigned int nelmt              = (argc > 2) ? atoi(argv[2]) : 2 << 18;
-        
+
     std::cout.precision(8);
     run_test<double>(nq, nq, nq, nelmt);
-    
+
     return 0;
 }
