@@ -2,7 +2,7 @@
 #include <cmath>
 #include <algorithm>
 #include <vector>
-#include <kernels/BK4/templated_fused_kokkos_kernels.cuh>
+#include <kernels/BK4/templated_fused_kokkos_kernels.hpp>
 #include <timer.hpp>
 #include <benchmark_printer.hpp>
 
