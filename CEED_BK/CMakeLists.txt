@@ -11,6 +11,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 
 #BKs
 add_subdirectory(src/BK1)
+add_subdirectory(src/BK2)
 add_subdirectory(src/BK3)
 add_subdirectory(src/BK4)
 add_subdirectory(src/BK5)
