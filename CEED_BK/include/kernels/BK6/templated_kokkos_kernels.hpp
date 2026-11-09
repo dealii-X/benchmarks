@@ -1,0 +1,210 @@
+#ifndef BK6_TEMPLATED_KOKKOS_KERNELS_HPP
+#define BK6_TEMPLATED_KOKKOS_KERNELS_HPP
+
+#include <Kokkos_Core.hpp>
+#include <timer.hpp>
+#include <vector>
+#include <limits>
+#include <algorithm>
+
+namespace BK6{
+namespace Parallel{
+
+
+template <typename T, const unsigned int nq>
+std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelmtPerBatch, 
+    const unsigned int numBlocks, const unsigned int threadsPerBlock, const T * dbasis,
+    const T*  G, const T*  in, T*  out, const unsigned int ntests)
+    {   
+        const unsigned int ncomp = 3;
+
+        T sum = 0.0;
+        std::vector<double> results(3);
+        {   
+            Kokkos::View<const T*, Kokkos::HostSpace> dbasis_view(dbasis, nq * nq);
+            Kokkos::View<T*> d_dbasis("d_dbasis", nq * nq);
+            Kokkos::deep_copy(d_dbasis, dbasis_view);
+
+            Kokkos::View<const T*, Kokkos::HostSpace> G_view(G, nelmt * nq * nq * nq * 6);
+            Kokkos::View<T*> d_G("d_G", nelmt * nq * nq * nq * 6);
+            Kokkos::deep_copy(d_G, G_view);
+
+            Kokkos::View<const T*, Kokkos::HostSpace> in_view(in, nelmt * ncomp * nq * nq * nq);
+            Kokkos::View<T*> d_in("d_in", nelmt * ncomp * nq * nq * nq);
+            Kokkos::deep_copy(d_in, in_view);
+
+            Kokkos::View<const T*, Kokkos::HostSpace> out_view(out, nelmt * ncomp * nq * nq * nq);
+            Kokkos::View<T*> d_out("d_out", nelmt * ncomp * nq * nq * nq);
+
+            Timer kokkosTimer;
+            double time_kokkos = std::numeric_limits<double>::max();
+
+            //Kokkos with shared memory
+            unsigned int ssize = nq * nq + 4 * nelmtPerBatch * nq * nq * nq;          
+            
+            const unsigned int shmem_size = ssize * sizeof(T);
+            
+            typedef Kokkos::TeamPolicy<>::member_type member_type;
+            Kokkos::TeamPolicy<> policy(numBlocks, threadsPerBlock);
+            policy.set_scratch_size(0, Kokkos::PerTeam(shmem_size));
+            
+            for (unsigned int t = 0u; t < ntests; ++t)
+            {
+                kokkosTimer.start();
+                Kokkos::parallel_for(policy,
+                KOKKOS_LAMBDA (member_type team_member){
+
+                    T r_p[nq];
+                    T r_q[nq];
+                    T r_r[nq];
+
+                    //shared memory access
+                    T *scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
+
+                    T *s_dbasis  = scratch;
+
+                    T *s_wsp0    = s_dbasis + nq * nq;
+                    T *s_rqr     = s_wsp0   + nelmtPerBatch * nq * nq * nq;
+                    T *s_rqs     = s_rqr    + nelmtPerBatch * nq * nq * nq;
+                    T *s_rqt     = s_rqs    + nelmtPerBatch * nq * nq * nq;
+
+                    const unsigned int threadIdx = team_member.team_rank();
+                    const unsigned int blockSize = team_member.team_size();
+
+                    //copy to shared memory
+                    for(unsigned int tid = threadIdx; tid < nq * nq; tid += blockSize)
+                    {
+                        s_dbasis[tid] = d_dbasis[tid];
+                    }
+                    team_member.team_barrier();
+
+
+                    //element batch iteration
+                    size_t eb = team_member.league_rank();
+                    while(eb < (nelmt + nelmtPerBatch - 1) / nelmtPerBatch)
+                    {   
+                        //current nelmtPerBatch (edge case, last batch size can be less)
+                        int remaining = nelmt - eb * nelmtPerBatch;
+                        int c_nelmtPerBatch = (nelmtPerBatch < remaining) ? nelmtPerBatch : remaining;
+
+                        for(int c = 0; c < 3; ++c)
+                        {
+                            const size_t comp_offset  = c * nelmt * nq * nq * nq;
+                            const size_t batch_offset = eb * nelmtPerBatch * nq * nq * nq;
+
+                            //step-1 : Copy from in to the wsp0
+                            for(int i = threadIdx; i < c_nelmtPerBatch * nq * nq * nq; i += blockSize)
+                            {
+                                s_wsp0[i] = d_in[comp_offset + batch_offset + i];
+                            }
+                            team_member.team_barrier();
+
+                            //step-2 : Multiply by D and apply chain rule
+                            for(int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize){
+
+                                int e = tid / (nq * nq);
+                                int q = tid % (nq * nq) / nq;
+                                int r = tid % nq;
+
+                                //copy to register
+                                for(int n = 0; n < nq; n++)
+                                {
+                                    r_p[n] = s_wsp0[e * nq*nq*nq + n * nq*nq + q * nq + r];
+                                    r_q[n] = s_dbasis[n * nq + q];
+                                    r_r[n] = s_dbasis[n * nq + r];
+                                }
+                            
+                                T Grr, Grs, Grt, Gss, Gst, Gtt;
+                                T qr, qs, qt;
+                            
+                                for(int p = 0; p < nq; ++p){
+                                
+                                    qr = 0; qs = 0; qt = 0; 
+                                
+                                    //Load Geometric Factors, coalesced access
+                                    Grr = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 0 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                    Grs = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 1 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                    Grt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 2 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                    Gss = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 3 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                    Gst = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 4 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                    Gtt = d_G[eb * nelmtPerBatch * 6 * nq*nq*nq + e * 6 * nq*nq*nq + 5 * nq*nq*nq + p * nq * nq + q * nq + r];
+                                
+                                    // Multiply by D
+                                    for(int n = 0; n < nq; n++){
+                                        qr += s_dbasis[n * nq + p] * r_p[n];
+                                        qs += r_q[n] * s_wsp0[e * nq*nq*nq + p * nq*nq + n * nq + r];
+                                        qt += r_r[n] * s_wsp0[e * nq*nq*nq + p * nq*nq + q * nq + n];
+                                    }
+                                
+                                    // Apply chain rule
+                                    s_rqr[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grr * qt + Grs * qs + Grt * qr;
+                                    s_rqs[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grs * qt + Gss * qs + Gst * qr;
+                                    s_rqt[e * nq*nq*nq + p * nq * nq + q * nq + r] = Grt * qt + Gst * qs + Gtt * qr;
+                                }
+                            }
+                            team_member.team_barrier();
+
+                            //step-3 : Compute out vector in GLL nodes and write to d_out
+                            for(int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq; tid += blockSize){
+                            
+                                int e = tid / (nq * nq);
+                                int q = tid % (nq * nq) / nq;
+                                int r = tid % nq;
+                            
+                                //copy to register
+                                for(int n = 0; n < nq; n++)
+                                {
+                                    r_p[n] = s_rqr[e * nq*nq*nq + n * nq * nq + q * nq + r];
+                                    r_q[n] = s_dbasis[q * nq + n];
+                                    r_r[n] = s_dbasis[r * nq + n];
+                                }
+                            
+                                for(int p = 0; p < nq; ++p)
+                                {
+                                    T tmp0 = 0;
+                                    for(int n = 0; n < nq; ++n)
+                                        tmp0 += r_p[n] * s_dbasis[p * nq + n];
+                                
+                                    for(int n = 0; n < nq; ++n)                
+                                        tmp0 += s_rqs[e * nq*nq*nq + p * nq * nq + n * nq + r] * r_q[n];
+                                
+                                    for(int n = 0; n < nq; ++n)
+                                        tmp0 += s_rqt[e * nq*nq*nq + p * nq * nq + q * nq + n] * r_r[n];
+                                
+                                    d_out[comp_offset + batch_offset + e * nq*nq*nq + p * nq*nq + q * nq + r] = tmp0;
+                                }
+                            }
+                            team_member.team_barrier();
+                        } //component loop
+
+                        eb += team_member.league_size();
+                    }
+                });
+            Kokkos::fence();
+
+            kokkosTimer.stop();
+            const double t_w = kokkosTimer.elapsedSeconds();
+            time_kokkos     = std::min(time_kokkos, t_w);
+        }
+
+        Kokkos::parallel_reduce(nelmt * ncomp * nq * nq * nq,
+            KOKKOS_LAMBDA(unsigned int i, T &val) {
+                val += d_out(i) * d_out(i);
+            },
+            sum);               
+        sum = sum;
+
+        T gdofPerSeconds = 1.0e-9 * nelmt * ncomp * nq * nq * nq / time_kokkos;
+        results[0] = gdofPerSeconds; 
+        results[1] = sum;
+        results[2] = time_kokkos;
+    }
+
+    return results;
+}
+
+
+} //namespace Parallel
+} //namespace BK6
+
+#endif //BK6_TEMPLATED_KOKKOS_KERNELS_HPP
