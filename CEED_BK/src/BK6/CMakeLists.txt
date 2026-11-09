@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.20)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/BK6)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/BK6)
 
-set(BK6_KOKKOS_BENCHMARKS templated_kokkos_benchmark batched_kokkos_benchmark)
+set(BK6_KOKKOS_BENCHMARKS templated_kokkos_benchmark templated_batched_kokkos_benchmark)
 
 
 foreach(benchmark IN LISTS BK6_KOKKOS_BENCHMARKS)
