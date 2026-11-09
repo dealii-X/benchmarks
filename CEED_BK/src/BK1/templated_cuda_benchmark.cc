@@ -112,13 +112,13 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
 int main(int argc, char **argv){
 
     using T = double;
-    int shmemPerBlock = 10800;
+    int shmemPerBlock = 10000;
 
     unsigned int p                 = (argc > 1) ? atoi(argv[1]) : 2u;    unsigned int nq = p + 2;
     unsigned int nelmt             = (argc > 2) ? atoi(argv[2]) : 2 << 18;
     
     unsigned int nelmtPerBatch     = (argc > 3) ? atoi(argv[3]) : std::max(1UL, shmemPerBlock / (2 * nq * nq * nq) / sizeof(T));
-    unsigned int numBlocks         = (argc > 4) ? atoi(argv[4]) : std::max(1U, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch / 2);
+    unsigned int numBlocks         = (argc > 4) ? atoi(argv[4]) : std::max(1U, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch);
     
     unsigned int threadsPerBlock   = nq * nq * std::max(1u, nelmtPerBatch);
 

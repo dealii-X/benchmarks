@@ -51,7 +51,7 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
 
 int main(int argc, char **argv){
     using T = double;
-    int shmemPerBlock = 10800;
+    int shmemPerBlock = 10000;
 
     Kokkos::initialize(argc, argv);
 
@@ -76,7 +76,7 @@ int main(int argc, char **argv){
             if (nelmt == 0) continue;
 
             unsigned int nelmtPerBatch     = std::max(1UL, shmemPerBlock / (2 * nq * nq * nq) / sizeof(T));
-            unsigned int numBlocks         = std::max(1U, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch / 2);
+            unsigned int numBlocks         = std::max(1U, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch);
 
             unsigned int threadsPerBlock   = nq * nq * std::max(1u, nelmtPerBatch);
 
