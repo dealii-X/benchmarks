@@ -53,7 +53,7 @@ void run_test(const unsigned int nelmt, const unsigned int nelmtPerBatch,
         
         uint64_t nDOF = (uint64_t)ncomp * nq * nq * nq * nelmt; 
         uint64_t nQuad = (uint64_t)nq * nq * nq * nelmt;
-        T bw = 1.0e-9 * (6 * nDOF + 6 * nQuad) * sizeof(T) / time;
+        T bw = 1.0e-9 * (2 * nDOF + 6 * nQuad) * sizeof(T) / time;
         printer("BK6", nq - 1, nelmt, nelmtPerBatch, numBlocks, threadsPerBlock, nDOF, time, DOFs, bw, std::sqrt(sum));
     }
 
