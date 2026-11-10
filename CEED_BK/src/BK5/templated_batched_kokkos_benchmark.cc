@@ -57,7 +57,7 @@ int main(int argc, char **argv){
     BenchmarkPrinter<T> printer;
     printer.print_header();
 
-    constexpr int    NumSample   = 50;
+    constexpr int    NumSample   = 30;
     constexpr double DOFmin      = 1e4;
     constexpr double DOFmax      = 1e8;
 
