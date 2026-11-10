@@ -41,7 +41,7 @@ std::vector<double> Kokkos_MassOperator(size_t nelmt, const unsigned int nelmtPe
             double time_kokkos = std::numeric_limits<double>::max();
 
             //Kokkos with shared memory
-            const unsigned int ssize = 3 * nelmtPerBatch * nq*nq*nq + nm*nq;         
+            const unsigned int ssize = 2 * nelmtPerBatch * nq*nq*nq + nm*nq;         
             
             const unsigned int shmem_size = ssize * sizeof(T);
             
@@ -62,7 +62,6 @@ std::vector<double> Kokkos_MassOperator(size_t nelmt, const unsigned int nelmtPe
                         T* s_basis = scratch;
                         T* s_wsp0 = s_basis + nm*nq;
                         T* s_wsp1 = s_wsp0 + nelmtPerBatch * nq*nq*nq;
-                        T* s_JxW  = s_wsp1 + nelmtPerBatch * nq*nq*nq;
 
                         unsigned int threadIdx = team_member.team_rank();
                         unsigned int blockSize = team_member.team_size();
@@ -80,12 +79,6 @@ std::vector<double> Kokkos_MassOperator(size_t nelmt, const unsigned int nelmtPe
                             int remaining = nelmt - eb * nelmtPerBatch;
                             int c_nelmtPerBatch = (nelmtPerBatch < remaining) ? nelmtPerBatch : remaining;
 
-                            // copy of JxW from global to shared memory for this batch
-                            for(int tid = threadIdx; tid < c_nelmtPerBatch * nq * nq * nq; tid += blockSize)
-                            {
-                                s_JxW[tid] = d_JxW[eb * nelmtPerBatch * nq * nq * nq + tid];
-                            }
-                            team_member.team_barrier();
 
                             for(int c = 0; c < 3; ++c)
                             {
@@ -162,7 +155,7 @@ std::vector<double> Kokkos_MassOperator(size_t nelmt, const unsigned int nelmtPe
                                             tmp += s_basis[k * nq + r] * reg[k];
                                         }
                                     
-                                        s_wsp1[e * nq*nq*nq + r * nq*nq + q * nq + p] = tmp * s_JxW[e * nq*nq*nq + r * nq*nq + q * nq + p];
+                                        s_wsp1[e * nq*nq*nq + r * nq*nq + q * nq + p] = tmp * d_JxW[eb * nelmtPerBatch * nq * nq * nq + e * nq*nq*nq + r * nq*nq + q * nq + p];
                                     }
                                 }
                                 team_member.team_barrier();

@@ -76,7 +76,7 @@ int main(int argc, char **argv){
             unsigned int nelmt = dof / (3 * nm * nm * nm);
             if (nelmt == 0) continue;
 
-            unsigned int nelmtPerBatch     = std::max(1UL, shmemPerBlock / (3 * nq * nq * nq) / sizeof(T));
+            unsigned int nelmtPerBatch     = std::max(1UL, shmemPerBlock / (2 * nq * nq * nq) / sizeof(T));
             unsigned int numBlocks         = std::max(1U, (nelmt + nelmtPerBatch - 1) / nelmtPerBatch);
 
             unsigned int threadsPerBlock   = nq * nq * std::max(1u, nelmtPerBatch);
