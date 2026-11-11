@@ -54,7 +54,7 @@ int main(int argc, char **argv){
     using T = double;
     int shmemPerBlock = 10000;
 
-    Kokkos::ScopeGuard guard(argc, argv);
+    Kokkos::initialize(argc, argv);
 
     unsigned int p                 = (argc > 1) ? atoi(argv[1]) : 2u;    unsigned int nq = p + 2;
     unsigned int nelmt             = (argc > 2) ? atoi(argv[2]) : 1 << 16;
@@ -83,5 +83,6 @@ int main(int argc, char **argv){
             return 1;
     }
 
+    Kokkos::finalize();
     return 0;
 }
