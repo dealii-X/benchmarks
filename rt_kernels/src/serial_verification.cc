@@ -5,6 +5,7 @@
 #include "serialMixedDivOperator.hpp" 
 #include "serialMixedGradOperator.hpp" 
 #include "serialDivDivOperator.hpp" 
+#include "serialStiffnessOperator.hpp" 
 
 
 template<typename T>
@@ -23,12 +24,14 @@ void run_test(const unsigned int nq, const unsigned int nm_t, const unsigned int
     T* basis_n  = new T[nq * nm_n];
     T* basis_t  = new T[nq * nm_t];
     T* dbasis_n = new T[nq * nm_n];
+    T* dbasis_t = new T[nq * nm_t];
     T* basis_p  = new T[nq * nm_p];
 
     // Separate metrics
-    T* G_mass = new T[nelmt * 6 * nq * nq * nq];
-    T* G_div  = new T[nq * nq * nq];
-    T* G_divdiv  = new T[nelmt * nq * nq * nq];
+    T* G_mass   = new T[nelmt * 6 * nq * nq * nq];
+    T* G_stiff  = new T[nelmt * 6 * nq * nq * nq];
+    T* G_div    = new T[nq * nq * nq];
+    T* G_divdiv = new T[nelmt * nq * nq * nq];
 
     
     // Arrays for Velocity (u) and Pressure (p)
@@ -42,9 +45,10 @@ void run_test(const unsigned int nq, const unsigned int nm_t, const unsigned int
     std::fill(in_p, in_p + nelmt * ndof_p_total, (T)3.0);
     
 
-    // Metric Tensor G_mass
+    // Metric Tensor G_mass & G_stiff
     for(unsigned int i = 0u; i < nelmt * 6 * nq * nq * nq; i++) {
-        G_mass[i] = std::cos(i);
+        G_mass[i]  = std::cos(i);
+        G_stiff[i] = std::cos(i);
     }
 
     // Metric Tensor div
@@ -60,7 +64,7 @@ void run_test(const unsigned int nq, const unsigned int nm_t, const unsigned int
     // Normal basis (nm_n x nq)
     for(unsigned int i = 0u; i < nm_n; i++) {
         for(unsigned int p = 0u; p < nq; p++) {
-            basis_n[i * nq + p] = std::cos((T)(i * nq + p));
+            basis_n[i * nq + p]  = std::cos((T)(i * nq + p));
             dbasis_n[i * nq + p] = std::cos((T)(i * nq + p));
         }
     }
@@ -68,7 +72,8 @@ void run_test(const unsigned int nq, const unsigned int nm_t, const unsigned int
     // Tangent basis (nm_t x nq)
     for(unsigned int j = 0u; j < nm_t; j++) {
         for(unsigned int q = 0u; q < nq; q++) {
-            basis_t[j * nq + q] = std::cos((T)(j * nq + q));
+            basis_t[j * nq + q]  = std::cos((T)(j * nq + q));
+            dbasis_t[j * nq + q] = std::cos((T)(j * nq + q));
         }
     }
 
@@ -130,9 +135,23 @@ void run_test(const unsigned int nq, const unsigned int nm_t, const unsigned int
     );
     std::cout << "Serial_DivDiv L2 norm = " << std::sqrt(Serial_DivDiv_res) << "\n";
 
-    delete[] basis_n;  delete[] basis_t;  delete[] dbasis_n; delete[] basis_p;
-    delete[] G_mass;  delete[] G_div; delete[] G_divdiv;
-    delete[] in_u; delete[] out_u; delete[] in_p; delete[] out_p;
+
+    // ==========================================
+    // 5. Calculate Stiffness (u -> u)
+    // ==========================================
+    std::fill(out_u, out_u + nelmt * ndof_u_total, (T)0.0);
+
+    T Serial_Stiffness_res = Serial::Stiffness<T>(
+        nq, nm_t, nm_n, nelmt, 
+        basis_n, basis_t, 
+        dbasis_n, dbasis_t, 
+        G_stiff, in_u, out_u
+    );
+    std::cout << "Serial_Stiffness L2 norm = " << std::sqrt(Serial_Stiffness_res) << "\n";
+
+    delete[] basis_n;  delete[] basis_t;  delete[] dbasis_n; delete[] dbasis_t; delete[] basis_p;
+    delete[] G_mass;   delete[] G_stiff;  delete[] G_div;    delete[] G_divdiv;
+    delete[] in_u;     delete[] out_u;    delete[] in_p;     delete[] out_p;
 }
 
 int main(int argc, char **argv){
