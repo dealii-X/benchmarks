@@ -21,9 +21,9 @@ std::vector<double> Kokkos_MassOperator(size_t nelmt, const unsigned int nelmtPe
         T sum = 0.0;
         std::vector<double> results(3);
         {   
-            Kokkos::View<const T*, Kokkos::HostSpace> basis_view(basis, nm * nq);
-            Kokkos::View<T*> d_basis("d_basis", nm * nq);
-            Kokkos::deep_copy(d_basis, basis_view);
+            // Constant memory: capture basis by value in Kokkos::Array (CUDA cmem[0])
+            Kokkos::Array<T, (nq - 1) * nq> c_basis;
+            for (unsigned int i = 0u; i < nm * nq; ++i) c_basis[i] = basis[i];
 
             Kokkos::View<const T*, Kokkos::HostSpace> JxW_view(JxW, nelmt * nq*nq*nq);
             Kokkos::View<T*> d_JxW("d_JxW", nelmt * nq*nq*nq);
@@ -41,7 +41,7 @@ std::vector<double> Kokkos_MassOperator(size_t nelmt, const unsigned int nelmtPe
             double time_kokkos = std::numeric_limits<double>::max();
 
             //Kokkos with shared memory
-            const unsigned int ssize = 2 * nelmtPerBatch * nq*nq*nq + nm*nq;         
+            const unsigned int ssize = 2 * nelmtPerBatch * nq*nq*nq;         
             
             const unsigned int shmem_size = ssize * sizeof(T);
             
@@ -59,16 +59,12 @@ std::vector<double> Kokkos_MassOperator(size_t nelmt, const unsigned int nelmtPe
 
                         //shared memory access
                         T* scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
-                        T* s_basis = scratch;
-                        T* s_wsp0 = s_basis + nm*nq;
+
+                        T* s_wsp0 = scratch;
                         T* s_wsp1 = s_wsp0 + nelmtPerBatch * nq*nq*nq;
 
                         unsigned int threadIdx = team_member.team_rank();
                         unsigned int blockSize = team_member.team_size();
-
-                        for(int tid = threadIdx; tid < nm*nq; tid += blockSize)
-                            s_basis[tid] = d_basis(tid);
-                        team_member.team_barrier();
 
                         //element index
                         size_t eb = team_member.league_rank();
@@ -107,7 +103,7 @@ std::vector<double> Kokkos_MassOperator(size_t nelmt, const unsigned int nelmtPe
                                         T tmp = 0.0;
                                     
                                         for(int i = 0; i < nm; ++i) {
-                                            tmp += s_basis[i * nq + p] * reg[i];
+                                            tmp += c_basis[i * nq + p] * reg[i];
                                         }
                                     
                                         s_wsp1[e * nq*nm*nm + p * nm*nm + j * nm + k] = tmp;
@@ -130,7 +126,7 @@ std::vector<double> Kokkos_MassOperator(size_t nelmt, const unsigned int nelmtPe
                                         T tmp = 0.0;
                                     
                                         for(int j = 0; j < nm; ++j) {
-                                            tmp += s_basis[j * nq + q] * reg[j];
+                                            tmp += c_basis[j * nq + q] * reg[j];
                                         }
                                     
                                         s_wsp0[e * nq*nq*nm + q * nq*nm + p * nm + k] = tmp;
@@ -152,7 +148,7 @@ std::vector<double> Kokkos_MassOperator(size_t nelmt, const unsigned int nelmtPe
                                         T tmp = 0.0;
                                     
                                         for(int k = 0; k < nm; ++k) {
-                                            tmp += s_basis[k * nq + r] * reg[k];
+                                            tmp += c_basis[k * nq + r] * reg[k];
                                         }
                                     
                                         s_wsp1[e * nq*nq*nq + r * nq*nq + q * nq + p] = tmp * d_JxW[eb * nelmtPerBatch * nq * nq * nq + e * nq*nq*nq + r * nq*nq + q * nq + p];
@@ -177,7 +173,7 @@ std::vector<double> Kokkos_MassOperator(size_t nelmt, const unsigned int nelmtPe
                                         T tmp = 0.0;
                                     
                                         for(int r = 0; r < nq; ++r) {
-                                            tmp += s_basis[k * nq + r] * reg[r];
+                                            tmp += c_basis[k * nq + r] * reg[r];
                                         }
                                     
                                         s_wsp0[e * nm*nq*nq + k * nq*nq + q * nq + p] = tmp;
@@ -200,9 +196,9 @@ std::vector<double> Kokkos_MassOperator(size_t nelmt, const unsigned int nelmtPe
                                         T tmp = 0.0;
                                     
                                         for(int q = 0; q < nq; ++q) {
-                                            tmp += s_basis[j * nq + q] * reg[q];
+                                            tmp += c_basis[j * nq + q] * reg[q];
                                         }
-                                        s_wsp1[e * nm*nm*nq + k * nm*nq + j * nq + p] = tmp;
+                                        s_wsp1[e * nm*nm*nq + j * nm*nq + k * nq + p] = tmp;
                                     }
                                 }
                                 team_member.team_barrier();
@@ -216,13 +212,13 @@ std::vector<double> Kokkos_MassOperator(size_t nelmt, const unsigned int nelmtPe
                                     int k = tid % nm;
                                 
                                     for(int p=0; p<nq; ++p){
-                                        reg[p] = s_wsp1[e * nm*nm*nq + k * nm*nq + j * nq + p];
+                                        reg[p] = s_wsp1[e * nm*nm*nq + j * nm*nq + k * nq + p];
                                     }
                                 
                                     for (int i = 0; i < nm; ++i) {
                                         T tmp = 0.0;
                                         for(int p = 0; p < nq; ++p) {
-                                            tmp += s_basis[i * nq + p] * reg[p];
+                                            tmp += c_basis[i * nq + p] * reg[p];
                                         }
                                         s_wsp0[e * nm*nm*nm + i * nm*nm + j * nm + k] = tmp;
                                     }
