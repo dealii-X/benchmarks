@@ -22,9 +22,9 @@ std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelm
         T sum = 0.0;
         std::vector<double> results(3);
         {   
-            Kokkos::View<const T*, Kokkos::HostSpace> basis_view(basis, nm * nq);
-            Kokkos::View<T*> d_basis("d_basis", nm * nq);
-            Kokkos::deep_copy(d_basis, basis_view);
+            // Constant memory: capture basis and dbasis by value in Kokkos::Array (CUDA cmem[0])
+            Kokkos::Array<T, nm * nq> c_basis;
+            for (unsigned int i = 0u; i < nm * nq; ++i) c_basis[i] = basis[i];
 
             Kokkos::View<const T*, Kokkos::HostSpace> dbasis_view(dbasis, nq * nq);
             Kokkos::View<T*> d_dbasis("d_dbasis", nq * nq);
@@ -45,7 +45,7 @@ std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelm
             double time_kokkos = std::numeric_limits<double>::max();
 
             //Kokkos with shared memory
-            unsigned int ssize = nm * nq + nq * nq + 4 * nelmtPerBatch * nq * nq * nq;          
+            unsigned int ssize = nq * nq + 4 * nelmtPerBatch * nq * nq * nq;          
             
             const unsigned int shmem_size = ssize * sizeof(T);
             
@@ -66,8 +66,7 @@ std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelm
                     //shared memory access
                     T *scratch = (T*)team_member.team_shmem().get_shmem(shmem_size);
 
-                    T *s_basis  = scratch;
-                    T *s_dbasis = s_basis  + nq * nm;
+                    T *s_dbasis = scratch;
 
                     T *s_wsp0    = s_dbasis + nq * nq;
                     T *s_wsp1    = s_wsp0    + nelmtPerBatch * nq * nq * nq;
@@ -80,12 +79,6 @@ std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelm
                     const unsigned int blockSize = team_member.team_size();
 
                     //copy to shared memory
-                    for(unsigned int tid = threadIdx; tid < nm * nq; tid += blockSize)
-                    {
-                        s_basis[tid] = d_basis[tid];
-                    }
-                
-                
                     for(unsigned int tid = threadIdx; tid < nq * nq; tid += blockSize)
                     {
                         s_dbasis[tid] = d_dbasis[tid];
@@ -132,7 +125,7 @@ std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelm
                                     T tmp = 0.0;
                                 
                                     for(int i = 0; i < nm; ++i) {
-                                        tmp += s_basis[i * nq + p] * r_p[i];
+                                        tmp += c_basis[i * nq + p] * r_p[i];
                                     }
                                 
                                     s_wsp1[e * nq*nm*nm + p * nm*nm + j * nm + k] = tmp;
@@ -154,7 +147,7 @@ std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelm
                                     T tmp = 0.0;
                                 
                                     for(int j = 0; j < nm; ++j) {
-                                        tmp += s_basis[j * nq + q] * r_q[j];
+                                        tmp += c_basis[j * nq + q] * r_q[j];
                                     }
                                 
                                     s_wsp0[e * nq*nq*nm + q * nq*nm + p * nm + k] = tmp;
@@ -176,7 +169,7 @@ std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelm
                                     T tmp = 0.0;
                                 
                                     for(int k = 0; k < nm; ++k) {
-                                        tmp += s_basis[k * nq + r] * r_r[k];
+                                        tmp += c_basis[k * nq + r] * r_r[k];
                                     }
                                 
                                     s_wsp1[e * nq*nq*nq + r * nq*nq + q * nq + p] = tmp;
@@ -280,7 +273,7 @@ std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelm
                                     T tmp = 0.0;
                                 
                                     for(int r = 0; r < nq; ++r) {
-                                        tmp += s_basis[k * nq + r] * r_r[r];
+                                        tmp += c_basis[k * nq + r] * r_r[r];
                                     }
                                 
                                     s_wsp0[e * nm*nq*nq + k * nq*nq + q * nq + p] = tmp;
@@ -303,7 +296,7 @@ std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelm
                                     T tmp = 0.0;
                                 
                                     for(int q = 0; q < nq; ++q) {
-                                        tmp += s_basis[j * nq + q] * r_q[q];
+                                        tmp += c_basis[j * nq + q] * r_q[q];
                                     }
                                     s_wsp1[e * nm*nm*nq + k * nm*nq + j * nq + p] = tmp;
                                 }
@@ -324,7 +317,7 @@ std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelm
                                 for (int i = 0; i < nm; ++i) {
                                     T tmp = 0.0;
                                     for(int p = 0; p < nq; ++p) {
-                                        tmp += s_basis[i * nq + p] * r_p[p];
+                                        tmp += c_basis[i * nq + p] * r_p[p];
                                     }
 
                                     d_out[comp_offset + batch_offset + e * nm*nm*nm + i * nm*nm + j * nm + k] = tmp;

@@ -163,7 +163,7 @@ void run_test(const unsigned int nq, const unsigned int nelmt){
 int main(int argc, char **argv){
     unsigned int p     = (argc > 1) ? atoi(argv[1]) : 2u;
     unsigned int nq    = p + 2;
-    unsigned int nelmt = (argc > 2) ? atoi(argv[2]) : 2 << 16;
+    unsigned int nelmt = (argc > 2) ? atoi(argv[2]) : 1 << 16;
 
     std::cout.precision(8);
     run_test<double>(nq, nelmt);
