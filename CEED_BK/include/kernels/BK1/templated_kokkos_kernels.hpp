@@ -72,14 +72,8 @@ std::vector<double> Kokkos_MassOperator(const unsigned int nelmt, const unsigned
                             int remaining = nelmt - eb * nelmtPerBatch;
                             int c_nelmtPerBatch = (nelmtPerBatch < remaining) ? nelmtPerBatch : remaining;
                                        
-                            //step-1 : Copy from in to the wsp0
-                            for(int i = threadIdx; i < c_nelmtPerBatch * nm * nm * nm; i += blockSize)
-                            {
-                                s_wsp0[i] = d_in[eb * nelmtPerBatch * nm * nm * nm + i];
-                            }
-                            team_member.team_barrier();
 
-                            //step-2 : direction 0
+                            //step-1 : Copy from in to the wsp0 + step-2 : direction 0
                             for(int tid = threadIdx; tid < c_nelmtPerBatch * nm * nm; tid += blockSize)
                             {
                                 int e = tid / (nm * nm);
@@ -87,7 +81,7 @@ std::vector<double> Kokkos_MassOperator(const unsigned int nelmt, const unsigned
                                 int k = tid % nm;
                             
                                 for(int i=0; i<nm; ++i){
-                                    reg[i] = s_wsp0[e * nm*nm*nm + i * nm*nm + j * nm + k];
+                                    reg[i] = d_in[eb * nelmtPerBatch * nm * nm * nm + e * nm*nm*nm + i * nm*nm + j * nm + k];
                                 }
                             
                                 for (int p = 0; p < nq; ++p) {
@@ -195,7 +189,7 @@ std::vector<double> Kokkos_MassOperator(const unsigned int nelmt, const unsigned
                             team_member.team_barrier();
 
 
-                            //step-8 : direction 0
+                            //step-8 : direction 0 + step-9 : Copy wsp0 to out
                             for(int tid = threadIdx; tid < c_nelmtPerBatch * nm * nm; tid += blockSize)
                             {   
                                 int e = tid / (nm * nm);
@@ -211,19 +205,11 @@ std::vector<double> Kokkos_MassOperator(const unsigned int nelmt, const unsigned
                                     for(int p = 0; p < nq; ++p) {
                                         tmp += c_basis[i * nq + p] * reg[p];
                                     }
-                                    s_wsp0[e * nm*nm*nm + i * nm*nm + j * nm + k] = tmp;
+                                    d_out[eb * nelmtPerBatch * nm * nm * nm + e * nm*nm*nm + i * nm*nm + j * nm + k] = tmp;
                                 }
                             }
                             team_member.team_barrier();
-
-
-                            //step-9 : Copy wsp0 to out
-                            for(int tid = threadIdx; tid < c_nelmtPerBatch * nm * nm * nm; tid += blockSize)
-                            {
-                                d_out[eb * nelmtPerBatch * nm * nm * nm + tid] = s_wsp0[tid];
-                            }
-                            team_member.team_barrier();
-                        
+                       
                             eb += team_member.league_size();
                         }
                 });

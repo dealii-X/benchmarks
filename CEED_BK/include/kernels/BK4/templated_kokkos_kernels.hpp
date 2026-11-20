@@ -103,14 +103,8 @@ std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelm
                             const size_t comp_offset  = c * nelmt * nm * nm * nm;
                             const size_t batch_offset = eb * nelmtPerBatch * nm * nm * nm;
 
-                            //step-1 : Copy from in to the wsp0
-                            for(int i = threadIdx; i < c_nelmtPerBatch * nm * nm * nm; i += blockSize)
-                            {
-                                s_wsp0[i] = d_in[comp_offset + batch_offset + i];
-                            }
-                            team_member.team_barrier();
-                            
-                            //step-2 : direction 0
+
+                            //step-1 : Copy from in to the wsp0 + step-2 : direction 0
                             for(int tid = threadIdx; tid < c_nelmtPerBatch * nm * nm; tid += blockSize)
                             {
                                 int e = tid / (nm * nm);
@@ -118,7 +112,7 @@ std::vector<double> Kokkos_LaplaceOperator(size_t nelmt, const unsigned int nelm
                                 int k = tid % nm;
                             
                                 for(int i=0; i<nm; ++i){
-                                    r_p[i] = s_wsp0[e * nm*nm*nm + i * nm*nm + j * nm + k];
+                                    r_p[i] = d_in[comp_offset + batch_offset + e * nm*nm*nm + i * nm*nm + j * nm + k];
                                 }
                             
                                 for (int p = 0; p < nq; ++p) {
